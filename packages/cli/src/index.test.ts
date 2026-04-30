@@ -21,6 +21,18 @@ test("version prints the npm package version", async () => {
   assert.equal(stdout.trim(), "0.1.0");
 });
 
+test("help prints the npm package version and supported options", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "--help"
+  ]);
+
+  assert.match(stdout, /^openRender 0\.1\.0/m);
+  assert.match(stdout, /openrender --version/);
+  assert.match(stdout, /openrender install --run latest \[--force\] \[--json\]/);
+  assert.match(stdout, /openrender report --run latest \[--open\] \[--json\]/);
+});
+
 test("init emits JSON when requested", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-"));
   await fs.writeFile(path.join(root, "package.json"), JSON.stringify({ name: "sample-game" }), "utf8");

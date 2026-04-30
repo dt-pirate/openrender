@@ -956,22 +956,18 @@ function printRollbackResult(result: RollbackCommandResult): void {
   }
 }
 
-function printPlannedCommand(command: string, detail: string): void {
-  console.error(`openrender ${command} is not implemented yet.`);
-  console.error(detail);
-}
-
 function printHelp(): void {
-  console.log(`openRender ${OPENRENDER_POC_VERSION}
+  console.log(`openRender ${CLI_VERSION}
 
 Usage:
+  openrender --version
   openrender init [--target phaser] [--framework vite] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--install] [--dry-run] [--json]
-  openrender install --run latest [--json]
+  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender install --run latest [--force] [--json]
   openrender verify --run latest [--json]
-  openrender report --run latest [--json]
+  openrender report --run latest [--open] [--json]
   openrender rollback --run latest [--json]
 `);
 }
