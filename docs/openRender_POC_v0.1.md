@@ -1909,17 +1909,17 @@ compile/install/verify/report/rollback
 목표:
 
 ```text
-새 public repo에서 TypeScript monorepo 초기화
+새 repo에서 TypeScript monorepo 초기화
 ```
 
 Tasks:
 
-- [ ] repo 생성
-- [ ] license 추가
-- [ ] README 초안 작성
-- [ ] pnpm workspace 설정
-- [ ] TypeScript base config
-- [ ] package skeleton 생성
+- [x] repo 생성
+- [x] license 추가
+- [x] README 초안 작성
+- [x] pnpm workspace 설정
+- [x] TypeScript base config
+- [x] package skeleton 생성
 
 ### 21.2. Milestone 1 — Core schema
 
@@ -1931,12 +1931,13 @@ config, contract, run model 정의
 
 Tasks:
 
-- [ ] `openrender.config.json` schema
-- [ ] media contract schema
-- [ ] run JSON schema
-- [ ] path normalization helper
-- [ ] safe project root validation
-- [ ] output descriptor model
+- [x] `openrender.config.json` TypeScript model
+- [x] media contract TypeScript model
+- [x] run JSON TypeScript model
+- [x] path normalization helper
+- [x] safe project root validation
+- [x] output descriptor model
+- [ ] runtime schema validation
 
 ### 21.3. Milestone 2 — CLI init/scan
 
@@ -1948,12 +1949,12 @@ Tasks:
 
 Tasks:
 
-- [ ] `openrender init`
-- [ ] `.openrender` directory 생성
-- [ ] config 생성
-- [ ] `openrender scan`
-- [ ] Vite + Phaser detection
-- [ ] JSON output mode
+- [x] `openrender init`
+- [x] `.openrender` directory 생성
+- [x] config 생성
+- [x] `openrender scan`
+- [x] Vite + Phaser detection
+- [x] JSON output mode
 
 ### 21.4. Milestone 3 — Visual harness
 
@@ -1972,7 +1973,8 @@ Tasks:
 - [ ] basic crop
 - [ ] padding
 - [ ] frame slicing
-- [ ] frame validation
+- [x] horizontal strip frame validation helper
+- [ ] integrated frame validation in `compile sprite`
 - [ ] harness metadata output
 
 ### 21.5. Milestone 4 — Phaser adapter
@@ -1985,11 +1987,11 @@ Phaser-ready output 생성
 
 Tasks:
 
-- [ ] output path resolver
-- [ ] manifest TS generator
-- [ ] animation helper generator
+- [x] output path resolver
+- [x] manifest TS generator
+- [x] animation helper generator
 - [ ] install plan generator
-- [ ] Vite public URL resolver
+- [x] Vite public URL resolver
 
 ### 21.6. Milestone 5 — Install / rollback
 
@@ -2019,9 +2021,10 @@ Tasks:
 Tasks:
 
 - [ ] verification checks
-- [ ] report JSON
-- [ ] report HTML
-- [ ] preview HTML
+- [x] report JSON helper
+- [x] report HTML helper
+- [x] preview HTML helper
+- [ ] report/preview file writing
 - [ ] latest report symlink/copy
 - [ ] `openrender report --open`
 
@@ -2035,8 +2038,8 @@ Tasks:
 
 Tasks:
 
-- [ ] quickstart 문서
-- [ ] troubleshooting 문서
+- [x] quickstart 문서
+- [x] troubleshooting 문서
 - [ ] known limitations 문서
 
 ---
@@ -2045,13 +2048,13 @@ Tasks:
 
 ### 22.1. Technical success criteria
 
-- [ ] 새 repo에서 `pnpm install`이 성공한다.
-- [ ] `openrender init`이 config와 `.openrender`를 생성한다.
-- [ ] `openrender scan`이 Vite + Phaser를 감지한다.
+- [x] 새 repo에서 `pnpm install`이 성공한다.
+- [x] `openrender init`이 config와 `.openrender`를 생성한다.
+- [x] `openrender scan`이 Vite + Phaser를 감지한다.
 - [ ] local raw image를 `visual.sprite_frame_set`으로 compile할 수 있다.
-- [ ] frame count / frame size validation이 작동한다.
-- [ ] Phaser manifest TS가 생성된다.
-- [ ] Phaser animation helper TS가 생성된다.
+- [x] frame count / frame size validation helper가 작동한다.
+- [x] Phaser manifest TS generator가 동작한다.
+- [x] Phaser animation helper TS generator가 동작한다.
 - [ ] output PNG가 `public/assets`에 설치된다.
 - [ ] local preview HTML에서 animation loop를 볼 수 있다.
 - [ ] report HTML/JSON이 생성된다.
@@ -2192,28 +2195,28 @@ POC 이후 별도 판단.
 
 ### P0 — Must-have for POC
 
-- [ ] 새 repo 생성
-- [ ] README 작성
-- [ ] `openrender` CLI skeleton
-- [ ] `openrender.config.json` schema
-- [ ] `.openrender` state directory 생성
-- [ ] `openrender init`
-- [ ] `openrender scan`
-- [ ] media contract schema
-- [ ] run JSON schema
+- [x] 새 repo 생성
+- [x] README 작성
+- [x] `openrender` CLI skeleton
+- [x] `openrender.config.json` TypeScript model
+- [x] `.openrender` state directory 생성
+- [x] `openrender init`
+- [x] `openrender scan`
+- [x] media contract TypeScript model
+- [x] run JSON TypeScript model
 - [ ] image load/metadata extraction
 - [ ] crop/padding/frame slicing
-- [ ] Phaser adapter
-- [ ] manifest TS generation
-- [ ] animation helper generation
+- [x] Phaser adapter skeleton
+- [x] manifest TS generation helper
+- [x] animation helper generation helper
 - [ ] install plan
 - [ ] safe write + snapshot
 - [ ] rollback
 - [ ] verify checks
-- [ ] report JSON
-- [ ] report HTML
-- [ ] preview HTML
-- [ ] quickstart doc
+- [x] report JSON helper
+- [x] report HTML helper
+- [x] preview HTML helper
+- [x] quickstart doc
 
 ### P1 — Nice-to-have within POC if time permits
 
@@ -2222,8 +2225,8 @@ POC 이후 별도 판단.
 - [ ] basic background removal for simple solid backgrounds
 - [ ] better alpha edge cleanup
 - [ ] report visual overlays
-- [ ] doctor command
-- [ ] troubleshooting doc
+- [x] doctor command
+- [x] troubleshooting doc
 
 ### Explicitly not POC
 
