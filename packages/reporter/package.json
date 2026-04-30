@@ -2,7 +2,7 @@
   "name": "@openrender/reporter",
   "version": "0.1.0",
   "description": "Local report and preview generation helpers for openRender",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
