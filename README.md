@@ -6,7 +6,7 @@ The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, instal
 
 ## Current Status
 
-This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, CLI shell, project scanner, doctor checks, Phaser code-generation helpers, and a Vite + Phaser example.
+This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, CLI shell, project scanner, doctor checks, and Phaser code-generation helpers.
 
 Image processing and install/rollback execution are the next implementation milestones.
 
@@ -45,7 +45,6 @@ packages/harness-visual    visual pipeline boundary
 packages/adapters/phaser   Phaser/Vite output helpers
 packages/reporter          report and preview generation boundary
 packages/doctor            environment diagnostics
-examples/vite-phaser-basic minimal target project
 docs/                      POC spec and developer docs
 ```
 
@@ -83,15 +82,7 @@ pnpm build
 node packages/cli/dist/index.js scan
 ```
 
-## Example Project
-
-The example target lives at `examples/vite-phaser-basic`.
-
-```bash
-pnpm --filter vite-phaser-basic dev
-```
-
-From that directory, the POC CLI should eventually support:
+From a Vite + Phaser project directory, the POC CLI should eventually support:
 
 ```bash
 openrender init

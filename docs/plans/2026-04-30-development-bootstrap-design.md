@@ -30,5 +30,4 @@ This approach does not implement the full compiler in the first step. It instead
 - `pnpm typecheck` succeeds.
 - `pnpm test` succeeds.
 - `pnpm dev:cli scan --json` runs.
-- The example Vite + Phaser project is present.
 - POC docs and contributor docs exist at expected paths.

@@ -8,8 +8,8 @@
 | 작성일 | 2026-04-30 |
 | 프로젝트명 | `openRender` |
 | 문서 상태 | Active POC scope reference |
-| 기준 문서 | `[MVP Spec] AssetPipe v0.3`, 대화 기반 전략 재정의 |
-| 문서 목적 | 기존 AssetPipe 전략을 새 오픈소스 프로젝트 `openRender` 기준으로 재작성하고, 결제/계정/클라우드가 없는 **로컬 POC 구현 범위**를 확정한다. |
+| 기준 문서 | 본 문서가 `openRender v0.1` POC의 기준 문서다. |
+| 문서 목적 | 새 오픈소스 프로젝트 `openRender`의 결제/계정/클라우드가 없는 **로컬 POC 구현 범위**를 확정한다. |
 | 제품 성격 | AI-native agentic game development infrastructure |
 | POC 핵심 | AI agent가 호출할 수 있는 local-first compiler로, raw generated media를 game engine-ready output으로 변환·설치·검증한다. |
 | POC 첫 대상 | Vite + Phaser 기반 Web 2D 프로젝트 |
@@ -386,7 +386,6 @@ openRender는 새 public repo 기준으로 시작한다.
 - CLI 공개
 - Phaser adapter 공개
 - report/preview 공개
-- examples 공개
 - docs 공개
 ```
 
@@ -1701,8 +1700,6 @@ openrender/
     cli-reference.md
     contracts.md
     troubleshooting.md
-  examples/
-    vite-phaser-basic/
   packages/
     cli/
     core/
@@ -1923,7 +1920,6 @@ Tasks:
 - [ ] pnpm workspace 설정
 - [ ] TypeScript base config
 - [ ] package skeleton 생성
-- [ ] example Vite + Phaser project 추가
 
 ### 21.2. Milestone 1 — Core schema
 
@@ -2034,14 +2030,12 @@ Tasks:
 목표:
 
 ```text
-외부 개발자가 README만 보고 예제 실행 가능
+외부 개발자가 README만 보고 로컬 CLI 개발 환경을 실행 가능
 ```
 
 Tasks:
 
 - [ ] quickstart 문서
-- [ ] sample raw image 추가
-- [ ] example Vite + Phaser project에서 end-to-end demo
 - [ ] troubleshooting 문서
 - [ ] known limitations 문서
 
@@ -2052,7 +2046,6 @@ Tasks:
 ### 22.1. Technical success criteria
 
 - [ ] 새 repo에서 `pnpm install`이 성공한다.
-- [ ] example Vite + Phaser project가 실행된다.
 - [ ] `openrender init`이 config와 `.openrender`를 생성한다.
 - [ ] `openrender scan`이 Vite + Phaser를 감지한다.
 - [ ] local raw image를 `visual.sprite_frame_set`으로 compile할 수 있다.
@@ -2098,7 +2091,7 @@ POC 성공 기준에 포함하지 않는다.
 | agent가 임시 스크립트로 대체 가능 | High | report/rollback/contract/codegen까지 표준화해 차별화 |
 | local write가 프로젝트를 망가뜨림 | High | snapshot, dry-run, no overwrite 기본 정책 |
 | Phaser adapter codegen이 실제 프로젝트마다 다름 | Medium | scene patch 대신 helper file 생성으로 POC 범위 제한 |
-| Open-source repo가 너무 빈약해 보임 | Medium | example project와 end-to-end demo를 우선 완성 |
+| Open-source repo가 너무 빈약해 보임 | Medium | CLI, docs, tests를 우선 완성하고 demo fixture는 필요 시 추가 |
 | sound/video 장기 비전과 image POC 사이 괴리 | Medium | media-general contract와 future placeholders 유지 |
 | CLI UX가 복잡함 | Medium | POC command를 7개 내외로 제한 |
 
@@ -2195,26 +2188,7 @@ POC 이후 별도 판단.
 
 ---
 
-## 25. 기존 AssetPipe 전략에서 변경된 주요 결정
-
-| 기존 AssetPipe v0.3 방향 | openRender POC v0.1 결정 |
-|---|---|
-| MVP 문서 | POC 문서로 축소 |
-| AssetPipe | openRender로 새 프로젝트화 |
-| local-first asset compiler | local-first media-to-engine compiler |
-| Web 2D + Godot MVP | POC에서는 Vite + Phaser만 |
-| CLI/MCP/Codex plugin MVP 포함 | POC에서는 CLI만 구현, MCP/Codex plugin은 future |
-| BYOK model integration | POC 제외 |
-| account-light entitlement | POC 제외 |
-| Project Pass/Personal pricing | POC 제외 |
-| Hosted Workbench optional | POC 제외 |
-| Pixi/Canvas/Godot MVP 범위 | POC 이후 |
-| business validation 포함 | POC에서는 기술 루프 검증만 |
-| asset 중심 | 장기적으로 media 중심: image/audio/video/scene/code |
-
----
-
-## 26. Development Checklist
+## 25. Development Checklist
 
 ### P0 — Must-have for POC
 
@@ -2239,7 +2213,6 @@ POC 이후 별도 판단.
 - [ ] report JSON
 - [ ] report HTML
 - [ ] preview HTML
-- [ ] example Vite + Phaser repo
 - [ ] quickstart doc
 
 ### P1 — Nice-to-have within POC if time permits
@@ -2269,11 +2242,10 @@ POC 이후 별도 판단.
 
 ---
 
-## 27. Final POC Statement
+## 26. Final POC Statement
 
 > **openRender v0.1 POC는 결제·계정·클라우드 없이 시작하는 오픈소스 local-first compiler다.**
 >
 > **목표는 AI agent가 raw generated image를 Phaser-ready asset으로 변환하고, 로컬 프로젝트에 설치하고, preview/report로 검증하고, 필요하면 rollback할 수 있음을 증명하는 것이다.**
 >
 > **장기적으로 openRender는 이미지뿐 아니라 사운드, 영상, 씬, 코드 fragment까지 포함하는 AI-native agentic game development infrastructure로 확장된다.**
-
