@@ -223,10 +223,6 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
     throw new Error(`Unsupported sprite layout: ${layout}`);
   }
-  if (!dryRun && parsed.flags.get("install") === true) {
-    throw new Error("--install is not implemented yet. Run compile first, then install once the install command is available.");
-  }
-
   const metadata = await loadImageMetadata(sourcePath);
   const frameSize = readOptionalSizeFlag(parsed, "frame-size");
   const frames = readOptionalIntegerFlag(parsed, "frames");
@@ -407,20 +403,34 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   };
 
   if (!dryRun) {
-    await safeWriteProjectFile({
+    await writeCompileRecord(projectRoot, result);
+  }
+
+  if (!dryRun && parsed.flags.get("install") === true && result.validation?.ok !== false) {
+    result.installResult = await installCompiledRecord({
       projectRoot,
-      relativePath: path.posix.join(".openrender", "runs", `${run.runId}.json`),
-      contents: `${JSON.stringify(result, null, 2)}\n`
+      record: result,
+      force: parsed.flags.get("force") === true
     });
-    await safeWriteProjectFile({
-      projectRoot,
-      relativePath: path.posix.join(".openrender", "runs", "latest.json"),
-      contents: `${JSON.stringify(result, null, 2)}\n`,
-      allowOverwrite: true
-    });
+    await writeCompileRecord(projectRoot, result, true);
   }
 
   return result;
+}
+
+async function writeCompileRecord(projectRoot: string, result: CompileSpriteResult, allowOverwrite = false): Promise<void> {
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: path.posix.join(".openrender", "runs", `${result.run.runId}.json`),
+    contents: `${JSON.stringify(result, null, 2)}\n`,
+    allowOverwrite
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: path.posix.join(".openrender", "runs", "latest.json"),
+    contents: `${JSON.stringify(result, null, 2)}\n`,
+    allowOverwrite: true
+  });
 }
 
 function readOptionalIntegerFlag(parsed: ParsedFlags, name: string): number | undefined {
@@ -460,6 +470,15 @@ async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
   const record = JSON.parse(
     await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
   ) as CompileSpriteResult;
+  return installCompiledRecord({ projectRoot, record, force });
+}
+
+async function installCompiledRecord(input: {
+  projectRoot: string;
+  record: CompileSpriteResult;
+  force: boolean;
+}): Promise<InstallCommandResult> {
+  const { projectRoot, record, force } = input;
   const snapshotRoot = path.posix.join(".openrender", "snapshots", record.run.runId);
   const destinationPaths = record.installPlan.files.map((file) => file.to);
 
@@ -789,6 +808,10 @@ function printCompileSprite(result: CompileSpriteResult): void {
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
   console.log(`Install plan files: ${result.installPlan.files.length}`);
+  if (result.installResult) {
+    console.log(`Installed files: ${result.installResult.writes.length}`);
+    console.log(`Snapshot: ${result.installResult.snapshotRoot}`);
+  }
 
   if (result.validation) {
     console.log(`Frame validation: ${result.validation.ok ? "passed" : "failed"}`);
@@ -847,7 +870,7 @@ Usage:
   openrender init [--target phaser] [--framework vite] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
+  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--install] [--dry-run] [--json]
   openrender install --run latest [--json]
   openrender verify --run latest [--json]
   openrender report --run latest [--json]
@@ -910,6 +933,7 @@ interface CompileSpriteResult {
   validation?: FrameValidationResult;
   frameSlices?: FrameSlice[];
   run: ReturnType<typeof createInitialRun>;
+  installResult?: InstallCommandResult;
 }
 
 main(process.argv.slice(2))

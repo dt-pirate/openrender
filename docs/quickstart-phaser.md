@@ -75,7 +75,7 @@ This reads image metadata, builds a media contract, validates horizontal frame d
 
 ## 5. Compile And Install A Sprite
 
-Implemented compile command:
+Compile and install in one command:
 
 ```bash
 openrender compile sprite \
@@ -85,7 +85,8 @@ openrender compile sprite \
   --id enemy.slime.idle \
   --frames 6 \
   --frame-size 64x64 \
-  --layout horizontal
+  --layout horizontal \
+  --install
 ```
 
 Compile output:
@@ -96,7 +97,7 @@ Compile output:
 .openrender/runs/latest.json
 ```
 
-Install the latest compiled run:
+Or install the latest compiled run separately:
 
 ```bash
 openrender install --run latest

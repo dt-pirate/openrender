@@ -183,6 +183,37 @@ test("install latest run writes planned files", async () => {
   assert.match(await fs.readFile(path.join(root, "src/assets/openrender-manifest.ts"), "utf8"), /prop\.dot/);
 });
 
+test("compile sprite can install the compiled run", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-compile-install-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    installResult: { writes: Array<{ relativePath: string }> };
+    run: { runId: string };
+  };
+
+  assert.deepEqual(result.installResult.writes.map((write) => write.relativePath), [
+    "public/assets/prop-dot.png",
+    "src/assets/openrender-manifest.ts"
+  ]);
+  assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), true);
+  assert.equal(await fileExists(path.join(root, ".openrender/runs", `${result.run.runId}.install.json`)), true);
+});
+
 test("verify latest run passes after install", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-verify-"));
   const imagePath = path.join(root, "sprite.png");

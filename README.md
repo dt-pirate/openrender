@@ -84,13 +84,13 @@ pnpm build
 node packages/cli/dist/index.js scan
 ```
 
-From a Vite + Phaser project directory, the POC CLI should eventually support:
+From a Vite + Phaser project directory, the POC CLI supports:
 
 ```bash
 openrender init
 openrender scan
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
-openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --json
+openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 openrender install --run latest
 openrender verify --run latest
 openrender report --run latest

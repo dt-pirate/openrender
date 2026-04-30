@@ -21,9 +21,11 @@ openrender --help
 openrender --version
 ```
 
-## Planned For The POC
+## POC Implementation Status
 
-All required POC commands now have an initial local implementation. Preview generation and `--open` behavior are still planned.
+All required v0.1 POC commands have an initial local implementation. Advanced
+runtime smoke checks and stable public schemas for every JSON command remain out
+of scope for the current POC pass.
 
 ## Commands
 
@@ -82,10 +84,13 @@ Options currently supported:
 - `--padding`
 - `--output-size`
 - `--asset-root`
+- `--install`
+- `--force` when used with `--install`
 - `--dry-run`
 - `--json`
 
-`--install` is not implemented yet.
+`--install` runs the install step immediately after a successful compile. In
+`--dry-run` mode, it only marks the generated install plan as enabled.
 
 ### `openrender install`
 
