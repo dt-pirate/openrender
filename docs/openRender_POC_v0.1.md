@@ -2074,6 +2074,8 @@ Validation note:
 
 - 2026-04-30 local smoke loop: `init → scan → compile sprite --install → verify → report → rollback`
   passed in 336ms in a temporary Vite + Phaser-shaped project.
+- 2026-04-30 packaged tarball smoke loop: installed packed workspace packages into a temporary
+  project and ran `init → scan → compile sprite --install → verify → report → rollback`; it passed in 855ms.
 
 ### 22.3. Non-goals for success
 
