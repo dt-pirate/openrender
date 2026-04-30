@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
+import path from "node:path";
 import sharp from "sharp";
 import type { SpriteFrameSetContract, TransparentSpriteContract } from "@openrender/core";
 
@@ -30,6 +31,11 @@ export interface VisualHarnessPlan {
   mediaType: SpriteFrameSetContract["mediaType"] | TransparentSpriteContract["mediaType"];
   stages: string[];
   implementationStatus: "planned" | "ready";
+}
+
+export interface NormalizedImageOutput {
+  path: string;
+  metadata: ImageMetadata;
 }
 
 export const VISUAL_HARNESS_POC_STAGES = [
@@ -67,6 +73,21 @@ export async function loadImageMetadata(sourcePath: string): Promise<ImageMetada
     hasAlpha: metadata.hasAlpha === true,
     channels: metadata.channels ?? 0,
     colorSpace: metadata.space ?? "unknown"
+  };
+}
+
+export async function normalizeImageToPng(input: {
+  sourcePath: string;
+  outputPath: string;
+}): Promise<NormalizedImageOutput> {
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp(input.sourcePath, { failOn: "error" })
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath)
   };
 }
 

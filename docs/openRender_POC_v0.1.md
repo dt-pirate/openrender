@@ -1968,7 +1968,7 @@ Tasks:
 
 - [x] image load
 - [x] metadata extraction
-- [ ] PNG output normalization
+- [x] PNG output normalization
 - [x] alpha detection
 - [ ] basic crop
 - [ ] padding

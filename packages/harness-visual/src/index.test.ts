@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import sharp from "sharp";
-import { loadImageMetadata, validateHorizontalFrameSet } from "./index.js";
+import {
+  loadImageMetadata,
+  normalizeImageToPng,
+  validateHorizontalFrameSet
+} from "./index.js";
 
 test("loadImageMetadata reads png dimensions and alpha metadata", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-image-"));
@@ -36,6 +40,30 @@ test("loadImageMetadata rejects unsupported files", async () => {
   await fs.writeFile(textPath, "not an image", "utf8");
 
   await assert.rejects(() => loadImageMetadata(textPath));
+});
+
+test("normalizeImageToPng writes png output metadata", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-normalize-"));
+  const sourcePath = path.join(root, "sprite.webp");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp({
+    create: {
+      width: 5,
+      height: 2,
+      channels: 3,
+      background: { r: 0, g: 0, b: 255 }
+    }
+  })
+    .webp()
+    .toFile(sourcePath);
+
+  const output = await normalizeImageToPng({ sourcePath, outputPath });
+
+  assert.equal(output.path, outputPath);
+  assert.equal(output.metadata.width, 5);
+  assert.equal(output.metadata.height, 2);
+  assert.equal(output.metadata.format, "png");
 });
 
 test("validateHorizontalFrameSet passes exact strips", () => {
