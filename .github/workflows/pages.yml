@@ -66,6 +66,7 @@ jobs:
           mkdir -p _site
           cp docs/*.md _site/
           cp docs/*.html _site/
+          cp -R docs/assets _site/assets
           cp docs/developer-webpage.html _site/index.html
           touch _site/.nojekyll
 

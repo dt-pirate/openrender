@@ -1026,7 +1026,7 @@ Use real or product-derived visuals:
 - Tiny generated sprite strip fixture
 - File tree from a sample run
 
-Do not use unrelated stock images.
+All raster images that appear on the webpage must be generated with ChatGPT Image 2. Do not use unrelated stock images, hand-picked stock photography, or third-party illustration packs. If an image is added to the page, store it under `docs/assets/`, keep the prompt specific to openRender's local media-to-engine workflow, and mark the image element with `data-generated-model="ChatGPT Image 2"`.
 
 ### 12.3. Content source of truth
 
