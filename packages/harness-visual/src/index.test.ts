@@ -1,6 +1,42 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { validateHorizontalFrameSet } from "./index.js";
+import sharp from "sharp";
+import { loadImageMetadata, validateHorizontalFrameSet } from "./index.js";
+
+test("loadImageMetadata reads png dimensions and alpha metadata", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-image-"));
+  const imagePath = path.join(root, "sprite.png");
+
+  await sharp({
+    create: {
+      width: 4,
+      height: 3,
+      channels: 4,
+      background: { r: 255, g: 0, b: 0, alpha: 0.5 }
+    }
+  })
+    .png()
+    .toFile(imagePath);
+
+  const metadata = await loadImageMetadata(imagePath);
+
+  assert.equal(metadata.width, 4);
+  assert.equal(metadata.height, 3);
+  assert.equal(metadata.format, "png");
+  assert.equal(metadata.hasAlpha, true);
+  assert.equal(metadata.hash.length, 64);
+});
+
+test("loadImageMetadata rejects unsupported files", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-not-image-"));
+  const textPath = path.join(root, "sprite.txt");
+  await fs.writeFile(textPath, "not an image", "utf8");
+
+  await assert.rejects(() => loadImageMetadata(textPath));
+});
 
 test("validateHorizontalFrameSet passes exact strips", () => {
   const result = validateHorizontalFrameSet({

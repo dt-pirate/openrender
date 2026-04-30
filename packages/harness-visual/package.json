@@ -12,12 +12,15 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@openrender/core": "workspace:*"
+    "@openrender/core": "workspace:*",
+    "sharp": "^0.34.5"
   }
 }

@@ -1966,10 +1966,10 @@ raw image를 normalized visual output으로 변환
 
 Tasks:
 
-- [ ] image load
-- [ ] metadata extraction
+- [x] image load
+- [x] metadata extraction
 - [ ] PNG output normalization
-- [ ] alpha detection
+- [x] alpha detection
 - [ ] basic crop
 - [ ] padding
 - [ ] frame slicing
@@ -2204,7 +2204,7 @@ POC 이후 별도 판단.
 - [x] `openrender scan`
 - [x] media contract TypeScript model
 - [x] run JSON TypeScript model
-- [ ] image load/metadata extraction
+- [x] image load/metadata extraction
 - [ ] crop/padding/frame slicing
 - [x] Phaser adapter skeleton
 - [x] manifest TS generation helper

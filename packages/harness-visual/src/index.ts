@@ -1,10 +1,19 @@
+import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
+import sharp from "sharp";
 import type { SpriteFrameSetContract, TransparentSpriteContract } from "@openrender/core";
 
+export type SupportedImageFormat = "png" | "webp" | "jpeg";
+
 export interface ImageMetadata {
+  sourcePath: string;
+  hash: string;
   width: number;
   height: number;
-  format: "png" | "webp" | "jpeg" | "unknown";
+  format: SupportedImageFormat;
   hasAlpha: boolean;
+  channels: number;
+  colorSpace: string;
 }
 
 export interface FrameValidationResult {
@@ -35,6 +44,31 @@ export const VISUAL_HARNESS_POC_STAGES = [
   "frame_slicing",
   "metadata_generation"
 ] as const;
+
+export async function loadImageMetadata(sourcePath: string): Promise<ImageMetadata> {
+  const input = await fs.readFile(sourcePath);
+  const metadata = await sharp(input, { failOn: "error" }).metadata();
+
+  if (!metadata.width || !metadata.height) {
+    throw new Error(`Could not read image dimensions: ${sourcePath}`);
+  }
+
+  const format = normalizeFormat(metadata.format);
+  if (!format) {
+    throw new Error(`Unsupported image format: ${metadata.format ?? "unknown"}`);
+  }
+
+  return {
+    sourcePath,
+    hash: createHash("sha256").update(input).digest("hex"),
+    width: metadata.width,
+    height: metadata.height,
+    format,
+    hasAlpha: metadata.hasAlpha === true,
+    channels: metadata.channels ?? 0,
+    colorSpace: metadata.space ?? "unknown"
+  };
+}
 
 export function createVisualHarnessPlan(
   contract: SpriteFrameSetContract | TransparentSpriteContract
@@ -68,4 +102,10 @@ export function validateHorizontalFrameSet(input: {
       ? undefined
       : `horizontal strip requires ${expectedWidth}x${expectedHeight}, got ${input.imageWidth}x${input.imageHeight}`
   };
+}
+
+function normalizeFormat(format: string | undefined): SupportedImageFormat | null {
+  if (format === "jpg") return "jpeg";
+  if (format === "jpeg" || format === "png" || format === "webp") return format;
+  return null;
 }
