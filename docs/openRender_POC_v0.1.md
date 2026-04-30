@@ -2222,7 +2222,7 @@ POC 이후 별도 판단.
 ### P1 — Nice-to-have within POC if time permits
 
 - [x] `--dry-run`
-- [ ] `--json` output for all commands
+- [x] `--json` output for all state-changing/query commands
 - [ ] basic background removal for simple solid backgrounds
 - [ ] better alpha edge cleanup
 - [ ] report visual overlays

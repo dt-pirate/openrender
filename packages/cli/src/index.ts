@@ -66,6 +66,11 @@ async function main(argv: string[]): Promise<number> {
       force: parsed.flags.get("force") === true
     });
 
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+      return 0;
+    }
+
     console.log("openRender init");
     console.log(`Config: ${result.configPath}`);
     console.log(`State: ${result.statePath}`);
@@ -769,7 +774,7 @@ function printHelp(): void {
   console.log(`openRender ${OPENRENDER_POC_VERSION}
 
 Usage:
-  openrender init [--target phaser] [--framework vite] [--force]
+  openrender init [--target phaser] [--framework vite] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
   openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]

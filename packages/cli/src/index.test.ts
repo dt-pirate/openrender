@@ -12,6 +12,31 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(currentDir, "index.js");
 const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
+test("init emits JSON when requested", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-"));
+  await fs.writeFile(path.join(root, "package.json"), JSON.stringify({ name: "sample-game" }), "utf8");
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "init",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    configPath: string;
+    statePath: string;
+    configCreated: boolean;
+    stateDirectoriesCreated: string[];
+  };
+
+  assert.equal(result.configCreated, true);
+  assert.equal(path.basename(result.configPath), "openrender.config.json");
+  assert.equal(path.basename(result.statePath), ".openrender");
+  assert.ok(result.stateDirectoriesCreated.includes(".openrender/runs"));
+  assert.equal(await fileExists(path.join(root, "openrender.config.json")), true);
+});
+
 test("compile sprite dry-run emits a transparent sprite plan as JSON", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-"));
   const imagePath = path.join(root, "sprite.png");

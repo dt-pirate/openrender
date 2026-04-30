@@ -36,6 +36,7 @@ Options:
 - `--target phaser`
 - `--framework vite`
 - `--force`
+- `--json`
 
 ### `openrender scan`
 
