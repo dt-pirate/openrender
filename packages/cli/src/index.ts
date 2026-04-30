@@ -37,6 +37,8 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
+const CLI_VERSION = "0.1.0";
+
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
   positionals: string[];
@@ -47,7 +49,7 @@ async function main(argv: string[]): Promise<number> {
   const [command, subcommand] = parsed.positionals;
 
   if (parsed.flags.get("version") === true || parsed.flags.get("v") === true) {
-    console.log(OPENRENDER_POC_VERSION);
+    console.log(CLI_VERSION);
     return 0;
   }
 
@@ -57,7 +59,7 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (command === "-v" || command === "version") {
-    console.log(OPENRENDER_POC_VERSION);
+    console.log(CLI_VERSION);
     return 0;
   }
 

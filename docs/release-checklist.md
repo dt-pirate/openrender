@@ -74,7 +74,7 @@ npm install \
 Expected output:
 
 ```text
-0.1
+0.1.0
 ```
 
 ## Publish Order

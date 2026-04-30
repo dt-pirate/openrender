@@ -12,6 +12,15 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(currentDir, "index.js");
 const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
+test("version prints the npm package version", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "--version"
+  ]);
+
+  assert.equal(stdout.trim(), "0.1.0");
+});
+
 test("init emits JSON when requested", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-"));
   await fs.writeFile(path.join(root, "package.json"), JSON.stringify({ name: "sample-game" }), "utf8");
