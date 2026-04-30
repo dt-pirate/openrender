@@ -56,6 +56,7 @@ export interface PixelBounds {
 export interface CroppedImageOutput extends NormalizedImageOutput {
   bounds: PixelBounds;
   padding: number;
+  alphaCleanupThreshold: number;
 }
 
 export const VISUAL_HARNESS_POC_STAGES = [
@@ -111,6 +112,35 @@ export async function normalizeImageToPng(input: {
   };
 }
 
+export async function cleanupAlphaEdgesToPng(input: {
+  sourcePath: string;
+  outputPath: string;
+  alphaThreshold?: number;
+}): Promise<NormalizedImageOutput> {
+  const alphaThreshold = input.alphaThreshold ?? 2;
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const cleaned = cleanupAlphaEdges(data, alphaThreshold);
+
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp(cleaned, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: 4
+    }
+  })
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath)
+  };
+}
+
 export async function detectAlphaBounds(input: {
   sourcePath: string;
   alphaThreshold?: number;
@@ -152,6 +182,7 @@ export async function cropAlphaBoundsToPng(input: {
   outputPath: string;
   padding?: number;
   alphaThreshold?: number;
+  alphaCleanupThreshold?: number;
 }): Promise<CroppedImageOutput> {
   const sourceMetadata = await loadImageMetadata(input.sourcePath);
   const detectedBounds = await detectAlphaBounds({
@@ -165,9 +196,10 @@ export async function cropAlphaBoundsToPng(input: {
     height: sourceMetadata.height
   };
   const padding = input.padding ?? 0;
+  const alphaCleanupThreshold = input.alphaCleanupThreshold ?? 2;
 
   await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
-  await sharp(input.sourcePath, { failOn: "error" })
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
     .ensureAlpha()
     .extract({ left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height })
     .extend({
@@ -177,6 +209,17 @@ export async function cropAlphaBoundsToPng(input: {
       right: padding,
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const cleaned = cleanupAlphaEdges(data, alphaCleanupThreshold);
+
+  await sharp(cleaned, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: 4
+    }
+  })
     .png()
     .toFile(input.outputPath);
 
@@ -184,7 +227,8 @@ export async function cropAlphaBoundsToPng(input: {
     path: input.outputPath,
     metadata: await loadImageMetadata(input.outputPath),
     bounds,
-    padding
+    padding,
+    alphaCleanupThreshold
   };
 }
 
@@ -279,4 +323,20 @@ function normalizeFormat(format: string | undefined): SupportedImageFormat | nul
   if (format === "jpg") return "jpeg";
   if (format === "jpeg" || format === "png" || format === "webp") return format;
   return null;
+}
+
+function cleanupAlphaEdges(data: Buffer, alphaThreshold: number): Buffer {
+  const cleaned = Buffer.from(data);
+
+  for (let index = 0; index < cleaned.length; index += 4) {
+    const alpha = cleaned[index + 3] ?? 0;
+    if (alpha > alphaThreshold) continue;
+
+    cleaned[index] = 0;
+    cleaned[index + 1] = 0;
+    cleaned[index + 2] = 0;
+    cleaned[index + 3] = 0;
+  }
+
+  return cleaned;
 }

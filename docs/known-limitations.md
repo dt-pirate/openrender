@@ -13,6 +13,7 @@ This document tracks intentional v0.1 POC limits. These are not bugs unless the 
 ## Visual Harness
 
 - Alpha-based crop/padding is implemented.
+- Basic low-alpha edge cleanup is implemented.
 - PNG/WebP/JPEG metadata loading is implemented.
 - PNG normalization is implemented.
 - Solid-background cleanup is not implemented yet.

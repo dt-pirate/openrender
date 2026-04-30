@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 import sharp from "sharp";
 import {
+  cleanupAlphaEdgesToPng,
   cropAlphaBoundsToPng,
   detectAlphaBounds,
   loadImageMetadata,
@@ -68,6 +69,34 @@ test("normalizeImageToPng writes png output metadata", async () => {
   assert.equal(output.metadata.width, 5);
   assert.equal(output.metadata.height, 2);
   assert.equal(output.metadata.format, "png");
+});
+
+test("cleanupAlphaEdgesToPng removes low-alpha fringe pixels", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-alpha-cleanup-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp(Buffer.from([
+    255, 0, 0, 1,
+    0, 255, 0, 255
+  ]), {
+    raw: {
+      width: 2,
+      height: 1,
+      channels: 4
+    }
+  })
+    .png()
+    .toFile(sourcePath);
+
+  await cleanupAlphaEdgesToPng({ sourcePath, outputPath, alphaThreshold: 8 });
+  const { data } = await sharp(outputPath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  assert.equal(data[3], 0);
+  assert.equal(data[7], 255);
 });
 
 test("detectAlphaBounds finds non-transparent pixels", async () => {
@@ -144,6 +173,7 @@ test("cropAlphaBoundsToPng crops transparent edges and applies padding", async (
   assert.equal(output.metadata.width, 4);
   assert.equal(output.metadata.height, 4);
   assert.equal(output.metadata.format, "png");
+  assert.equal(output.alphaCleanupThreshold, 2);
 });
 
 test("validateHorizontalFrameSet passes exact strips", () => {
