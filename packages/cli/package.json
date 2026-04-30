@@ -4,6 +4,12 @@
   "description": "Command-line interface for openRender",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "openrender": "./dist/index.js"
   },
