@@ -4,6 +4,22 @@
   "description": "Phaser and Vite adapter helpers for openRender",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dt-pirate/openrender.git",
+    "directory": "packages/adapters/phaser"
+  },
+  "bugs": {
+    "url": "https://github.com/dt-pirate/openrender/issues"
+  },
+  "homepage": "https://github.com/dt-pirate/openrender#readme",
+  "keywords": [
+    "game-dev",
+    "phaser",
+    "vite",
+    "assets",
+    "sprites"
+  ],
   "engines": {
     "node": ">=22"
   },

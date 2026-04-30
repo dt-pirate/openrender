@@ -4,6 +4,21 @@
   "private": true,
   "description": "open infrastructure for AI agents turning generated media into engine-ready playable projects",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dt-pirate/openrender.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dt-pirate/openrender/issues"
+  },
+  "homepage": "https://github.com/dt-pirate/openrender#readme",
+  "keywords": [
+    "game-dev",
+    "phaser",
+    "assets",
+    "sprites",
+    "ai-agents"
+  ],
   "packageManager": "pnpm@10.33.0",
   "type": "module",
   "scripts": {

@@ -4,6 +4,21 @@
   "description": "Core config, contract, path, and run state models for openRender",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dt-pirate/openrender.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/dt-pirate/openrender/issues"
+  },
+  "homepage": "https://github.com/dt-pirate/openrender#readme",
+  "keywords": [
+    "game-dev",
+    "phaser",
+    "assets",
+    "sprites"
+  ],
   "engines": {
     "node": ">=22"
   },

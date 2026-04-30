@@ -4,6 +4,21 @@
   "description": "Local report and preview generation helpers for openRender",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dt-pirate/openrender.git",
+    "directory": "packages/reporter"
+  },
+  "bugs": {
+    "url": "https://github.com/dt-pirate/openrender/issues"
+  },
+  "homepage": "https://github.com/dt-pirate/openrender#readme",
+  "keywords": [
+    "game-dev",
+    "phaser",
+    "assets",
+    "reports"
+  ],
   "engines": {
     "node": ">=22"
   },

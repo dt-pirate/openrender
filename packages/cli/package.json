@@ -4,6 +4,22 @@
   "description": "Command-line interface for openRender",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dt-pirate/openrender.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/dt-pirate/openrender/issues"
+  },
+  "homepage": "https://github.com/dt-pirate/openrender#readme",
+  "keywords": [
+    "game-dev",
+    "phaser",
+    "assets",
+    "sprites",
+    "cli"
+  ],
   "engines": {
     "node": ">=22"
   },

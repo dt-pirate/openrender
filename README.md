@@ -1,5 +1,7 @@
 # openRender
 
+[![CI](https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg)](https://github.com/dt-pirate/openrender/actions/workflows/ci.yml)
+
 openRender is open infrastructure for AI agents turning generated media into engine-ready playable projects.
 
 The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, install, verify, report, and rollback.
