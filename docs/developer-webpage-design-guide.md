@@ -20,6 +20,8 @@ The first public page is not a SaaS landing page, not a hosted playground, and n
 
 The page should feel close to the developer confidence of Ollama: quiet, direct, command-line friendly, open-source oriented, and easy to start. It must not look copied. openRender needs its own identity: media-to-engine pipelines, Phaser-ready artifacts, local reports, rollback, and agent-friendly commands.
 
+The hero should also carry a small friendly visual signal. Ollama uses a cute line-art character; openRender should use its own simple black-line spot illustration tied to asset compilation, such as a tiny renderer figure holding a sprite strip. The illustration should make the page feel approachable without turning the product into a game-art showcase.
+
 ## 2. Design Principles
 
 ### 2.1. Developer-first, not marketing-first
@@ -51,6 +53,7 @@ Borrow these qualities:
 - Immediate terminal command
 - Strong first CTA
 - Calm neutral background
+- Small friendly line-art spot visual
 - Simple section rhythm
 - Sparse copy
 - Developer trust through exact commands
@@ -91,6 +94,7 @@ The page must show the thing developers can run.
 Primary visuals should be:
 
 - Terminal command block
+- Small openRender-specific line illustration
 - Media pipeline strip
 - Example output file tree
 - Report preview screenshot or report mock
@@ -101,7 +105,7 @@ Avoid purely decorative visuals:
 - No gradient blobs
 - No abstract AI network illustrations
 - No floating 3D shapes
-- No generic robot imagery
+- No generic robot imagery; the spot visual must be specific to rendering, sprites, files, or local reports
 - No stock game-art collage
 
 ## 3. Target Audience
@@ -302,7 +306,15 @@ The hero should not use a large decorative card. It can use a terminal panel and
 
 The command block is the main conversion point.
 
-Recommended command:
+Recommended hero command:
+
+```bash
+openrender init
+```
+
+This keeps the first screen close to Ollama's short command-pill feel. Detailed compile commands should remain in the quickstart section.
+
+Detailed source-checkout command:
 
 ```bash
 pnpm dev:cli compile sprite \
@@ -314,7 +326,7 @@ pnpm dev:cli compile sprite \
   --json
 ```
 
-For a public packaged version, use:
+Detailed public packaged command:
 
 ```bash
 openrender compile sprite \
@@ -326,10 +338,11 @@ openrender compile sprite \
   --json
 ```
 
-The webpage should choose one depending on release state:
+The webpage should choose command surfaces depending on release state:
 
-- Before package release: show `pnpm dev:cli` with a "from source" label
-- After package release: show `openrender`
+- Hero: show a short, complete command such as `openrender init`
+- Quickstart: show complete compile, verify, and report commands
+- Source checkout note: mention `pnpm dev:cli` as the development fallback
 
 Command block behavior:
 
@@ -346,7 +359,29 @@ Do not include:
 - login command
 - cloud endpoint
 
-### 5.4. Pipeline visual
+### 5.4. Hero spot illustration
+
+The hero should include a small openRender-specific line illustration above the main headline.
+
+Visual direction:
+
+- Black stroke on white background
+- Friendly, simple, and compact
+- Based on openRender concepts: sprite strip, file tile, renderer box, report frame, or local project folder
+- Sized around 140-180px desktop and 110-140px mobile
+- Centered above the eyebrow or headline
+
+The visual must not copy Ollama's character or silhouette. It should only borrow the idea of a cute, approachable line drawing.
+
+Avoid:
+
+- Generic robot head
+- Parody of another brand's character
+- Large mascot that dominates the page
+- Complex SVG scene
+- Multi-color illustration
+
+### 5.5. Pipeline visual
 
 The page needs one openRender-specific visual identity element.
 
@@ -378,7 +413,7 @@ Do not use:
 - Animated particles
 - Large mascot
 
-### 5.5. Quickstart section
+### 5.6. Quickstart section
 
 Purpose:
 
@@ -409,7 +444,7 @@ Layout:
 - Avoid nested cards
 - If cards are used, use one card per step only
 
-### 5.6. How it works section
+### 5.7. How it works section
 
 Purpose:
 
@@ -441,7 +476,7 @@ src/openrender/animations/{asset}.ts
 .openrender/reports/latest.html
 ```
 
-### 5.7. What gets written section
+### 5.8. What gets written section
 
 Purpose:
 
@@ -474,7 +509,7 @@ Avoid saying "safe" without showing why. Instead show:
 Snapshots are written before install. Rollback restores or deletes installed files.
 ```
 
-### 5.8. Report section
+### 5.9. Report section
 
 Purpose:
 
@@ -500,7 +535,7 @@ Copy should emphasize:
 - The report is local
 - No project files are uploaded
 
-### 5.9. Scope section
+### 5.10. Scope section
 
 Purpose:
 
@@ -537,7 +572,7 @@ Not included:
 
 This section should be visually calm and direct. It should not feel like legal fine print.
 
-### 5.10. Footer
+### 5.11. Footer
 
 Footer links:
 
@@ -829,54 +864,56 @@ Create anything instantly
 ### 8.1. Desktop wireframe
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ openRender        Docs  CLI  Contracts  GitHub   Get started │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│ openRender                      ┌──────────────────────────┐ │
-│ Local-first media-to-engine     │ raw image -> contract    │ │
-│ compiler for agentic game dev.  │ -> harness -> Phaser     │ │
-│                                 │ -> report -> rollback    │ │
-│ ┌───────────────────────────┐   └──────────────────────────┘ │
-│ │ openrender compile ...    │                                │
-│ └───────────────────────────┘                                │
-│ [Get started] [CLI reference]                                │
-│                                                              │
-├──────────────────────────────────────────────────────────────┤
-│ Quickstart: init / compile / verify                          │
-├──────────────────────────────────────────────────────────────┤
-│ How it works: scan / compile / install / verify / report      │
-├──────────────────────────────────────────────────────────────┤
-│ What gets written: file tree                                  │
-├──────────────────────────────────────────────────────────────┤
-│ Local report preview + rollback note                          │
-├──────────────────────────────────────────────────────────────┤
-│ v0.1 included / not included                                  │
-└──────────────────────────────────────────────────────────────┘
++--------------------------------------------------------------+
+| openRender                 Docs  CLI  Contracts  Get started |
++--------------------------------------------------------------+
+|                                                              |
+|                         [line spot]                          |
+|                 openRender v0.1 local CLI                    |
+|      Turn generated images into Phaser-ready assets           |
+|                                                              |
+|             [ openrender init                         copy ]  |
+|             Developing this repository? pnpm dev:cli          |
+|             [Get started] [CLI reference]                     |
+|                                                              |
++--------------------------------------------------------------+
+| Local pipeline + report preview                              |
++--------------------------------------------------------------+
+| Quickstart: init / compile / verify                          |
++--------------------------------------------------------------+
+| How it works: scan / compile / install / verify / report      |
++--------------------------------------------------------------+
+| What gets written: file tree                                  |
++--------------------------------------------------------------+
+| Local report preview + rollback note                         |
++--------------------------------------------------------------+
+| v0.1 included / not included                                 |
++--------------------------------------------------------------+
 ```
 
 ### 8.2. Mobile wireframe
 
 ```text
-┌──────────────────────────┐
-│ openRender          menu │
-├──────────────────────────┤
-│ openRender               │
-│ Local-first media...     │
-│                          │
-│ ┌──────────────────────┐ │
-│ │ openrender compile   │ │
-│ └──────────────────────┘ │
-│ [Get started]            │
-│ [CLI reference]          │
-│                          │
-│ raw -> contract -> ...   │
-├──────────────────────────┤
-│ Quickstart               │
-│ Step 1                   │
-│ Step 2                   │
-│ Step 3                   │
-└──────────────────────────┘
++--------------------------+
+| openRender               |
++--------------------------+
+|       [line spot]        |
+| openRender v0.1 local CLI|
+| Turn generated images    |
+| into Phaser-ready assets |
+|                          |
+| [ openrender init  copy ]|
+| [Get started]            |
+| [CLI reference]          |
++--------------------------+
+| run pipeline             |
+| openRender report        |
++--------------------------+
+| Quickstart               |
+| Step 1                   |
+| Step 2                   |
+| Step 3                   |
++--------------------------+
 ```
 
 Mobile requirements:
