@@ -2020,7 +2020,7 @@ Tasks:
 
 Tasks:
 
-- [ ] verification checks
+- [x] basic verification checks
 - [x] report JSON helper
 - [x] report HTML helper
 - [x] preview HTML helper
@@ -2058,7 +2058,7 @@ Tasks:
 - [x] output PNG가 `public/assets`에 설치된다.
 - [ ] local preview HTML에서 animation loop를 볼 수 있다.
 - [ ] report HTML/JSON이 생성된다.
-- [ ] verify가 pass/fail 결과를 출력한다.
+- [x] verify가 pass/fail 결과를 출력한다.
 - [ ] rollback으로 설치 전 상태를 복원할 수 있다.
 
 ### 22.2. Workflow success criteria
@@ -2212,7 +2212,7 @@ POC 이후 별도 판단.
 - [x] install plan
 - [x] safe write + snapshot helpers
 - [ ] rollback
-- [ ] verify checks
+- [x] basic verify checks
 - [x] report JSON helper
 - [x] report HTML helper
 - [x] preview HTML helper

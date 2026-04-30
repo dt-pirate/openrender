@@ -14,6 +14,7 @@ openrender scan
 openrender doctor
 openrender compile sprite
 openrender install
+openrender verify
 openrender --help
 openrender --version
 ```
@@ -21,7 +22,6 @@ openrender --version
 ## Planned For The POC
 
 ```bash
-openrender verify
 openrender report
 openrender rollback
 ```
@@ -106,7 +106,14 @@ Default behavior:
 
 ### `openrender verify`
 
-Planned command for checking output files, image dimensions, manifest/codegen, preview generation, and rollback availability.
+Checks the compiled artifact, installed files, and installed asset dimensions for a run.
+
+```bash
+openrender verify --run latest
+openrender verify --run latest --json
+```
+
+Preview generation and rollback availability checks are planned but not implemented yet.
 
 ### `openrender report`
 

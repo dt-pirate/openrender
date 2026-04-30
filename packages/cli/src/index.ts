@@ -118,7 +118,17 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (["verify", "report", "rollback"].includes(command)) {
+  if (command === "verify") {
+    const result = await verifyRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printVerifyResult(result);
+    }
+    return result.status === "passed" ? 0 : 1;
+  }
+
+  if (["report", "rollback"].includes(command)) {
     printPlannedCommand(command, "This command is planned for the install/verify/report/rollback milestone.");
     return 2;
   }
@@ -475,6 +485,61 @@ async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
   };
 }
 
+async function readCompileRecord(projectRoot: string, runId: string): Promise<CompileSpriteResult> {
+  const recordPath = runId === "latest"
+    ? ".openrender/runs/latest.json"
+    : path.posix.join(".openrender", "runs", `${runId}.json`);
+  return JSON.parse(
+    await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
+  ) as CompileSpriteResult;
+}
+
+async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = readStringFlag(parsed, "run", "latest");
+  const record = await readCompileRecord(projectRoot, runId);
+  const checks: VerifyCommandResult["checks"] = [];
+  const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
+  const artifactExists = artifactPath
+    ? await pathExists(resolveInsideProject(projectRoot, artifactPath))
+    : false;
+
+  checks.push({
+    name: "compiled_artifact_exists",
+    status: artifactExists ? "passed" : "failed",
+    path: artifactPath
+  });
+
+  for (const file of record.installPlan.files) {
+    checks.push({
+      name: `${file.kind}_installed`,
+      status: await pathExists(resolveInsideProject(projectRoot, file.to)) ? "passed" : "failed",
+      path: file.to
+    });
+  }
+
+  const installedAsset = record.installPlan.files.find((file) => file.kind === "compiled_asset");
+  if (installedAsset && await pathExists(resolveInsideProject(projectRoot, installedAsset.to))) {
+    const metadata = await loadImageMetadata(resolveInsideProject(projectRoot, installedAsset.to));
+    checks.push({
+      name: "installed_asset_dimensions",
+      status:
+        metadata.width === record.artifact?.metadata.width &&
+        metadata.height === record.artifact?.metadata.height
+          ? "passed"
+          : "failed",
+      path: installedAsset.to,
+      message: `${metadata.width}x${metadata.height}`
+    });
+  }
+
+  return {
+    runId: record.run.runId,
+    status: checks.every((check) => check.status === "passed") ? "passed" : "failed",
+    checks
+  };
+}
+
 
 function printScan(scan: ProjectScan): void {
   console.log("openRender scan");
@@ -533,6 +598,16 @@ function printInstallResult(result: InstallCommandResult): void {
   }
 }
 
+function printVerifyResult(result: VerifyCommandResult): void {
+  console.log("openRender verify");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  for (const check of result.checks) {
+    console.log(`${check.status === "passed" ? "ok" : "fail"} ${check.name}${check.path ? `: ${check.path}` : ""}`);
+  }
+  console.log(`Status: ${result.status}`);
+}
+
 function printPlannedCommand(command: string, detail: string): void {
   console.error(`openrender ${command} is not implemented yet.`);
   console.error(detail);
@@ -548,7 +623,6 @@ Usage:
   openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
 
 Planned POC commands:
-  openrender verify
   openrender report
   openrender rollback
 `);
@@ -559,6 +633,17 @@ interface InstallCommandResult {
   snapshotRoot: string;
   snapshots: Awaited<ReturnType<typeof snapshotProjectFile>>[];
   writes: Awaited<ReturnType<typeof safeWriteProjectFile>>[];
+}
+
+interface VerifyCommandResult {
+  runId: string;
+  status: "passed" | "failed";
+  checks: Array<{
+    name: string;
+    status: "passed" | "failed";
+    path?: string;
+    message?: string;
+  }>;
 }
 
 interface CompileSpriteResult {

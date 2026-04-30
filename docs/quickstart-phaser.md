@@ -113,9 +113,11 @@ src/openrender/animations/{asset_file}.ts
 ## 6. Verify, Report, Roll Back
 
 ```bash
-openrender verify --run latest --open
+openrender verify --run latest
 openrender report --open
 openrender rollback --run latest
 ```
+
+`verify` is implemented for artifact, installed file, and image dimension checks. `report` and `rollback` are planned next.
 
 The v0.1 implementation should never require login, billing, cloud sync, telemetry, or a model provider key.
