@@ -254,7 +254,9 @@ test("report latest run writes html and json reports", async () => {
   assert.equal(await fileExists(path.join(root, result.latestJsonPath)), true);
   assert.equal(await fileExists(path.join(root, result.latestPreviewHtmlPath)), true);
   assert.equal(result.opened, false);
-  assert.match(await fs.readFile(path.join(root, result.htmlPath), "utf8"), /openRender report/);
+  const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
+  assert.match(html, /openRender report/);
+  assert.match(html, /visual-overlay/);
 });
 
 test("rollback latest run deletes files created by install", async () => {

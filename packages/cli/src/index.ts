@@ -579,6 +579,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const reportHtmlPath = path.posix.join(".openrender", "reports", `${record.run.runId}.html`);
   const previewHtmlPath = path.posix.join(".openrender", "previews", `${record.run.runId}.html`);
   const json = `${JSON.stringify(record, null, 2)}\n`;
+  const visualOverlayHtml = createVisualOverlayHtml(record);
   const html = createReportHtml({
     title: `openRender report ${record.run.runId}`,
     run: record.run,
@@ -586,6 +587,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Contract", body: JSON.stringify(record.contract, null, 2) },
       { heading: "Input", body: JSON.stringify(record.input, null, 2) },
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
+      ...(visualOverlayHtml ? [{ heading: "Visual Overlay", trustedHtml: visualOverlayHtml }] : []),
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) }
     ]
@@ -672,6 +674,42 @@ async function openLocalFile(filePath: string): Promise<void> {
       resolve();
     });
   });
+}
+
+function createVisualOverlayHtml(record: CompileSpriteResult): string | null {
+  const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
+  const artifact = record.artifact;
+  if (!artifactPath || !artifact) return null;
+
+  const relativeArtifactPath = path.posix.relative(".openrender/reports", artifactPath);
+  const width = artifact.metadata.width;
+  const height = artifact.metadata.height;
+  const rects = record.frameSlices?.length
+    ? record.frameSlices
+    : [{ index: 0, x: 0, y: 0, width, height }];
+
+  return `<figure class="visual-overlay">
+  <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Asset visual overlay">
+    <image href="${escapeHtmlAttribute(relativeArtifactPath)}" x="0" y="0" width="${width}" height="${height}"></image>
+    ${rects.map((rect) => `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" fill="none" stroke="#00d1ff" stroke-width="1"></rect>`).join("\n    ")}
+  </svg>
+  <figcaption>${escapeHtmlText(rects.length === 1 ? "asset bounds" : `${rects.length} frame slices`)}</figcaption>
+</figure>`;
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 async function rollbackRun(parsed: ParsedFlags): Promise<RollbackCommandResult> {

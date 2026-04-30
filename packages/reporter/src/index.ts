@@ -5,7 +5,8 @@ export interface LocalReportViewModel {
   run: OpenRenderRun;
   sections: Array<{
     heading: string;
-    body: string;
+    body?: string;
+    trustedHtml?: string;
   }>;
 }
 
@@ -18,7 +19,7 @@ export function createReportHtml(viewModel: LocalReportViewModel): string {
     .map(
       (section) => `<section>
   <h2>${escapeHtml(section.heading)}</h2>
-  <pre>${escapeHtml(section.body)}</pre>
+  ${section.trustedHtml ?? `<pre>${escapeHtml(section.body ?? "")}</pre>`}
 </section>`
     )
     .join("\n");
@@ -35,6 +36,9 @@ export function createReportHtml(viewModel: LocalReportViewModel): string {
     h1, h2 { line-height: 1.2; }
     section { border-top: 1px solid #8884; padding: 20px 0; }
     pre { overflow: auto; padding: 12px; background: #8881; }
+    .visual-overlay { margin: 0; }
+    .visual-overlay svg { max-width: min(100%, 720px); height: auto; image-rendering: pixelated; background: #8881; }
+    .visual-overlay figcaption { margin-top: 8px; color: #666; }
   </style>
 </head>
 <body>

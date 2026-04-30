@@ -2225,7 +2225,7 @@ POC 이후 별도 판단.
 - [x] `--json` output for all state-changing/query commands
 - [x] basic background removal for simple solid backgrounds
 - [x] better alpha edge cleanup
-- [ ] report visual overlays
+- [x] report visual overlays
 - [x] doctor command
 - [x] troubleshooting doc
 

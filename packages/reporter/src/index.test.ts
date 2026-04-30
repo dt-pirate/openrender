@@ -20,3 +20,14 @@ test("createReportHtml escapes section content", () => {
 
   assert.match(html, /&lt;script&gt;/);
 });
+
+test("createReportHtml allows generated html sections", () => {
+  const run = createInitialRun({ id: "enemy.slime.idle", mediaType: "visual.sprite_frame_set" });
+  const html = createReportHtml({
+    title: "Test Report",
+    run,
+    sections: [{ heading: "Overlay", trustedHtml: "<svg></svg>" }]
+  });
+
+  assert.match(html, /<svg><\/svg>/);
+});
