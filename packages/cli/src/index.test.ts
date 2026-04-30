@@ -119,6 +119,45 @@ test("compile sprite writes artifact and run JSON without install", async () => 
   assert.equal(await fileExists(path.join(root, ".openrender/runs/latest.json")), true);
 });
 
+test("install latest run writes planned files", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-install-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "install",
+    "--run",
+    "latest",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    writes: Array<{ relativePath: string }>;
+  };
+
+  assert.deepEqual(result.writes.map((write) => write.relativePath), [
+    "public/assets/prop-dot.png",
+    "src/assets/openrender-manifest.ts"
+  ]);
+  assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), true);
+  assert.match(await fs.readFile(path.join(root, "src/assets/openrender-manifest.ts"), "utf8"), /prop\.dot/);
+});
+
 async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);

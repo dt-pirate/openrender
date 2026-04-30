@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs/promises";
 import path from "node:path";
 import {
   createPhaserInstallPlan,
@@ -10,8 +11,11 @@ import {
   createInitialRun,
   initializeOpenRenderProject,
   OPENRENDER_POC_VERSION,
+  pathExists,
   resolveInsideProject,
+  safeCopyProjectFile,
   safeWriteProjectFile,
+  snapshotProjectFile,
   scanProject,
   type MediaContract,
   type ProjectScan
@@ -104,7 +108,17 @@ async function main(argv: string[]): Promise<number> {
     return result.validation?.ok === false ? 1 : 0;
   }
 
-  if (["install", "verify", "report", "rollback"].includes(command)) {
+  if (command === "install") {
+    const result = await installRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printInstallResult(result);
+    }
+    return 0;
+  }
+
+  if (["verify", "report", "rollback"].includes(command)) {
     printPlannedCommand(command, "This command is planned for the install/verify/report/rollback milestone.");
     return 2;
   }
@@ -336,20 +350,9 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       });
     }
 
-    await safeWriteProjectFile({
-      projectRoot,
-      relativePath: path.posix.join(".openrender", "runs", `${run.runId}.json`),
-      contents: `${JSON.stringify(run, null, 2)}\n`
-    });
-    await safeWriteProjectFile({
-      projectRoot,
-      relativePath: path.posix.join(".openrender", "runs", "latest.json"),
-      contents: `${JSON.stringify(run, null, 2)}\n`,
-      allowOverwrite: true
-    });
   }
 
-  return {
+  const result: CompileSpriteResult = {
     dryRun,
     projectRoot,
     input: metadata,
@@ -370,6 +373,22 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     frameSlices,
     run
   };
+
+  if (!dryRun) {
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: path.posix.join(".openrender", "runs", `${run.runId}.json`),
+      contents: `${JSON.stringify(result, null, 2)}\n`
+    });
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: path.posix.join(".openrender", "runs", "latest.json"),
+      contents: `${JSON.stringify(result, null, 2)}\n`,
+      allowOverwrite: true
+    });
+  }
+
+  return result;
 }
 
 function readOptionalIntegerFlag(parsed: ParsedFlags, name: string): number | undefined {
@@ -398,6 +417,64 @@ function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: numbe
     height: Number.parseInt(match[2] ?? "0", 10)
   };
 }
+
+async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = readStringFlag(parsed, "run", "latest");
+  const force = parsed.flags.get("force") === true;
+  const recordPath = runId === "latest"
+    ? ".openrender/runs/latest.json"
+    : path.posix.join(".openrender", "runs", `${runId}.json`);
+  const record = JSON.parse(
+    await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
+  ) as CompileSpriteResult;
+  const snapshotRoot = path.posix.join(".openrender", "snapshots", record.run.runId);
+  const destinationPaths = record.installPlan.files.map((file) => file.to);
+
+  if (!force) {
+    for (const destinationPath of destinationPaths) {
+      if (await pathExists(resolveInsideProject(projectRoot, destinationPath))) {
+        throw new Error(`Refusing to overwrite existing file without --force: ${destinationPath}`);
+      }
+    }
+  }
+
+  const snapshots = [];
+  for (const destinationPath of destinationPaths) {
+    snapshots.push(await snapshotProjectFile({
+      projectRoot,
+      snapshotRoot,
+      relativePath: destinationPath
+    }));
+  }
+
+  const writes = [];
+  for (const file of record.installPlan.files) {
+    if (file.action === "copy") {
+      writes.push(await safeCopyProjectFile({
+        projectRoot,
+        fromRelativePath: file.from,
+        toRelativePath: file.to,
+        allowOverwrite: force
+      }));
+    } else {
+      writes.push(await safeWriteProjectFile({
+        projectRoot,
+        relativePath: file.to,
+        contents: file.contents,
+        allowOverwrite: force
+      }));
+    }
+  }
+
+  return {
+    runId: record.run.runId,
+    snapshotRoot,
+    snapshots,
+    writes
+  };
+}
+
 
 function printScan(scan: ProjectScan): void {
   console.log("openRender scan");
@@ -446,6 +523,16 @@ function printCompileSprite(result: CompileSpriteResult): void {
   }
 }
 
+function printInstallResult(result: InstallCommandResult): void {
+  console.log("openRender install");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  console.log(`Snapshot: ${result.snapshotRoot}`);
+  for (const write of result.writes) {
+    console.log(`Wrote: ${write.relativePath}`);
+  }
+}
+
 function printPlannedCommand(command: string, detail: string): void {
   console.error(`openrender ${command} is not implemented yet.`);
   console.error(detail);
@@ -461,11 +548,17 @@ Usage:
   openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
 
 Planned POC commands:
-  openrender install
   openrender verify
   openrender report
   openrender rollback
 `);
+}
+
+interface InstallCommandResult {
+  runId: string;
+  snapshotRoot: string;
+  snapshots: Awaited<ReturnType<typeof snapshotProjectFile>>[];
+  writes: Awaited<ReturnType<typeof safeWriteProjectFile>>[];
 }
 
 interface CompileSpriteResult {

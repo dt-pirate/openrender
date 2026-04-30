@@ -96,7 +96,19 @@ Compile output:
 .openrender/runs/latest.json
 ```
 
-Install is planned but not implemented yet.
+Install the latest compiled run:
+
+```bash
+openrender install --run latest
+```
+
+Expected install outputs:
+
+```text
+public/assets/{asset_file}.png
+src/assets/openrender-manifest.ts
+src/openrender/animations/{asset_file}.ts
+```
 
 ## 6. Verify, Report, Roll Back
 

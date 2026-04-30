@@ -2006,7 +2006,7 @@ Tasks:
 - [x] snapshot creation helper
 - [x] safe write helper
 - [x] no-overwrite helper policy
-- [ ] install command
+- [x] install command
 - [ ] rollback command
 - [x] dry-run support
 
@@ -2055,7 +2055,7 @@ Tasks:
 - [x] frame count / frame size validation helper가 작동한다.
 - [x] Phaser manifest TS generator가 동작한다.
 - [x] Phaser animation helper TS generator가 동작한다.
-- [ ] output PNG가 `public/assets`에 설치된다.
+- [x] output PNG가 `public/assets`에 설치된다.
 - [ ] local preview HTML에서 animation loop를 볼 수 있다.
 - [ ] report HTML/JSON이 생성된다.
 - [ ] verify가 pass/fail 결과를 출력한다.

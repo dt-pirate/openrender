@@ -13,6 +13,7 @@ openrender init
 openrender scan
 openrender doctor
 openrender compile sprite
+openrender install
 openrender --help
 openrender --version
 ```
@@ -20,7 +21,6 @@ openrender --version
 ## Planned For The POC
 
 ```bash
-openrender install
 openrender verify
 openrender report
 openrender rollback
@@ -89,7 +89,20 @@ Options currently supported:
 
 ### `openrender install`
 
-Planned command for applying an install plan with snapshots and safe writes.
+Applies the install plan from a compiled run.
+
+```bash
+openrender install --run latest
+openrender install --run run_20260430T120000Z --json
+```
+
+Default behavior:
+
+- reads `.openrender/runs/latest.json` unless `--run` is provided
+- snapshots destination files into `.openrender/snapshots/{run_id}/`
+- refuses to overwrite existing files unless `--force` is provided
+- copies the compiled artifact into `public/assets`
+- writes the generated manifest/codegen files from the install plan
 
 ### `openrender verify`
 
