@@ -1,11 +1,26 @@
 #!/usr/bin/env node
+import path from "node:path";
 import {
+  createPhaserAssetDescriptor,
+  generateAnimationHelperSource,
+  generateManifestSource
+} from "@openrender/adapter-phaser";
+import {
+  createInitialRun,
   initializeOpenRenderProject,
   OPENRENDER_POC_VERSION,
+  resolveInsideProject,
   scanProject,
+  type MediaContract,
   type ProjectScan
 } from "@openrender/core";
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
+import {
+  loadImageMetadata,
+  validateHorizontalFrameSet,
+  type FrameValidationResult,
+  type ImageMetadata
+} from "@openrender/harness-visual";
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -73,8 +88,13 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (command === "compile" && subcommand === "sprite") {
-    printPlannedCommand("compile sprite", "Visual image processing is the next POC milestone.");
-    return 2;
+    const result = await compileSpriteDryRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printCompileSpriteDryRun(result);
+    }
+    return result.validation?.ok === false ? 1 : 0;
   }
 
   if (["install", "verify", "report", "rollback"].includes(command)) {
@@ -125,6 +145,201 @@ function readStringFlag(parsed: ParsedFlags, name: string, fallback: string): st
   return typeof value === "string" ? value : fallback;
 }
 
+function requireStringFlag(parsed: ParsedFlags, name: string): string {
+  const value = parsed.flags.get(name);
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Missing required option: --${name}`);
+  }
+
+  return value;
+}
+
+async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDryRunResult> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requireStringFlag(parsed, "from"));
+  const id = requireStringFlag(parsed, "id");
+  const target = readStringFlag(parsed, "target", "phaser");
+  const framework = readStringFlag(parsed, "framework", "vite");
+  const assetRoot = readStringFlag(parsed, "asset-root", "public/assets");
+  const layout = readStringFlag(parsed, "layout", "horizontal");
+  const padding = readIntegerFlag(parsed, "padding", 0);
+  const dryRun = parsed.flags.get("dry-run") === true;
+
+  if (target !== "phaser") throw new Error(`Unsupported target for POC: ${target}`);
+  if (framework !== "vite") throw new Error(`Unsupported framework for POC: ${framework}`);
+  if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
+    throw new Error(`Unsupported sprite layout: ${layout}`);
+  }
+  if (!dryRun) {
+    throw new Error("Only --dry-run is implemented for openrender compile sprite right now.");
+  }
+
+  const metadata = await loadImageMetadata(sourcePath);
+  const frameSize = readOptionalSizeFlag(parsed, "frame-size");
+  const frames = readOptionalIntegerFlag(parsed, "frames");
+  const outputSize = readOptionalSizeFlag(parsed, "output-size");
+
+  let contract: MediaContract;
+  let validation: FrameValidationResult | undefined;
+
+  if (frames !== undefined || frameSize !== undefined) {
+    if (frames === undefined) throw new Error("--frames is required when --frame-size is provided.");
+    if (frameSize === undefined) throw new Error("--frame-size is required when --frames is provided.");
+
+    contract = {
+      schemaVersion: OPENRENDER_POC_VERSION,
+      mediaType: "visual.sprite_frame_set",
+      sourcePath: path.relative(projectRoot, sourcePath),
+      target: {
+        engine: "phaser",
+        framework: "vite",
+        projectRoot
+      },
+      id,
+      visual: {
+        layout: layout === "horizontal" ? "horizontal_strip" : (layout as "grid" | "horizontal_strip"),
+        frames,
+        frameWidth: frameSize.width,
+        frameHeight: frameSize.height,
+        fps: readIntegerFlag(parsed, "fps", 8),
+        padding,
+        background: metadata.hasAlpha ? "transparent" : "solid",
+        outputFormat: "png"
+      },
+      install: {
+        enabled: parsed.flags.get("install") === true,
+        assetRoot,
+        writeManifest: true,
+        writeCodegen: true,
+        snapshotBeforeInstall: true
+      },
+      verify: {
+        preview: true,
+        checkFrameCount: true,
+        checkLoadPath: true
+      }
+    };
+
+    if (contract.visual.layout === "horizontal_strip") {
+      validation = validateHorizontalFrameSet({
+        imageWidth: metadata.width,
+        imageHeight: metadata.height,
+        frames: contract.visual.frames,
+        frameWidth: contract.visual.frameWidth,
+        frameHeight: contract.visual.frameHeight
+      });
+    } else {
+      validation = {
+        ok: false,
+        expectedWidth: 0,
+        expectedHeight: 0,
+        actualWidth: metadata.width,
+        actualHeight: metadata.height,
+        reason: "grid layout is not implemented yet"
+      };
+    }
+  } else {
+    const size = outputSize ?? { width: metadata.width, height: metadata.height };
+    contract = {
+      schemaVersion: OPENRENDER_POC_VERSION,
+      mediaType: "visual.transparent_sprite",
+      sourcePath: path.relative(projectRoot, sourcePath),
+      target: {
+        engine: "phaser",
+        framework: "vite",
+        projectRoot
+      },
+      id,
+      visual: {
+        outputWidth: size.width,
+        outputHeight: size.height,
+        padding,
+        background: metadata.hasAlpha ? "transparent" : "solid",
+        outputFormat: "png"
+      },
+      install: {
+        enabled: parsed.flags.get("install") === true,
+        assetRoot,
+        writeManifest: true,
+        writeCodegen: false,
+        snapshotBeforeInstall: true
+      },
+      verify: {
+        preview: true,
+        checkFrameCount: false,
+        checkLoadPath: true
+      }
+    };
+  }
+
+  const descriptor = createPhaserAssetDescriptor(contract);
+  const run = createInitialRun({ id, mediaType: contract.mediaType });
+  run.status = "harness_ready";
+  run.outputs = [
+    { kind: "compiled_asset", path: descriptor.assetPath },
+    { kind: "manifest", path: descriptor.manifestPath },
+    ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : [])
+  ];
+  run.verification = validation
+    ? {
+        status: validation.ok ? "passed" : "failed",
+        checks: [
+          {
+            name: "frame_count_match",
+            status: validation.ok ? "passed" : "failed",
+            message: validation.reason
+          }
+        ]
+      }
+    : undefined;
+
+  return {
+    dryRun,
+    projectRoot,
+    input: metadata,
+    contract,
+    outputPlan: descriptor,
+    generatedSources:
+      contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generateManifestSource([contract]),
+            animationHelper: generateAnimationHelperSource(contract)
+          }
+        : {
+            manifest: generateManifestSource([contract])
+          },
+    validation,
+    run
+  };
+}
+
+function readOptionalIntegerFlag(parsed: ParsedFlags, name: string): number | undefined {
+  const value = parsed.flags.get(name);
+  if (value === undefined || value === false) return undefined;
+  if (typeof value !== "string") throw new Error(`--${name} requires a number.`);
+  const parsedValue = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) throw new Error(`--${name} must be a positive integer.`);
+  return parsedValue;
+}
+
+function readIntegerFlag(parsed: ParsedFlags, name: string, fallback: number): number {
+  return readOptionalIntegerFlag(parsed, name) ?? fallback;
+}
+
+function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: number; height: number } | undefined {
+  const value = parsed.flags.get(name);
+  if (value === undefined || value === false) return undefined;
+  if (typeof value !== "string") throw new Error(`--${name} requires WIDTHxHEIGHT.`);
+
+  const match = /^(\d+)x(\d+)$/.exec(value);
+  if (!match) throw new Error(`--${name} must use WIDTHxHEIGHT format.`);
+
+  return {
+    width: Number.parseInt(match[1] ?? "0", 10),
+    height: Number.parseInt(match[2] ?? "0", 10)
+  };
+}
+
 function printScan(scan: ProjectScan): void {
   console.log("openRender scan");
   console.log("");
@@ -151,6 +366,24 @@ function printDoctor(result: DoctorResult): void {
   }
 }
 
+function printCompileSpriteDryRun(result: CompileSpriteDryRunResult): void {
+  console.log("openRender compile sprite --dry-run");
+  console.log("");
+  console.log(`Project root: ${result.projectRoot}`);
+  console.log(`Input: ${result.contract.sourcePath}`);
+  console.log(`Image: ${result.input.width}x${result.input.height} ${result.input.format}`);
+  console.log(`Asset id: ${result.contract.id}`);
+  console.log(`Media type: ${result.contract.mediaType}`);
+  console.log(`Output asset: ${result.outputPlan.assetPath}`);
+  console.log(`Manifest: ${result.outputPlan.manifestPath}`);
+  if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
+
+  if (result.validation) {
+    console.log(`Frame validation: ${result.validation.ok ? "passed" : "failed"}`);
+    if (result.validation.reason) console.log(`Reason: ${result.validation.reason}`);
+  }
+}
+
 function printPlannedCommand(command: string, detail: string): void {
   console.error(`openrender ${command} is not implemented yet.`);
   console.error(detail);
@@ -165,12 +398,26 @@ Usage:
   openrender doctor [--json]
 
 Planned POC commands:
-  openrender compile sprite
+  openrender compile sprite --dry-run
   openrender install
   openrender verify
   openrender report
   openrender rollback
 `);
+}
+
+interface CompileSpriteDryRunResult {
+  dryRun: boolean;
+  projectRoot: string;
+  input: ImageMetadata;
+  contract: MediaContract;
+  outputPlan: ReturnType<typeof createPhaserAssetDescriptor>;
+  generatedSources: {
+    manifest: string;
+    animationHelper?: string;
+  };
+  validation?: FrameValidationResult;
+  run: ReturnType<typeof createInitialRun>;
 }
 
 main(process.argv.slice(2))

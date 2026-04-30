@@ -12,6 +12,7 @@ openrender
 openrender init
 openrender scan
 openrender doctor
+openrender compile sprite --dry-run
 openrender --help
 openrender --version
 ```
@@ -19,7 +20,6 @@ openrender --version
 ## Planned For The POC
 
 ```bash
-openrender compile sprite
 openrender install
 openrender verify
 openrender report
@@ -56,7 +56,36 @@ Options:
 
 ### `openrender compile sprite`
 
-Planned command for converting a local raw image into a visual asset contract and compiled Phaser-ready output.
+Builds a dry-run plan for converting a local raw image into a visual asset contract and Phaser-ready output paths. The command currently reads image metadata, detects alpha, creates the media contract, validates horizontal strip frame dimensions, and prints the output plan.
+
+Implemented mode:
+
+```bash
+openrender compile sprite \
+  --from tmp/slime.png \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --dry-run \
+  --json
+```
+
+Options currently supported:
+
+- `--from`
+- `--id`
+- `--target phaser`
+- `--framework vite`
+- `--frames`
+- `--frame-size`
+- `--layout horizontal`
+- `--padding`
+- `--output-size`
+- `--asset-root`
+- `--dry-run`
+- `--json`
+
+Non-dry-run compile and install are not implemented yet.
 
 ### `openrender install`
 

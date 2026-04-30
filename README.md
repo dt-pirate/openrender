@@ -6,9 +6,9 @@ The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, instal
 
 ## Current Status
 
-This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, CLI shell, project scanner, doctor checks, and Phaser code-generation helpers.
+This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, project scanner, doctor checks, image metadata loading, dry-run sprite planning, and Phaser code-generation helpers.
 
-Image processing and install/rollback execution are the next implementation milestones.
+Image output normalization, install, verify, report writing, and rollback execution are the next implementation milestones.
 
 ## Scope
 
@@ -73,6 +73,7 @@ Run the CLI from source:
 ```bash
 pnpm dev:cli scan --json
 pnpm dev:cli doctor
+pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 ```
 
 Build the CLI:
@@ -87,6 +88,7 @@ From a Vite + Phaser project directory, the POC CLI should eventually support:
 ```bash
 openrender init
 openrender scan
+openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install
 openrender verify --run latest --open
 openrender report --open

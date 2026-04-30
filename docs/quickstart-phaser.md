@@ -54,7 +54,26 @@ The scanner checks:
 - openRender config
 - local state directory
 
-## 4. Compile And Install A Sprite
+## 4. Dry-Run A Sprite Compile
+
+Implemented now:
+
+```bash
+openrender compile sprite \
+  --from ./tmp/slime_raw.png \
+  --target phaser \
+  --framework vite \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --layout horizontal \
+  --dry-run \
+  --json
+```
+
+This reads image metadata, builds a media contract, validates horizontal frame dimensions, and prints the Phaser output plan without writing files.
+
+## 5. Compile And Install A Sprite
 
 Planned command:
 
@@ -81,7 +100,7 @@ src/openrender/animations/enemy-slime-idle.ts
 .openrender/previews/latest.html
 ```
 
-## 5. Verify, Report, Roll Back
+## 6. Verify, Report, Roll Back
 
 ```bash
 openrender verify --run latest --open

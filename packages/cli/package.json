@@ -21,7 +21,9 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@openrender/adapter-phaser": "workspace:*",
     "@openrender/core": "workspace:*",
-    "@openrender/doctor": "workspace:*"
+    "@openrender/doctor": "workspace:*",
+    "@openrender/harness-visual": "workspace:*"
   }
 }

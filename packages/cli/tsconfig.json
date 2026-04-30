@@ -6,5 +6,10 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../core" }, { "path": "../doctor" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../doctor" },
+    { "path": "../harness-visual" },
+    { "path": "../adapters/phaser" }
+  ]
 }

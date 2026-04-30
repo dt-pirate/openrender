@@ -23,12 +23,18 @@ importers:
 
   packages/cli:
     dependencies:
+      '@openrender/adapter-phaser':
+        specifier: workspace:*
+        version: link:../adapters/phaser
       '@openrender/core':
         specifier: workspace:*
         version: link:../core
       '@openrender/doctor':
         specifier: workspace:*
         version: link:../doctor
+      '@openrender/harness-visual':
+        specifier: workspace:*
+        version: link:../harness-visual
 
   packages/core: {}
 

@@ -1974,7 +1974,7 @@ Tasks:
 - [ ] padding
 - [ ] frame slicing
 - [x] horizontal strip frame validation helper
-- [ ] integrated frame validation in `compile sprite`
+- [x] integrated frame validation in `compile sprite --dry-run`
 - [ ] harness metadata output
 
 ### 21.5. Milestone 4 — Phaser adapter
@@ -2008,7 +2008,7 @@ Tasks:
 - [ ] overwrite policy
 - [ ] install command
 - [ ] rollback command
-- [ ] dry-run support
+- [x] dry-run support
 
 ### 21.7. Milestone 6 — Verify / report / preview
 
@@ -2220,7 +2220,7 @@ POC 이후 별도 판단.
 
 ### P1 — Nice-to-have within POC if time permits
 
-- [ ] `--dry-run`
+- [x] `--dry-run`
 - [ ] `--json` output for all commands
 - [ ] basic background removal for simple solid backgrounds
 - [ ] better alpha edge cleanup
