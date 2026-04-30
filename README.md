@@ -45,7 +45,6 @@ packages/harness-visual    visual pipeline boundary
 packages/adapters/phaser   Phaser/Vite output helpers
 packages/reporter          report and preview generation boundary
 packages/doctor            environment diagnostics
-docs/                      POC spec and developer docs
 ```
 
 ## Development
@@ -96,19 +95,6 @@ openrender verify --run latest
 openrender report --run latest
 openrender rollback --run latest
 ```
-
-## Documentation
-
-- [POC spec](docs/openRender_POC_v0.1.md)
-- [Phaser quickstart](docs/quickstart-phaser.md)
-- [Agent usage](docs/agent-usage.md)
-- [CLI reference](docs/cli-reference.md)
-- [Media contracts](docs/contracts.md)
-- [Release checklist](docs/release-checklist.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Known limitations](docs/known-limitations.md)
-- [Developer webpage draft](docs/developer-webpage.html)
-- [Developer webpage design guide](docs/developer-webpage-design-guide.md)
 
 ## Not This
 
