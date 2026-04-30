@@ -226,6 +226,39 @@ test("report latest run writes html and json reports", async () => {
   assert.match(await fs.readFile(path.join(root, result.htmlPath), "utf8"), /openRender report/);
 });
 
+test("rollback latest run deletes files created by install", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-rollback-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+  await execFileAsync(process.execPath, [cliPath, "install", "--run", "latest"], {
+    cwd: root
+  });
+
+  const { stdout } = await execFileAsync(process.execPath, [cliPath, "rollback", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    actions: Array<{ action: string; path: string }>;
+  };
+
+  assert.deepEqual(result.actions.map((action) => action.action), ["deleted", "deleted"]);
+  assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), false);
+  assert.equal(await fileExists(path.join(root, "src/assets/openrender-manifest.ts")), false);
+});
+
 async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);

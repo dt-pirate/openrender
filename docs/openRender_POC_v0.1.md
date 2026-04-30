@@ -2007,7 +2007,7 @@ Tasks:
 - [x] safe write helper
 - [x] no-overwrite helper policy
 - [x] install command
-- [ ] rollback command
+- [x] rollback command
 - [x] dry-run support
 
 ### 21.7. Milestone 6 — Verify / report / preview
@@ -2060,7 +2060,7 @@ Tasks:
 - [ ] local preview HTML에서 animation loop를 볼 수 있다.
 - [x] report HTML/JSON이 생성된다.
 - [x] verify가 pass/fail 결과를 출력한다.
-- [ ] rollback으로 설치 전 상태를 복원할 수 있다.
+- [x] rollback으로 설치 전 상태를 복원할 수 있다.
 
 ### 22.2. Workflow success criteria
 
@@ -2212,7 +2212,7 @@ POC 이후 별도 판단.
 - [x] animation helper generation helper
 - [x] install plan
 - [x] safe write + snapshot helpers
-- [ ] rollback
+- [x] rollback
 - [x] basic verify checks
 - [x] report JSON helper
 - [x] report HTML helper

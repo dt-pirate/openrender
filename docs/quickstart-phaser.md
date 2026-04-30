@@ -118,6 +118,6 @@ openrender report --run latest
 openrender rollback --run latest
 ```
 
-`verify` is implemented for artifact, installed file, and image dimension checks. `report` writes local HTML/JSON reports. `rollback` is planned next.
+`verify` is implemented for artifact, installed file, and image dimension checks. `report` writes local HTML/JSON reports. `rollback` restores snapshots or deletes files created by install.
 
 The v0.1 implementation should never require login, billing, cloud sync, telemetry, or a model provider key.

@@ -16,15 +16,14 @@ openrender compile sprite
 openrender install
 openrender verify
 openrender report
+openrender rollback
 openrender --help
 openrender --version
 ```
 
 ## Planned For The POC
 
-```bash
-openrender rollback
-```
+All required POC commands now have an initial local implementation. Preview generation and `--open` behavior are still planned.
 
 ## Commands
 
@@ -135,7 +134,14 @@ Current outputs:
 
 ### `openrender rollback`
 
-Planned command for restoring files from a run snapshot.
+Restores or deletes files changed by `openrender install`.
+
+```bash
+openrender rollback --run latest
+openrender rollback --run latest --json
+```
+
+If a destination file existed before install, rollback restores the snapshot. If install created a new file, rollback deletes it.
 
 ## Commands Excluded From v0.1
 

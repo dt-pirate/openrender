@@ -139,9 +139,14 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (["rollback"].includes(command)) {
-    printPlannedCommand(command, "This command is planned for the install/verify/report/rollback milestone.");
-    return 2;
+  if (command === "rollback") {
+    const result = await rollbackRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printRollbackResult(result);
+    }
+    return 0;
   }
 
   console.error(`Unknown command: ${command}`);
@@ -488,12 +493,21 @@ async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
     }
   }
 
-  return {
+  const result = {
     runId: record.run.runId,
     snapshotRoot,
     snapshots,
     writes
   };
+
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: path.posix.join(".openrender", "runs", `${record.run.runId}.install.json`),
+    contents: `${JSON.stringify(result, null, 2)}\n`,
+    allowOverwrite: true
+  });
+
+  return result;
 }
 
 async function readCompileRecord(projectRoot: string, runId: string): Promise<CompileSpriteResult> {
@@ -604,6 +618,43 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   };
 }
 
+async function rollbackRun(parsed: ParsedFlags): Promise<RollbackCommandResult> {
+  const projectRoot = process.cwd();
+  const runIdFlag = readStringFlag(parsed, "run", "latest");
+  const record = await readCompileRecord(projectRoot, runIdFlag);
+  const installResultPath = path.posix.join(".openrender", "runs", `${record.run.runId}.install.json`);
+  const installResult = JSON.parse(
+    await fs.readFile(resolveInsideProject(projectRoot, installResultPath), "utf8")
+  ) as InstallCommandResult;
+  const actions: RollbackCommandResult["actions"] = [];
+
+  for (const snapshot of installResult.snapshots) {
+    if (snapshot.existed && snapshot.snapshotPath) {
+      await safeCopyProjectFile({
+        projectRoot,
+        fromRelativePath: snapshot.snapshotPath,
+        toRelativePath: snapshot.relativePath,
+        allowOverwrite: true
+      });
+      actions.push({
+        action: "restored",
+        path: snapshot.relativePath
+      });
+    } else {
+      await fs.rm(resolveInsideProject(projectRoot, snapshot.relativePath), { force: true });
+      actions.push({
+        action: "deleted",
+        path: snapshot.relativePath
+      });
+    }
+  }
+
+  return {
+    runId: record.run.runId,
+    actions
+  };
+}
+
 
 function printScan(scan: ProjectScan): void {
   console.log("openRender scan");
@@ -680,6 +731,15 @@ function printReportResult(result: ReportCommandResult): void {
   console.log(`JSON: ${result.jsonPath}`);
 }
 
+function printRollbackResult(result: RollbackCommandResult): void {
+  console.log("openRender rollback");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  for (const action of result.actions) {
+    console.log(`${action.action}: ${action.path}`);
+  }
+}
+
 function printPlannedCommand(command: string, detail: string): void {
   console.error(`openrender ${command} is not implemented yet.`);
   console.error(detail);
@@ -693,9 +753,10 @@ Usage:
   openrender scan [--json]
   openrender doctor [--json]
   openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
-
-Planned POC commands:
-  openrender rollback
+  openrender install --run latest [--json]
+  openrender verify --run latest [--json]
+  openrender report --run latest [--json]
+  openrender rollback --run latest [--json]
 `);
 }
 
@@ -723,6 +784,14 @@ interface ReportCommandResult {
   htmlPath: string;
   latestJsonPath: string;
   latestHtmlPath: string;
+}
+
+interface RollbackCommandResult {
+  runId: string;
+  actions: Array<{
+    action: "restored" | "deleted";
+    path: string;
+  }>;
 }
 
 interface CompileSpriteResult {
