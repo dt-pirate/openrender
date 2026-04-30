@@ -1,4 +1,4 @@
-import { OPENRENDER_POC_VERSION, type OpenRenderRun, type VisualMediaType } from "./types.js";
+import { OPENRENDER_DEVKIT_VERSION, type OpenRenderRun, type VisualMediaType } from "./types.js";
 
 export function createRunId(date = new Date()): string {
   const stamp = date
@@ -22,7 +22,7 @@ export function createInitialRun(input: {
     actor: input.actor ?? "cli",
     status: "created",
     contract: {
-      schemaVersion: OPENRENDER_POC_VERSION,
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
       mediaType: input.mediaType,
       id: input.id
     },

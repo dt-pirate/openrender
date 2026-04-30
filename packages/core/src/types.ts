@@ -1,6 +1,6 @@
-export const OPENRENDER_POC_VERSION = "0.1" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.0.1" as const;
 
-export type OpenRenderPocVersion = typeof OPENRENDER_POC_VERSION;
+export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
 export type TargetEngine = "phaser";
 export type TargetFramework = "vite";
 export type VisualMediaType = "visual.transparent_sprite" | "visual.sprite_frame_set";
@@ -29,7 +29,7 @@ export type RunStatus =
   | "rolled_back";
 
 export interface OpenRenderConfig {
-  version: OpenRenderPocVersion;
+  version: OpenRenderDevkitVersion;
   project: {
     id: string;
     name: string;
@@ -78,7 +78,7 @@ export interface VerifyContract {
 }
 
 export interface TransparentSpriteContract {
-  schemaVersion: OpenRenderPocVersion;
+  schemaVersion: OpenRenderDevkitVersion;
   mediaType: "visual.transparent_sprite";
   sourcePath: string;
   target: TargetContract;
@@ -95,7 +95,7 @@ export interface TransparentSpriteContract {
 }
 
 export interface SpriteFrameSetContract {
-  schemaVersion: OpenRenderPocVersion;
+  schemaVersion: OpenRenderDevkitVersion;
   mediaType: "visual.sprite_frame_set";
   sourcePath: string;
   target: TargetContract;

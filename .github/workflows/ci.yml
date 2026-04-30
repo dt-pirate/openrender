@@ -56,10 +56,10 @@ jobs:
           cd "$pack_dir/install"
           npm init -y
           npm install \
-            "$pack_dir"/openrender-core-0.1.0.tgz \
-            "$pack_dir"/openrender-adapter-phaser-0.1.0.tgz \
-            "$pack_dir"/openrender-reporter-0.1.0.tgz \
-            "$pack_dir"/openrender-doctor-0.1.0.tgz \
-            "$pack_dir"/openrender-harness-visual-0.1.0.tgz \
-            "$pack_dir"/openrender-cli-0.1.0.tgz
-          ./node_modules/.bin/openrender --version | grep '^0\.1\.0$'
+            "$pack_dir"/openrender-core-0.0.1.tgz \
+            "$pack_dir"/openrender-adapter-phaser-0.0.1.tgz \
+            "$pack_dir"/openrender-reporter-0.0.1.tgz \
+            "$pack_dir"/openrender-doctor-0.0.1.tgz \
+            "$pack_dir"/openrender-harness-visual-0.0.1.tgz \
+            "$pack_dir"/openrender-cli-0.0.1.tgz
+          ./node_modules/.bin/openrender --version | grep '^0\.0\.1$'

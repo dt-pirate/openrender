@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OPENRENDER_POC_VERSION, type SpriteFrameSetContract } from "@openrender/core";
+import { OPENRENDER_DEVKIT_VERSION, type SpriteFrameSetContract } from "@openrender/core";
 import {
   createPhaserInstallPlan,
   createPhaserAssetDescriptor,
@@ -9,7 +9,7 @@ import {
 } from "./index.js";
 
 const contract: SpriteFrameSetContract = {
-  schemaVersion: OPENRENDER_POC_VERSION,
+  schemaVersion: OPENRENDER_DEVKIT_VERSION,
   mediaType: "visual.sprite_frame_set",
   sourcePath: "tmp/slime_raw.png",
   target: {

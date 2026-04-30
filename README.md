@@ -4,17 +4,17 @@
 
 openRender is open infrastructure for AI agents turning generated media into engine-ready playable projects.
 
-The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, install, verify, report, and rollback.
+Developer Kit v0.0.1 focuses on local image-to-Phaser asset compilation: compile, install, verify, report, and rollback.
 
 ## Current Status
 
-This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser code-generation helpers, install, verify, report, preview, and rollback.
+This repository is bootstrapped for Developer Kit v0.0.1. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser code-generation helpers, install, verify, report, preview, and rollback.
 
-The npm packages are prepared for `0.1.0` publication but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
+The npm packages are prepared for `0.0.1` publication but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
 
 ## Scope
 
-v0.1 proves this loop:
+Developer Kit v0.0.1 proves this loop:
 
 ```text
 raw generated image
@@ -26,7 +26,7 @@ raw generated image
 -> rollback
 ```
 
-POC boundaries:
+Developer Kit boundaries:
 
 - No account
 - No billing
@@ -122,7 +122,7 @@ The CLI writes local state under `.openrender/`, generated assets under `public/
 
 ## Packages
 
-The v0.1 package set is:
+The Developer Kit v0.0.1 package set is:
 
 - `@openrender/core`
 - `@openrender/adapter-phaser`

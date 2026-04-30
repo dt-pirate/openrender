@@ -66,7 +66,7 @@ export interface CroppedImageOutput extends NormalizedImageOutput {
   outputSize?: OutputSize;
 }
 
-export const VISUAL_HARNESS_POC_STAGES = [
+export const VISUAL_HARNESS_DEVKIT_STAGES = [
   "input_load",
   "format_detection",
   "format_normalization",
@@ -316,7 +316,7 @@ export function createVisualHarnessPlan(
   return {
     contractId: contract.id,
     mediaType: contract.mediaType,
-    stages: [...VISUAL_HARNESS_POC_STAGES],
+    stages: [...VISUAL_HARNESS_DEVKIT_STAGES],
     implementationStatus: "planned"
   };
 }

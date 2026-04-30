@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { OPENRENDER_POC_VERSION, type OpenRenderConfig } from "./types.js";
+import { OPENRENDER_DEVKIT_VERSION, type OpenRenderConfig } from "./types.js";
 
 export const OPENRENDER_CONFIG_FILE = "openrender.config.json";
 export const OPENRENDER_STATE_DIR = ".openrender";
@@ -30,7 +30,7 @@ export interface InitResult {
 
 export function createDefaultConfig(projectName = "local"): OpenRenderConfig {
   return {
-    version: OPENRENDER_POC_VERSION,
+    version: OPENRENDER_DEVKIT_VERSION,
     project: {
       id: "local",
       name: projectName

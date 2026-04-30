@@ -11,7 +11,7 @@ import {
 import {
   createInitialRun,
   initializeOpenRenderProject,
-  OPENRENDER_POC_VERSION,
+  OPENRENDER_DEVKIT_VERSION,
   pathExists,
   resolveInsideProject,
   safeCopyProjectFile,
@@ -37,7 +37,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.1.0";
+const CLI_VERSION = "0.0.1";
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -222,8 +222,8 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   const padding = readIntegerFlag(parsed, "padding", 0);
   const dryRun = parsed.flags.get("dry-run") === true;
 
-  if (target !== "phaser") throw new Error(`Unsupported target for POC: ${target}`);
-  if (framework !== "vite") throw new Error(`Unsupported framework for POC: ${framework}`);
+  if (target !== "phaser") throw new Error(`Unsupported target for Developer Kit: ${target}`);
+  if (framework !== "vite") throw new Error(`Unsupported framework for Developer Kit: ${framework}`);
   if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
     throw new Error(`Unsupported sprite layout: ${layout}`);
   }
@@ -242,7 +242,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     if (outputSize !== undefined) throw new Error("--output-size is only supported for transparent sprites.");
 
     contract = {
-      schemaVersion: OPENRENDER_POC_VERSION,
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
       mediaType: "visual.sprite_frame_set",
       sourcePath: path.relative(projectRoot, sourcePath),
       target: {
@@ -304,7 +304,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   } else {
     const size = outputSize ?? { width: metadata.width, height: metadata.height };
     contract = {
-      schemaVersion: OPENRENDER_POC_VERSION,
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
       mediaType: "visual.transparent_sprite",
       sourcePath: path.relative(projectRoot, sourcePath),
       target: {

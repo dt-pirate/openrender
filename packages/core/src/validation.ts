@@ -1,5 +1,5 @@
 import {
-  OPENRENDER_POC_VERSION,
+  OPENRENDER_DEVKIT_VERSION,
   type MediaContract,
   type OpenRenderConfig,
   type OpenRenderRun
@@ -56,7 +56,7 @@ export function validateOpenRenderConfig(input: unknown): SchemaValidationResult
   const root = expectRecord(input, "$", issues);
   if (!root) return invalid(issues);
 
-  expectOneOf(root.version, "$.version", [OPENRENDER_POC_VERSION], issues);
+  expectOneOf(root.version, "$.version", [OPENRENDER_DEVKIT_VERSION], issues);
 
   const project = expectRecord(root.project, "$.project", issues);
   if (project) {
@@ -103,7 +103,7 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
   const root = expectRecord(input, "$", issues);
   if (!root) return invalid(issues);
 
-  expectOneOf(root.schemaVersion, "$.schemaVersion", [OPENRENDER_POC_VERSION], issues);
+  expectOneOf(root.schemaVersion, "$.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
   expectOneOf(root.mediaType, "$.mediaType", ["visual.transparent_sprite", "visual.sprite_frame_set"], issues);
   expectString(root.sourcePath, "$.sourcePath", issues);
   expectString(root.id, "$.id", issues);
@@ -147,7 +147,7 @@ export function validateOpenRenderRun(input: unknown): SchemaValidationResult<Op
 
   const contract = expectRecord(root.contract, "$.contract", issues);
   if (contract) {
-    expectOneOf(contract.schemaVersion, "$.contract.schemaVersion", [OPENRENDER_POC_VERSION], issues);
+    expectOneOf(contract.schemaVersion, "$.contract.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
     expectOneOf(contract.mediaType, "$.contract.mediaType", ["visual.transparent_sprite", "visual.sprite_frame_set"], issues);
     expectString(contract.id, "$.contract.id", issues);
   }

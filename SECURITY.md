@@ -1,14 +1,14 @@
 # Security
 
-openRender v0.1 is local-first and should not upload project files, generated assets, reports, telemetry, or crash data.
+openRender Developer Kit v0.0.1 is local-first and should not upload project files, generated assets, reports, telemetry, or crash data.
 
-## POC Safety Rules
+## Developer Kit Safety Rules
 
 - Write only inside the detected project root.
 - Do not overwrite existing files unless an explicit force policy is implemented and requested.
 - Snapshot files before install writes.
 - Keep reports local.
-- Do not add network calls to the POC path.
+- Do not add network calls to the Developer Kit path.
 
 ## Reporting Issues
 

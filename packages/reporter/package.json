@@ -1,6 +1,6 @@
 {
   "name": "@openrender/reporter",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Local report and preview generation helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",

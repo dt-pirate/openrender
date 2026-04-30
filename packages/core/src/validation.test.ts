@@ -33,7 +33,7 @@ test("validateOpenRenderConfig rejects cloud-enabled privacy flags", () => {
 
 test("validateMediaContract accepts a transparent sprite contract", () => {
   const contract: MediaContract = {
-    schemaVersion: "0.1",
+    schemaVersion: "0.0.1",
     mediaType: "visual.transparent_sprite",
     sourcePath: "tmp/slime.png",
     target: {
@@ -65,7 +65,7 @@ test("validateMediaContract accepts a transparent sprite contract", () => {
 
 test("validateMediaContract rejects invalid sprite frame dimensions", () => {
   const result = validateMediaContract({
-    schemaVersion: "0.1",
+    schemaVersion: "0.0.1",
     mediaType: "visual.sprite_frame_set",
     sourcePath: "tmp/slime.png",
     target: {
