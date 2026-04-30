@@ -2003,9 +2003,9 @@ Tasks:
 
 Tasks:
 
-- [ ] snapshot creation
-- [ ] safe write helper
-- [ ] overwrite policy
+- [x] snapshot creation helper
+- [x] safe write helper
+- [x] no-overwrite helper policy
 - [ ] install command
 - [ ] rollback command
 - [x] dry-run support
@@ -2210,7 +2210,7 @@ POC 이후 별도 판단.
 - [x] manifest TS generation helper
 - [x] animation helper generation helper
 - [x] install plan
-- [ ] safe write + snapshot
+- [x] safe write + snapshot helpers
 - [ ] rollback
 - [ ] verify checks
 - [x] report JSON helper
