@@ -24,6 +24,7 @@
     "@openrender/adapter-phaser": "workspace:*",
     "@openrender/core": "workspace:*",
     "@openrender/doctor": "workspace:*",
-    "@openrender/harness-visual": "workspace:*"
+    "@openrender/harness-visual": "workspace:*",
+    "@openrender/reporter": "workspace:*"
   }
 }

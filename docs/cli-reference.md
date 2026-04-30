@@ -15,6 +15,7 @@ openrender doctor
 openrender compile sprite
 openrender install
 openrender verify
+openrender report
 openrender --help
 openrender --version
 ```
@@ -22,7 +23,6 @@ openrender --version
 ## Planned For The POC
 
 ```bash
-openrender report
 openrender rollback
 ```
 
@@ -117,7 +117,21 @@ Preview generation and rollback availability checks are planned but not implemen
 
 ### `openrender report`
 
-Planned command for opening or printing local report paths.
+Writes local report files for a run.
+
+```bash
+openrender report --run latest
+openrender report --run latest --json
+```
+
+Current outputs:
+
+- `.openrender/reports/{run_id}.html`
+- `.openrender/reports/{run_id}.json`
+- `.openrender/reports/latest.html`
+- `.openrender/reports/latest.json`
+
+`--open` is planned but not implemented yet.
 
 ### `openrender rollback`
 

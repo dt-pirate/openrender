@@ -2021,10 +2021,11 @@ Tasks:
 Tasks:
 
 - [x] basic verification checks
-- [x] report JSON helper
-- [x] report HTML helper
+- [x] report JSON file writing
+- [x] report HTML file writing
 - [x] preview HTML helper
-- [ ] report/preview file writing
+- [x] report file writing
+- [ ] preview file writing
 - [ ] latest report symlink/copy
 - [ ] `openrender report --open`
 
@@ -2057,7 +2058,7 @@ Tasks:
 - [x] Phaser animation helper TS generator가 동작한다.
 - [x] output PNG가 `public/assets`에 설치된다.
 - [ ] local preview HTML에서 animation loop를 볼 수 있다.
-- [ ] report HTML/JSON이 생성된다.
+- [x] report HTML/JSON이 생성된다.
 - [x] verify가 pass/fail 결과를 출력한다.
 - [ ] rollback으로 설치 전 상태를 복원할 수 있다.
 

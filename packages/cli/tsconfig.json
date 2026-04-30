@@ -10,6 +10,7 @@
     { "path": "../core" },
     { "path": "../doctor" },
     { "path": "../harness-visual" },
-    { "path": "../adapters/phaser" }
+    { "path": "../adapters/phaser" },
+    { "path": "../reporter" }
   ]
 }

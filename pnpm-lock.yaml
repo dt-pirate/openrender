@@ -35,6 +35,9 @@ importers:
       '@openrender/harness-visual':
         specifier: workspace:*
         version: link:../harness-visual
+      '@openrender/reporter':
+        specifier: workspace:*
+        version: link:../reporter
 
   packages/core: {}
 

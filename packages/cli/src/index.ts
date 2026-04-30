@@ -32,6 +32,7 @@ import {
   type FrameValidationResult,
   type ImageMetadata
 } from "@openrender/harness-visual";
+import { createReportHtml } from "@openrender/reporter";
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -128,7 +129,17 @@ async function main(argv: string[]): Promise<number> {
     return result.status === "passed" ? 0 : 1;
   }
 
-  if (["report", "rollback"].includes(command)) {
+  if (command === "report") {
+    const result = await writeReport(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printReportResult(result);
+    }
+    return 0;
+  }
+
+  if (["rollback"].includes(command)) {
     printPlannedCommand(command, "This command is planned for the install/verify/report/rollback milestone.");
     return 2;
   }
@@ -540,6 +551,59 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   };
 }
 
+async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = readStringFlag(parsed, "run", "latest");
+  const record = await readCompileRecord(projectRoot, runId);
+  const reportJsonPath = path.posix.join(".openrender", "reports", `${record.run.runId}.json`);
+  const reportHtmlPath = path.posix.join(".openrender", "reports", `${record.run.runId}.html`);
+  const json = `${JSON.stringify(record, null, 2)}\n`;
+  const html = createReportHtml({
+    title: `openRender report ${record.run.runId}`,
+    run: record.run,
+    sections: [
+      { heading: "Contract", body: JSON.stringify(record.contract, null, 2) },
+      { heading: "Input", body: JSON.stringify(record.input, null, 2) },
+      { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
+      { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
+      { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) }
+    ]
+  });
+
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: reportJsonPath,
+    contents: json,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: reportHtmlPath,
+    contents: html,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: ".openrender/reports/latest.json",
+    contents: json,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: ".openrender/reports/latest.html",
+    contents: html,
+    allowOverwrite: true
+  });
+
+  return {
+    runId: record.run.runId,
+    jsonPath: reportJsonPath,
+    htmlPath: reportHtmlPath,
+    latestJsonPath: ".openrender/reports/latest.json",
+    latestHtmlPath: ".openrender/reports/latest.html"
+  };
+}
+
 
 function printScan(scan: ProjectScan): void {
   console.log("openRender scan");
@@ -608,6 +672,14 @@ function printVerifyResult(result: VerifyCommandResult): void {
   console.log(`Status: ${result.status}`);
 }
 
+function printReportResult(result: ReportCommandResult): void {
+  console.log("openRender report");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  console.log(`HTML: ${result.htmlPath}`);
+  console.log(`JSON: ${result.jsonPath}`);
+}
+
 function printPlannedCommand(command: string, detail: string): void {
   console.error(`openrender ${command} is not implemented yet.`);
   console.error(detail);
@@ -623,7 +695,6 @@ Usage:
   openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
 
 Planned POC commands:
-  openrender report
   openrender rollback
 `);
 }
@@ -644,6 +715,14 @@ interface VerifyCommandResult {
     path?: string;
     message?: string;
   }>;
+}
+
+interface ReportCommandResult {
+  runId: string;
+  jsonPath: string;
+  htmlPath: string;
+  latestJsonPath: string;
+  latestHtmlPath: string;
 }
 
 interface CompileSpriteResult {

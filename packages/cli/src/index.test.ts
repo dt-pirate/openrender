@@ -191,6 +191,41 @@ test("verify latest run passes after install", async () => {
   assert.equal(result.checks.every((check) => check.status === "passed"), true);
 });
 
+test("report latest run writes html and json reports", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-report-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const { stdout } = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    htmlPath: string;
+    jsonPath: string;
+    latestHtmlPath: string;
+    latestJsonPath: string;
+  };
+
+  assert.equal(await fileExists(path.join(root, result.htmlPath)), true);
+  assert.equal(await fileExists(path.join(root, result.jsonPath)), true);
+  assert.equal(await fileExists(path.join(root, result.latestHtmlPath)), true);
+  assert.equal(await fileExists(path.join(root, result.latestJsonPath)), true);
+  assert.match(await fs.readFile(path.join(root, result.htmlPath), "utf8"), /openRender report/);
+});
+
 async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
