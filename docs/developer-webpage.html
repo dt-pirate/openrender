@@ -248,6 +248,19 @@
       box-shadow: 0 24px 70px rgb(20 20 20 / 12%);
     }
 
+    .command-note {
+      margin: 10px 0 0;
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    .command-note code {
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      color: var(--ink);
+    }
+
     .code-card-header {
       min-height: 42px;
       padding: 0 12px 0 16px;
@@ -830,10 +843,10 @@
           </p>
           <div class="code-card" aria-label="openRender compile command">
             <div class="code-card-header">
-              <span>from source local CLI</span>
+              <span>local CLI</span>
               <button class="copy-button" type="button" data-copy-target="hero-command" aria-label="Copy command">Copy</button>
             </div>
-            <pre id="hero-command">pnpm dev:cli compile sprite \
+            <pre id="hero-command">openrender compile sprite \
   --from tmp/slime_raw.png \
   --id enemy.slime.idle \
   --frames 6 \
@@ -841,6 +854,9 @@
   --install \
   --json</pre>
           </div>
+          <p class="command-note">
+            Source checkout fallback: run the same command through <code>pnpm dev:cli</code> from this repository.
+          </p>
           <div class="hero-actions">
             <a class="button" href="#quickstart">Get started</a>
             <a class="button secondary" href="./cli-reference.md">Read the CLI reference</a>
@@ -909,19 +925,19 @@
             <div class="step-number">1</div>
             <h3>Initialize local state</h3>
             <p>Create config and local run directories. No account or cloud setup is required.</p>
-            <div class="mini-command">pnpm dev:cli init</div>
+            <div class="mini-command">openrender init</div>
           </article>
           <article class="step-card">
             <div class="step-number">2</div>
             <h3>Compile and install</h3>
             <p>Convert a raw image into a Phaser-ready asset, manifest, and animation helper.</p>
-            <div class="mini-command">pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install</div>
+            <div class="mini-command">openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install</div>
           </article>
           <article class="step-card">
             <div class="step-number">3</div>
             <h3>Verify and report</h3>
             <p>Check local files and open the generated HTML report for inspection.</p>
-            <div class="mini-command">pnpm dev:cli verify --run latest && pnpm dev:cli report --run latest --open</div>
+            <div class="mini-command">openrender verify --run latest && openrender report --run latest --open</div>
           </article>
         </div>
       </section>
@@ -1084,6 +1100,7 @@
         <a href="./openRender_POC_v0.1.md">POC spec</a>
         <a href="./quickstart-phaser.md">Quickstart</a>
         <a href="./cli-reference.md">CLI reference</a>
+        <a href="./developer-webpage-design-guide.md">Design guide</a>
         <a href="./known-limitations.md">Known limitations</a>
       </div>
     </footer>

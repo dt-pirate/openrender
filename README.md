@@ -104,6 +104,7 @@ openrender rollback --run latest
 - [Troubleshooting](docs/troubleshooting.md)
 - [Known limitations](docs/known-limitations.md)
 - [Developer webpage draft](docs/developer-webpage.html)
+- [Developer webpage design guide](docs/developer-webpage-design-guide.md)
 
 ## Not This
 
