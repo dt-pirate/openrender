@@ -101,8 +101,10 @@ openrender rollback --run latest
 
 - [POC spec](docs/openRender_POC_v0.1.md)
 - [Phaser quickstart](docs/quickstart-phaser.md)
+- [Agent usage](docs/agent-usage.md)
 - [CLI reference](docs/cli-reference.md)
 - [Media contracts](docs/contracts.md)
+- [Release checklist](docs/release-checklist.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Known limitations](docs/known-limitations.md)
 - [Developer webpage draft](docs/developer-webpage.html)
