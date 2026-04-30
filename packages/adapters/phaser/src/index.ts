@@ -17,6 +17,26 @@ export interface PhaserAssetDescriptor {
   manifestPath: string;
 }
 
+export type PhaserInstallPlanEntry =
+  | {
+      kind: "compiled_asset";
+      action: "copy";
+      from: string;
+      to: string;
+    }
+  | {
+      kind: "manifest" | "codegen";
+      action: "write";
+      to: string;
+      contents: string;
+    };
+
+export interface PhaserInstallPlan {
+  id: string;
+  enabled: boolean;
+  files: PhaserInstallPlanEntry[];
+}
+
 export function createPhaserAssetDescriptor(
   contract: SpriteFrameSetContract | TransparentSpriteContract
 ): PhaserAssetDescriptor {
@@ -115,4 +135,43 @@ export function register${pascalName}(scene: Phaser.Scene) {
   });
 }
 `;
+}
+
+export function createPhaserInstallPlan(input: {
+  contract: SpriteFrameSetContract | TransparentSpriteContract;
+  compiledAssetPath: string;
+}): PhaserInstallPlan {
+  const descriptor = createPhaserAssetDescriptor(input.contract);
+  const files: PhaserInstallPlanEntry[] = [
+    {
+      kind: "compiled_asset",
+      action: "copy",
+      from: input.compiledAssetPath,
+      to: descriptor.assetPath
+    }
+  ];
+
+  if (input.contract.install.writeManifest) {
+    files.push({
+      kind: "manifest",
+      action: "write",
+      to: descriptor.manifestPath,
+      contents: generateManifestSource([input.contract])
+    });
+  }
+
+  if (input.contract.mediaType === "visual.sprite_frame_set" && descriptor.codegenPath) {
+    files.push({
+      kind: "codegen",
+      action: "write",
+      to: descriptor.codegenPath,
+      contents: generateAnimationHelperSource(input.contract)
+    });
+  }
+
+  return {
+    id: input.contract.id,
+    enabled: input.contract.install.enabled,
+    files
+  };
 }

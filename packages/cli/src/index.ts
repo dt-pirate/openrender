@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import {
+  createPhaserInstallPlan,
   createPhaserAssetDescriptor,
   generateAnimationHelperSource,
   generateManifestSource
@@ -286,6 +287,11 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
 
   const descriptor = createPhaserAssetDescriptor(contract);
   const run = createInitialRun({ id, mediaType: contract.mediaType });
+  const artifactPath = path.posix.join(".openrender", "artifacts", run.runId, path.posix.basename(descriptor.assetPath));
+  const installPlan = createPhaserInstallPlan({
+    contract,
+    compiledAssetPath: artifactPath
+  });
   run.status = "harness_ready";
   run.outputs = [
     { kind: "compiled_asset", path: descriptor.assetPath },
@@ -311,6 +317,7 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
     input: metadata,
     contract,
     outputPlan: descriptor,
+    installPlan,
     generatedSources:
       contract.mediaType === "visual.sprite_frame_set"
         ? {
@@ -390,6 +397,7 @@ function printCompileSpriteDryRun(result: CompileSpriteDryRunResult): void {
   console.log(`Output asset: ${result.outputPlan.assetPath}`);
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
+  console.log(`Install plan files: ${result.installPlan.files.length}`);
 
   if (result.validation) {
     console.log(`Frame validation: ${result.validation.ok ? "passed" : "failed"}`);
@@ -426,6 +434,7 @@ interface CompileSpriteDryRunResult {
   input: ImageMetadata;
   contract: MediaContract;
   outputPlan: ReturnType<typeof createPhaserAssetDescriptor>;
+  installPlan: ReturnType<typeof createPhaserInstallPlan>;
   generatedSources: {
     manifest: string;
     animationHelper?: string;

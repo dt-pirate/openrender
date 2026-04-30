@@ -1990,7 +1990,7 @@ Tasks:
 - [x] output path resolver
 - [x] manifest TS generator
 - [x] animation helper generator
-- [ ] install plan generator
+- [x] install plan generator
 - [x] Vite public URL resolver
 
 ### 21.6. Milestone 5 — Install / rollback
@@ -2209,7 +2209,7 @@ POC 이후 별도 판단.
 - [x] Phaser adapter skeleton
 - [x] manifest TS generation helper
 - [x] animation helper generation helper
-- [ ] install plan
+- [x] install plan
 - [ ] safe write + snapshot
 - [ ] rollback
 - [ ] verify checks

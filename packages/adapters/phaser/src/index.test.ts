@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { OPENRENDER_POC_VERSION, type SpriteFrameSetContract } from "@openrender/core";
 import {
+  createPhaserInstallPlan,
   createPhaserAssetDescriptor,
   generateAnimationHelperSource,
   generateManifestSource
@@ -58,4 +59,16 @@ test("generateAnimationHelperSource creates preload and register helpers", () =>
   assert.match(source, /preloadEnemySlimeIdle/);
   assert.match(source, /registerEnemySlimeIdle/);
   assert.match(source, /scene\.load\.spritesheet/);
+});
+
+test("createPhaserInstallPlan includes asset, manifest, and codegen writes", () => {
+  const plan = createPhaserInstallPlan({
+    contract,
+    compiledAssetPath: ".openrender/artifacts/run_1/enemy-slime-idle.png"
+  });
+
+  assert.equal(plan.id, "enemy.slime.idle");
+  assert.equal(plan.enabled, true);
+  assert.equal(plan.files.length, 3);
+  assert.deepEqual(plan.files.map((file) => file.kind), ["compiled_asset", "manifest", "codegen"]);
 });

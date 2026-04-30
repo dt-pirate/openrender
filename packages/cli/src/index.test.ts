@@ -39,12 +39,14 @@ test("compile sprite dry-run emits a transparent sprite plan as JSON", async () 
   const result = JSON.parse(stdout) as {
     contract: { mediaType: string; id: string };
     outputPlan: { assetPath: string; manifestPath: string };
+    installPlan: { files: Array<{ kind: string }> };
   };
 
   assert.equal(result.contract.mediaType, "visual.transparent_sprite");
   assert.equal(result.contract.id, "prop.dot");
   assert.equal(result.outputPlan.assetPath, "public/assets/prop-dot.png");
   assert.equal(result.outputPlan.manifestPath, "src/assets/openrender-manifest.ts");
+  assert.deepEqual(result.installPlan.files.map((file) => file.kind), ["compiled_asset", "manifest"]);
 });
 
 test("compile sprite dry-run validates a horizontal frame set", async () => {
