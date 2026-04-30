@@ -74,6 +74,7 @@ Run the CLI from source:
 ```bash
 pnpm dev:cli scan --json
 pnpm dev:cli doctor
+pnpm dev:cli compile sprite --from tmp/slime_raw.png --id prop.slime --output-size 64x64 --dry-run --json
 pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 ```
@@ -97,12 +98,14 @@ openrender scan
 Compile a sprite without writing project files:
 
 ```bash
+openrender compile sprite --from tmp/slime_raw.png --target phaser --id prop.slime --output-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 ```
 
 Compile and install the sprite into the project:
 
 ```bash
+openrender compile sprite --from tmp/slime_raw.png --target phaser --id prop.slime --output-size 64x64 --install --json
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 ```
 
