@@ -104,6 +104,7 @@ openrender rollback --run latest
 - [CLI reference](docs/cli-reference.md)
 - [Media contracts](docs/contracts.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Known limitations](docs/known-limitations.md)
 
 ## Not This
 

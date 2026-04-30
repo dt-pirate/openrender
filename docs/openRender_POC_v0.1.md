@@ -1975,7 +1975,7 @@ Tasks:
 - [x] frame slicing metadata plan
 - [x] horizontal strip frame validation helper
 - [x] integrated frame validation in `compile sprite --dry-run`
-- [ ] harness metadata output
+- [x] harness metadata output
 
 ### 21.5. Milestone 4 — Phaser adapter
 
@@ -2026,7 +2026,7 @@ Tasks:
 - [x] preview HTML helper
 - [x] report file writing
 - [x] preview file writing
-- [ ] latest report symlink/copy
+- [x] latest report copy
 - [ ] `openrender report --open`
 
 ### 21.8. Milestone 7 — POC polish
@@ -2041,7 +2041,7 @@ Tasks:
 
 - [x] quickstart 문서
 - [x] troubleshooting 문서
-- [ ] known limitations 문서
+- [x] known limitations 문서
 
 ---
 
