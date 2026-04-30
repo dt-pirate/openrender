@@ -2065,10 +2065,15 @@ Tasks:
 
 ### 22.2. Workflow success criteria
 
-- [ ] 사용자가 이미지 편집 툴을 열지 않고 raw image를 Phaser-ready asset으로 변환한다.
-- [ ] AI agent가 shell command만으로 동일 workflow를 실행할 수 있다.
+- [x] 사용자가 이미지 편집 툴을 열지 않고 raw image를 Phaser-ready asset으로 변환한다.
+- [x] AI agent가 shell command만으로 동일 workflow를 실행할 수 있다.
 - [x] 실패 시 report가 원인과 다음 action을 설명한다.
-- [ ] 전체 POC 루프가 10분 이내에 실행된다.
+- [x] 전체 POC 루프가 10분 이내에 실행된다.
+
+Validation note:
+
+- 2026-04-30 local smoke loop: `init → scan → compile sprite --install → verify → report → rollback`
+  passed in 336ms in a temporary Vite + Phaser-shaped project.
 
 ### 22.3. Non-goals for success
 
