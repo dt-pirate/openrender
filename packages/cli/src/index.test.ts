@@ -266,6 +266,11 @@ test("verify latest run passes after install", async () => {
 
   assert.equal(result.status, "passed");
   assert.equal(result.checks.every((check) => check.status === "passed"), true);
+  const record = JSON.parse(await fs.readFile(path.join(root, ".openrender/runs/latest.json"), "utf8")) as {
+    run: { status: string; verification?: { status: string } };
+  };
+  assert.equal(record.run.status, "verified");
+  assert.equal(record.run.verification?.status, "passed");
 });
 
 test("report latest run writes html and json reports", async () => {
@@ -309,6 +314,40 @@ test("report latest run writes html and json reports", async () => {
   const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
   assert.match(html, /openRender report/);
   assert.match(html, /visual-overlay/);
+});
+
+test("report explains failed frame validation next actions", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-report-failure-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await assert.rejects(execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "enemy.dot.idle",
+    "--frames",
+    "1",
+    "--frame-size",
+    "2x1"
+  ], {
+    cwd: root
+  }));
+
+  const { stdout } = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    htmlPath: string;
+  };
+  const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
+
+  assert.match(html, /Next Action/);
+  assert.match(html, /horizontal strip requires 2x1, got 1x1/);
+  assert.match(html, /try --frame-size/);
 });
 
 test("rollback latest run deletes files created by install", async () => {

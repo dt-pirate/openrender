@@ -124,8 +124,9 @@ image-level invariants only.
 ### `openrender report`
 
 Writes local report files for a run. The HTML report includes the run contract, input,
-artifact metadata, install plan, validation result, and a visual overlay for the compiled
-asset or frame slices when image metadata is available.
+artifact metadata, install plan, validation and verification results, next-action
+suggestions for failures, and a visual overlay for the compiled asset or frame slices
+when image metadata is available.
 
 ```bash
 openrender report --run latest

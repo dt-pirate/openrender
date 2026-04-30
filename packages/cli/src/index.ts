@@ -596,11 +596,16 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
     });
   }
 
-  return {
+  const result: VerifyCommandResult = {
     runId: record.run.runId,
     status: checks.every((check) => check.status === "passed") ? "passed" : "failed",
     checks
   };
+  record.run.status = result.status === "passed" ? "verified" : "failed_verify";
+  record.run.verification = result;
+  await writeCompileRecord(projectRoot, record, true);
+
+  return result;
 }
 
 async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
@@ -612,6 +617,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const previewHtmlPath = path.posix.join(".openrender", "previews", `${record.run.runId}.html`);
   const json = `${JSON.stringify(record, null, 2)}\n`;
   const visualOverlayHtml = createVisualOverlayHtml(record);
+  const nextAction = createNextActionText(record);
   const html = createReportHtml({
     title: `openRender report ${record.run.runId}`,
     run: record.run,
@@ -621,7 +627,9 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
       ...(visualOverlayHtml ? [{ heading: "Visual Overlay", trustedHtml: visualOverlayHtml }] : []),
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
-      { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) }
+      { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) },
+      { heading: "Run Verification", body: JSON.stringify(record.run.verification ?? null, null, 2) },
+      ...(nextAction ? [{ heading: "Next Action", body: nextAction }] : [])
     ]
   });
   const previewHtml = createPreviewHtml({
@@ -727,6 +735,81 @@ function createVisualOverlayHtml(record: CompileSpriteResult): string | null {
   </svg>
   <figcaption>${escapeHtmlText(rects.length === 1 ? "asset bounds" : `${rects.length} frame slices`)}</figcaption>
 </figure>`;
+}
+
+function createNextActionText(record: CompileSpriteResult): string | null {
+  if (record.validation?.ok === false) {
+    return [
+      `Failure: ${record.validation.reason ?? "frame validation failed"}`,
+      "",
+      "Suggested next action:",
+      ...createFrameValidationSuggestions(record).map((suggestion) => `- ${suggestion}`)
+    ].join("\n");
+  }
+
+  if (record.run.verification?.status === "failed") {
+    const failedChecks = record.run.verification.checks.filter((check) => check.status === "failed");
+    return [
+      "Failure: verify checks failed",
+      "",
+      "Failed checks:",
+      ...failedChecks.map((check) => `- ${check.name}${check.path ? `: ${check.path}` : ""}`),
+      "",
+      "Suggested next action:",
+      ...createVerifySuggestions(record, failedChecks).map((suggestion) => `- ${suggestion}`)
+    ].join("\n");
+  }
+
+  return null;
+}
+
+function createFrameValidationSuggestions(record: CompileSpriteResult): string[] {
+  const validation = record.validation;
+  if (!validation || record.contract.mediaType !== "visual.sprite_frame_set") {
+    return ["Check the source image dimensions and re-run compile."];
+  }
+
+  const visual = record.contract.visual;
+  const suggestions = new Set<string>();
+  if (visual.layout === "horizontal" || visual.layout === "horizontal_strip") {
+    if (validation.actualHeight === visual.frameHeight && validation.actualWidth % visual.frameWidth === 0) {
+      suggestions.add(`try --frames ${validation.actualWidth / visual.frameWidth}`);
+    }
+    if (validation.actualWidth % visual.frames === 0) {
+      suggestions.add(`try --frame-size ${validation.actualWidth / visual.frames}x${validation.actualHeight}`);
+    }
+    suggestions.add(`resize or regenerate the source image to ${validation.expectedWidth}x${validation.expectedHeight}`);
+  } else {
+    const columns = Math.floor(validation.actualWidth / visual.frameWidth);
+    const rows = Math.floor(validation.actualHeight / visual.frameHeight);
+    const capacity = columns * rows;
+    if (capacity > 0 && capacity < visual.frames) suggestions.add(`try --frames ${capacity}`);
+    suggestions.add(`use image dimensions divisible by ${visual.frameWidth}x${visual.frameHeight}`);
+  }
+
+  return [...suggestions];
+}
+
+function createVerifySuggestions(
+  record: CompileSpriteResult,
+  failedChecks: NonNullable<CompileSpriteResult["run"]["verification"]>["checks"]
+): string[] {
+  const suggestions = new Set<string>();
+  for (const check of failedChecks) {
+    if (check.name === "compiled_artifact_exists") {
+      suggestions.add("re-run openrender compile sprite for the source image");
+    } else if (check.name.endsWith("_installed")) {
+      suggestions.add(`run openrender install --run ${record.run.runId}`);
+    } else if (check.name === "installed_asset_dimensions") {
+      suggestions.add(`re-run openrender install --run ${record.run.runId} --force after recompiling`);
+    }
+  }
+
+  if (suggestions.size === 0) {
+    suggestions.add("inspect the failed check paths, then re-run openrender verify --run latest");
+  }
+
+  return [...suggestions];
 }
 
 function escapeHtmlAttribute(value: string): string {

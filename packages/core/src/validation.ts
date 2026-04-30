@@ -216,6 +216,7 @@ function validateVerification(input: unknown, path: string, issues: SchemaValida
     if (!check) return;
     expectString(check.name, `${itemPath}.name`, issues);
     expectOneOf(check.status, `${itemPath}.status`, ["passed", "failed", "skipped"], issues);
+    if (check.path !== undefined) expectString(check.path, `${itemPath}.path`, issues);
     if (check.message !== undefined) expectString(check.message, `${itemPath}.message`, issues);
   });
 }

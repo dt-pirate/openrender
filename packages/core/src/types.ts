@@ -135,6 +135,7 @@ export interface OutputDescriptor {
 export interface VerificationCheck {
   name: string;
   status: "passed" | "failed" | "skipped";
+  path?: string;
   message?: string;
 }
 
