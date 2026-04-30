@@ -10,7 +10,7 @@ During local development, run the CLI through the workspace:
 pnpm dev:cli --help
 ```
 
-After packaging, the command will be:
+After publishing the workspace packages, install the CLI package and use:
 
 ```bash
 openrender --help
