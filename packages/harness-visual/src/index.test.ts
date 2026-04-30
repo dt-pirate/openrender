@@ -11,6 +11,7 @@ import {
   loadImageMetadata,
   normalizeImageToPng,
   planFrameSlices,
+  removeSolidBackgroundToPng,
   validateGridFrameSet,
   validateHorizontalFrameSet
 } from "./index.js";
@@ -99,6 +100,49 @@ test("cleanupAlphaEdgesToPng removes low-alpha fringe pixels", async () => {
   assert.equal(data[7], 255);
 });
 
+test("removeSolidBackgroundToPng clears pixels matching the top-left background", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-solid-bg-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp({
+    create: {
+      width: 3,
+      height: 1,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 1,
+            height: 1,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        })
+          .png()
+          .toBuffer(),
+        left: 1,
+        top: 0
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  await removeSolidBackgroundToPng({ sourcePath, outputPath, tolerance: 4 });
+  const { data } = await sharp(outputPath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  assert.equal(data[3], 0);
+  assert.equal(data[7], 255);
+  assert.equal(data[11], 0);
+});
+
 test("detectAlphaBounds finds non-transparent pixels", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bounds-"));
   const imagePath = path.join(root, "sprite.png");
@@ -174,6 +218,51 @@ test("cropAlphaBoundsToPng crops transparent edges and applies padding", async (
   assert.equal(output.metadata.height, 4);
   assert.equal(output.metadata.format, "png");
   assert.equal(output.alphaCleanupThreshold, 2);
+});
+
+test("cropAlphaBoundsToPng can remove simple solid backgrounds before cropping", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-crop-solid-bg-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp({
+    create: {
+      width: 5,
+      height: 5,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 1,
+            height: 1,
+            channels: 4,
+            background: { r: 0, g: 0, b: 255, alpha: 1 }
+          }
+        })
+          .png()
+          .toBuffer(),
+        left: 2,
+        top: 2
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const output = await cropAlphaBoundsToPng({
+    sourcePath,
+    outputPath,
+    removeSolidBackground: true,
+    backgroundTolerance: 4
+  });
+
+  assert.deepEqual(output.bounds, { x: 2, y: 2, width: 1, height: 1 });
+  assert.equal(output.metadata.width, 1);
+  assert.equal(output.metadata.height, 1);
+  assert.equal(output.removedSolidBackground, true);
 });
 
 test("validateHorizontalFrameSet passes exact strips", () => {

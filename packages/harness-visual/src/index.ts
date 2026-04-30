@@ -57,6 +57,7 @@ export interface CroppedImageOutput extends NormalizedImageOutput {
   bounds: PixelBounds;
   padding: number;
   alphaCleanupThreshold: number;
+  removedSolidBackground: boolean;
 }
 
 export const VISUAL_HARNESS_POC_STAGES = [
@@ -141,6 +142,40 @@ export async function cleanupAlphaEdgesToPng(input: {
   };
 }
 
+export async function removeSolidBackgroundToPng(input: {
+  sourcePath: string;
+  outputPath: string;
+  tolerance?: number;
+  alphaCleanupThreshold?: number;
+}): Promise<NormalizedImageOutput> {
+  const tolerance = input.tolerance ?? 12;
+  const alphaCleanupThreshold = input.alphaCleanupThreshold ?? 2;
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const cleaned = cleanupAlphaEdges(
+    removeSolidBackground(data, tolerance),
+    alphaCleanupThreshold
+  );
+
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp(cleaned, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: 4
+    }
+  })
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath)
+  };
+}
+
 export async function detectAlphaBounds(input: {
   sourcePath: string;
   alphaThreshold?: number;
@@ -183,10 +218,26 @@ export async function cropAlphaBoundsToPng(input: {
   padding?: number;
   alphaThreshold?: number;
   alphaCleanupThreshold?: number;
+  removeSolidBackground?: boolean;
+  backgroundTolerance?: number;
 }): Promise<CroppedImageOutput> {
-  const sourceMetadata = await loadImageMetadata(input.sourcePath);
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  const preparedSourcePath = input.removeSolidBackground
+    ? path.join(path.dirname(input.outputPath), `.${path.basename(input.outputPath)}.background-cleaned.tmp.png`)
+    : input.sourcePath;
+
+  if (input.removeSolidBackground) {
+    await removeSolidBackgroundToPng({
+      sourcePath: input.sourcePath,
+      outputPath: preparedSourcePath,
+      tolerance: input.backgroundTolerance,
+      alphaCleanupThreshold: input.alphaCleanupThreshold
+    });
+  }
+
+  const sourceMetadata = await loadImageMetadata(preparedSourcePath);
   const detectedBounds = await detectAlphaBounds({
-    sourcePath: input.sourcePath,
+    sourcePath: preparedSourcePath,
     alphaThreshold: input.alphaThreshold
   });
   const bounds = detectedBounds ?? {
@@ -198,37 +249,43 @@ export async function cropAlphaBoundsToPng(input: {
   const padding = input.padding ?? 0;
   const alphaCleanupThreshold = input.alphaCleanupThreshold ?? 2;
 
-  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
-  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
-    .ensureAlpha()
-    .extract({ left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height })
-    .extend({
-      top: padding,
-      bottom: padding,
-      left: padding,
-      right: padding,
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
-    })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const cleaned = cleanupAlphaEdges(data, alphaCleanupThreshold);
+  try {
+    const { data, info } = await sharp(preparedSourcePath, { failOn: "error" })
+      .ensureAlpha()
+      .extract({ left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height })
+      .extend({
+        top: padding,
+        bottom: padding,
+        left: padding,
+        right: padding,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const cleaned = cleanupAlphaEdges(data, alphaCleanupThreshold);
 
-  await sharp(cleaned, {
-    raw: {
-      width: info.width,
-      height: info.height,
-      channels: 4
+    await sharp(cleaned, {
+      raw: {
+        width: info.width,
+        height: info.height,
+        channels: 4
+      }
+    })
+      .png()
+      .toFile(input.outputPath);
+  } finally {
+    if (input.removeSolidBackground) {
+      await fs.rm(preparedSourcePath, { force: true });
     }
-  })
-    .png()
-    .toFile(input.outputPath);
+  }
 
   return {
     path: input.outputPath,
     metadata: await loadImageMetadata(input.outputPath),
     bounds,
     padding,
-    alphaCleanupThreshold
+    alphaCleanupThreshold,
+    removedSolidBackground: input.removeSolidBackground === true
   };
 }
 
@@ -331,6 +388,33 @@ function cleanupAlphaEdges(data: Buffer, alphaThreshold: number): Buffer {
   for (let index = 0; index < cleaned.length; index += 4) {
     const alpha = cleaned[index + 3] ?? 0;
     if (alpha > alphaThreshold) continue;
+
+    cleaned[index] = 0;
+    cleaned[index + 1] = 0;
+    cleaned[index + 2] = 0;
+    cleaned[index + 3] = 0;
+  }
+
+  return cleaned;
+}
+
+function removeSolidBackground(data: Buffer, tolerance: number): Buffer {
+  const cleaned = Buffer.from(data);
+  const backgroundRed = cleaned[0] ?? 0;
+  const backgroundGreen = cleaned[1] ?? 0;
+  const backgroundBlue = cleaned[2] ?? 0;
+
+  for (let index = 0; index < cleaned.length; index += 4) {
+    const red = cleaned[index] ?? 0;
+    const green = cleaned[index + 1] ?? 0;
+    const blue = cleaned[index + 2] ?? 0;
+    const distance = Math.max(
+      Math.abs(red - backgroundRed),
+      Math.abs(green - backgroundGreen),
+      Math.abs(blue - backgroundBlue)
+    );
+
+    if (distance > tolerance) continue;
 
     cleaned[index] = 0;
     cleaned[index + 1] = 0;

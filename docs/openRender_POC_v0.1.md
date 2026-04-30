@@ -2223,7 +2223,7 @@ POC 이후 별도 판단.
 
 - [x] `--dry-run`
 - [x] `--json` output for all state-changing/query commands
-- [ ] basic background removal for simple solid backgrounds
+- [x] basic background removal for simple solid backgrounds
 - [x] better alpha edge cleanup
 - [ ] report visual overlays
 - [x] doctor command

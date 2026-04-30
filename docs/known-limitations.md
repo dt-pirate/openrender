@@ -14,9 +14,9 @@ This document tracks intentional v0.1 POC limits. These are not bugs unless the 
 
 - Alpha-based crop/padding is implemented.
 - Basic low-alpha edge cleanup is implemented.
+- Basic solid-background cleanup is implemented for simple top-left background matches.
 - PNG/WebP/JPEG metadata loading is implemented.
 - PNG normalization is implemented.
-- Solid-background cleanup is not implemented yet.
 - Advanced segmentation, matting, and high-quality background removal are out of scope.
 - Pivot alignment, jitter detection, and atlas packing are out of scope.
 
