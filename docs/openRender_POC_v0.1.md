@@ -602,7 +602,7 @@ Agent가 실행할 명령:
 ```bash
 openrender scan
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install
-openrender verify --run latest --open
+openrender verify --run latest
 openrender report --open
 ```
 
@@ -1074,7 +1074,6 @@ openrender install --run latest
 
 ```bash
 openrender verify --run latest
-openrender verify --run latest --open
 ```
 
 검증 항목:
