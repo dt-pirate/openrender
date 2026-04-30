@@ -75,7 +75,7 @@ This reads image metadata, builds a media contract, validates horizontal frame d
 
 ## 5. Compile And Install A Sprite
 
-Planned command:
+Implemented compile command:
 
 ```bash
 openrender compile sprite \
@@ -85,20 +85,18 @@ openrender compile sprite \
   --id enemy.slime.idle \
   --frames 6 \
   --frame-size 64x64 \
-  --layout horizontal \
-  --install
+  --layout horizontal
 ```
 
-Expected outputs:
+Compile output:
 
 ```text
-public/assets/enemies/slime_idle.png
-src/assets/openrender-manifest.ts
-src/openrender/animations/enemy-slime-idle.ts
-.openrender/reports/latest.html
-.openrender/reports/latest.json
-.openrender/previews/latest.html
+.openrender/artifacts/{run_id}/{asset_file}.png
+.openrender/runs/{run_id}.json
+.openrender/runs/latest.json
 ```
+
+Install is planned but not implemented yet.
 
 ## 6. Verify, Report, Roll Back
 

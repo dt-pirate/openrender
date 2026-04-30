@@ -12,7 +12,7 @@ openrender
 openrender init
 openrender scan
 openrender doctor
-openrender compile sprite --dry-run
+openrender compile sprite
 openrender --help
 openrender --version
 ```
@@ -56,9 +56,9 @@ Options:
 
 ### `openrender compile sprite`
 
-Builds a dry-run plan for converting a local raw image into a visual asset contract and Phaser-ready output paths. The command currently reads image metadata, detects alpha, creates the media contract, validates horizontal strip frame dimensions, and prints the output plan.
+Converts a local raw image into a compiled artifact under `.openrender/artifacts/{run_id}/`, creates a media contract, validates frame dimensions, builds a Phaser output plan, and writes `.openrender/runs/{run_id}.json` plus `.openrender/runs/latest.json`.
 
-Implemented mode:
+Dry-run mode prints the same contract and install plan without writing files:
 
 ```bash
 openrender compile sprite \
@@ -85,7 +85,7 @@ Options currently supported:
 - `--dry-run`
 - `--json`
 
-Non-dry-run compile and install are not implemented yet.
+`--install` is not implemented yet.
 
 ### `openrender install`
 

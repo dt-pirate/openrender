@@ -11,13 +11,16 @@ import {
   initializeOpenRenderProject,
   OPENRENDER_POC_VERSION,
   resolveInsideProject,
+  safeWriteProjectFile,
   scanProject,
   type MediaContract,
   type ProjectScan
 } from "@openrender/core";
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
 import {
+  cropAlphaBoundsToPng,
   loadImageMetadata,
+  normalizeImageToPng,
   planFrameSlices,
   validateGridFrameSet,
   validateHorizontalFrameSet,
@@ -92,11 +95,11 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (command === "compile" && subcommand === "sprite") {
-    const result = await compileSpriteDryRun(parsed);
+    const result = await compileSprite(parsed);
     if (parsed.flags.get("json") === true) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      printCompileSpriteDryRun(result);
+      printCompileSprite(result);
     }
     return result.validation?.ok === false ? 1 : 0;
   }
@@ -158,7 +161,7 @@ function requireStringFlag(parsed: ParsedFlags, name: string): string {
   return value;
 }
 
-async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDryRunResult> {
+async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> {
   const projectRoot = process.cwd();
   const sourcePath = resolveInsideProject(projectRoot, requireStringFlag(parsed, "from"));
   const id = requireStringFlag(parsed, "id");
@@ -174,8 +177,8 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
   if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
     throw new Error(`Unsupported sprite layout: ${layout}`);
   }
-  if (!dryRun) {
-    throw new Error("Only --dry-run is implemented for openrender compile sprite right now.");
+  if (!dryRun && parsed.flags.get("install") === true) {
+    throw new Error("--install is not implemented yet. Run compile first, then install once the install command is available.");
   }
 
   const metadata = await loadImageMetadata(sourcePath);
@@ -292,9 +295,10 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
     contract,
     compiledAssetPath: artifactPath
   });
-  run.status = "harness_ready";
+  let artifact: CompileSpriteResult["artifact"];
+  run.status = dryRun ? "harness_ready" : "completed";
   run.outputs = [
-    { kind: "compiled_asset", path: descriptor.assetPath },
+    { kind: "compiled_asset", path: artifactPath },
     { kind: "manifest", path: descriptor.manifestPath },
     ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : [])
   ];
@@ -311,6 +315,40 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
       }
     : undefined;
 
+  if (!dryRun && validation?.ok === false) {
+    run.status = "failed_harness";
+  } else if (!dryRun) {
+    const absoluteArtifactPath = resolveInsideProject(projectRoot, artifactPath);
+    if (contract.mediaType === "visual.sprite_frame_set") {
+      artifact = await normalizeImageToPng({
+        sourcePath,
+        outputPath: absoluteArtifactPath
+      });
+    } else {
+      if (outputSize) {
+        throw new Error("--output-size is only planned in dry-run mode right now.");
+      }
+
+      artifact = await cropAlphaBoundsToPng({
+        sourcePath,
+        outputPath: absoluteArtifactPath,
+        padding
+      });
+    }
+
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: path.posix.join(".openrender", "runs", `${run.runId}.json`),
+      contents: `${JSON.stringify(run, null, 2)}\n`
+    });
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: path.posix.join(".openrender", "runs", "latest.json"),
+      contents: `${JSON.stringify(run, null, 2)}\n`,
+      allowOverwrite: true
+    });
+  }
+
   return {
     dryRun,
     projectRoot,
@@ -318,6 +356,7 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
     contract,
     outputPlan: descriptor,
     installPlan,
+    artifact,
     generatedSources:
       contract.mediaType === "visual.sprite_frame_set"
         ? {
@@ -386,8 +425,8 @@ function printDoctor(result: DoctorResult): void {
   }
 }
 
-function printCompileSpriteDryRun(result: CompileSpriteDryRunResult): void {
-  console.log("openRender compile sprite --dry-run");
+function printCompileSprite(result: CompileSpriteResult): void {
+  console.log(`openRender compile sprite${result.dryRun ? " --dry-run" : ""}`);
   console.log("");
   console.log(`Project root: ${result.projectRoot}`);
   console.log(`Input: ${result.contract.sourcePath}`);
@@ -395,6 +434,7 @@ function printCompileSpriteDryRun(result: CompileSpriteDryRunResult): void {
   console.log(`Asset id: ${result.contract.id}`);
   console.log(`Media type: ${result.contract.mediaType}`);
   console.log(`Output asset: ${result.outputPlan.assetPath}`);
+  if (result.artifact) console.log(`Compiled artifact: ${result.run.outputs[0]?.path ?? result.artifact.path}`);
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
   console.log(`Install plan files: ${result.installPlan.files.length}`);
@@ -418,9 +458,9 @@ Usage:
   openrender init [--target phaser] [--framework vite] [--force]
   openrender scan [--json]
   openrender doctor [--json]
+  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--dry-run] [--json]
 
 Planned POC commands:
-  openrender compile sprite --dry-run
   openrender install
   openrender verify
   openrender report
@@ -428,13 +468,17 @@ Planned POC commands:
 `);
 }
 
-interface CompileSpriteDryRunResult {
+interface CompileSpriteResult {
   dryRun: boolean;
   projectRoot: string;
   input: ImageMetadata;
   contract: MediaContract;
   outputPlan: ReturnType<typeof createPhaserAssetDescriptor>;
   installPlan: ReturnType<typeof createPhaserInstallPlan>;
+  artifact?: {
+    path: string;
+    metadata: ImageMetadata;
+  };
   generatedSources: {
     manifest: string;
     animationHelper?: string;

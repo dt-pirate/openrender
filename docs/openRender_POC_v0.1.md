@@ -2051,7 +2051,7 @@ Tasks:
 - [x] 새 repo에서 `pnpm install`이 성공한다.
 - [x] `openrender init`이 config와 `.openrender`를 생성한다.
 - [x] `openrender scan`이 Vite + Phaser를 감지한다.
-- [ ] local raw image를 `visual.sprite_frame_set`으로 compile할 수 있다.
+- [x] local raw image를 `visual.sprite_frame_set` artifact로 compile할 수 있다.
 - [x] frame count / frame size validation helper가 작동한다.
 - [x] Phaser manifest TS generator가 동작한다.
 - [x] Phaser animation helper TS generator가 동작한다.

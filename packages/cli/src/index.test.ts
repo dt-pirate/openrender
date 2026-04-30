@@ -10,16 +10,14 @@ import { test } from "node:test";
 const execFileAsync = promisify(execFile);
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(currentDir, "index.js");
+const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
 test("compile sprite dry-run emits a transparent sprite plan as JSON", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-"));
   const imagePath = path.join(root, "sprite.png");
   await fs.writeFile(
     imagePath,
-    Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lP7plQAAAABJRU5ErkJggg==",
-      "base64"
-    )
+    Buffer.from(onePixelPng, "base64")
   );
 
   const { stdout } = await execFileAsync(process.execPath, [
@@ -54,10 +52,7 @@ test("compile sprite dry-run validates a horizontal frame set", async () => {
   const imagePath = path.join(root, "sprite.png");
   await fs.writeFile(
     imagePath,
-    Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lP7plQAAAABJRU5ErkJggg==",
-      "base64"
-    )
+    Buffer.from(onePixelPng, "base64")
   );
 
   const { stdout } = await execFileAsync(process.execPath, [
@@ -88,3 +83,47 @@ test("compile sprite dry-run validates a horizontal frame set", async () => {
   assert.equal(result.validation.ok, true);
   assert.deepEqual(result.frameSlices, [{ index: 0, x: 0, y: 0, width: 1, height: 1 }]);
 });
+
+test("compile sprite writes artifact and run JSON without install", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-compile-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(
+    imagePath,
+    Buffer.from(onePixelPng, "base64")
+  );
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const result = JSON.parse(stdout) as {
+    dryRun: boolean;
+    artifact: { path: string; metadata: { format: string } };
+    run: { runId: string; status: string; outputs: Array<{ path: string }> };
+  };
+
+  assert.equal(result.dryRun, false);
+  assert.equal(result.artifact.metadata.format, "png");
+  assert.equal(result.run.status, "completed");
+  assert.match(result.run.outputs[0]?.path ?? "", /^\.openrender\/artifacts\/run_/);
+  assert.equal(await fileExists(path.join(root, result.run.outputs[0]?.path ?? "")), true);
+  assert.equal(await fileExists(path.join(root, ".openrender/runs/latest.json")), true);
+});
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
