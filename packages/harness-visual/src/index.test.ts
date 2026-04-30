@@ -9,6 +9,8 @@ import {
   detectAlphaBounds,
   loadImageMetadata,
   normalizeImageToPng,
+  planFrameSlices,
+  validateGridFrameSet,
   validateHorizontalFrameSet
 } from "./index.js";
 
@@ -167,4 +169,42 @@ test("validateHorizontalFrameSet explains mismatches", () => {
 
   assert.equal(result.ok, false);
   assert.match(result.reason ?? "", /384x64/);
+});
+
+test("validateGridFrameSet validates grid capacity and dimensions", () => {
+  const result = validateGridFrameSet({
+    imageWidth: 128,
+    imageHeight: 64,
+    frames: 4,
+    frameWidth: 64,
+    frameHeight: 32
+  });
+
+  assert.equal(result.ok, true);
+});
+
+test("planFrameSlices creates horizontal and grid coordinates", () => {
+  assert.deepEqual(planFrameSlices({
+    layout: "horizontal_strip",
+    imageWidth: 192,
+    frames: 3,
+    frameWidth: 64,
+    frameHeight: 32
+  }), [
+    { index: 0, x: 0, y: 0, width: 64, height: 32 },
+    { index: 1, x: 64, y: 0, width: 64, height: 32 },
+    { index: 2, x: 128, y: 0, width: 64, height: 32 }
+  ]);
+
+  assert.deepEqual(planFrameSlices({
+    layout: "grid",
+    imageWidth: 128,
+    frames: 3,
+    frameWidth: 64,
+    frameHeight: 32
+  }), [
+    { index: 0, x: 0, y: 0, width: 64, height: 32 },
+    { index: 1, x: 64, y: 0, width: 64, height: 32 },
+    { index: 2, x: 0, y: 32, width: 64, height: 32 }
+  ]);
 });

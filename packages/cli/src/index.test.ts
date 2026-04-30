@@ -79,8 +79,10 @@ test("compile sprite dry-run validates a horizontal frame set", async () => {
   const result = JSON.parse(stdout) as {
     contract: { mediaType: string };
     validation: { ok: boolean };
+    frameSlices: Array<{ index: number; x: number; y: number; width: number; height: number }>;
   };
 
   assert.equal(result.contract.mediaType, "visual.sprite_frame_set");
   assert.equal(result.validation.ok, true);
+  assert.deepEqual(result.frameSlices, [{ index: 0, x: 0, y: 0, width: 1, height: 1 }]);
 });

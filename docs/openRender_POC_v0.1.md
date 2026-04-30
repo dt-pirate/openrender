@@ -1972,7 +1972,7 @@ Tasks:
 - [x] alpha detection
 - [x] basic alpha-bounds crop
 - [x] padding
-- [ ] frame slicing
+- [x] frame slicing metadata plan
 - [x] horizontal strip frame validation helper
 - [x] integrated frame validation in `compile sprite --dry-run`
 - [ ] harness metadata output
@@ -2205,7 +2205,7 @@ POC 이후 별도 판단.
 - [x] media contract TypeScript model
 - [x] run JSON TypeScript model
 - [x] image load/metadata extraction
-- [ ] crop/padding/frame slicing
+- [x] crop/padding/frame slicing metadata
 - [x] Phaser adapter skeleton
 - [x] manifest TS generation helper
 - [x] animation helper generation helper

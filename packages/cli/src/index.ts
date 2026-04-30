@@ -17,7 +17,10 @@ import {
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
 import {
   loadImageMetadata,
+  planFrameSlices,
+  validateGridFrameSet,
   validateHorizontalFrameSet,
+  type FrameSlice,
   type FrameValidationResult,
   type ImageMetadata
 } from "@openrender/harness-visual";
@@ -180,6 +183,7 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
   const outputSize = readOptionalSizeFlag(parsed, "output-size");
 
   let contract: MediaContract;
+  let frameSlices: FrameSlice[] | undefined;
   let validation: FrameValidationResult | undefined;
 
   if (frames !== undefined || frameSize !== undefined) {
@@ -229,15 +233,23 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
         frameHeight: contract.visual.frameHeight
       });
     } else {
-      validation = {
-        ok: false,
-        expectedWidth: 0,
-        expectedHeight: 0,
-        actualWidth: metadata.width,
-        actualHeight: metadata.height,
-        reason: "grid layout is not implemented yet"
-      };
+      validation = validateGridFrameSet({
+        imageWidth: metadata.width,
+        imageHeight: metadata.height,
+        frames: contract.visual.frames,
+        frameWidth: contract.visual.frameWidth,
+        frameHeight: contract.visual.frameHeight
+      });
     }
+    frameSlices = validation.ok
+      ? planFrameSlices({
+          layout: contract.visual.layout,
+          imageWidth: metadata.width,
+          frames: contract.visual.frames,
+          frameWidth: contract.visual.frameWidth,
+          frameHeight: contract.visual.frameHeight
+        })
+      : undefined;
   } else {
     const size = outputSize ?? { width: metadata.width, height: metadata.height };
     contract = {
@@ -309,6 +321,7 @@ async function compileSpriteDryRun(parsed: ParsedFlags): Promise<CompileSpriteDr
             manifest: generateManifestSource([contract])
           },
     validation,
+    frameSlices,
     run
   };
 }
@@ -380,6 +393,7 @@ function printCompileSpriteDryRun(result: CompileSpriteDryRunResult): void {
 
   if (result.validation) {
     console.log(`Frame validation: ${result.validation.ok ? "passed" : "failed"}`);
+    if (result.frameSlices) console.log(`Frame slices: ${result.frameSlices.length}`);
     if (result.validation.reason) console.log(`Reason: ${result.validation.reason}`);
   }
 }
@@ -417,6 +431,7 @@ interface CompileSpriteDryRunResult {
     animationHelper?: string;
   };
   validation?: FrameValidationResult;
+  frameSlices?: FrameSlice[];
   run: ReturnType<typeof createInitialRun>;
 }
 

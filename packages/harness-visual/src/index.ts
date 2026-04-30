@@ -26,6 +26,14 @@ export interface FrameValidationResult {
   reason?: string;
 }
 
+export interface FrameSlice {
+  index: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface VisualHarnessPlan {
   contractId: string;
   mediaType: SpriteFrameSetContract["mediaType"] | TransparentSpriteContract["mediaType"];
@@ -212,6 +220,59 @@ export function validateHorizontalFrameSet(input: {
       ? undefined
       : `horizontal strip requires ${expectedWidth}x${expectedHeight}, got ${input.imageWidth}x${input.imageHeight}`
   };
+}
+
+export function validateGridFrameSet(input: {
+  imageWidth: number;
+  imageHeight: number;
+  frames: number;
+  frameWidth: number;
+  frameHeight: number;
+}): FrameValidationResult {
+  const widthDivides = input.imageWidth % input.frameWidth === 0;
+  const heightDivides = input.imageHeight % input.frameHeight === 0;
+  const columns = Math.floor(input.imageWidth / input.frameWidth);
+  const rows = Math.floor(input.imageHeight / input.frameHeight);
+  const capacity = columns * rows;
+  const ok = widthDivides && heightDivides && input.frames <= capacity;
+
+  return {
+    ok,
+    expectedWidth: input.imageWidth,
+    expectedHeight: input.imageHeight,
+    actualWidth: input.imageWidth,
+    actualHeight: input.imageHeight,
+    reason: ok
+      ? undefined
+      : `grid requires dimensions divisible by ${input.frameWidth}x${input.frameHeight} and capacity >= ${input.frames}; capacity is ${capacity}`
+  };
+}
+
+export function planFrameSlices(input: {
+  layout: "horizontal" | "horizontal_strip" | "grid";
+  imageWidth: number;
+  frames: number;
+  frameWidth: number;
+  frameHeight: number;
+}): FrameSlice[] {
+  if (input.layout === "horizontal" || input.layout === "horizontal_strip") {
+    return Array.from({ length: input.frames }, (_, index) => ({
+      index,
+      x: index * input.frameWidth,
+      y: 0,
+      width: input.frameWidth,
+      height: input.frameHeight
+    }));
+  }
+
+  const columns = Math.floor(input.imageWidth / input.frameWidth);
+  return Array.from({ length: input.frames }, (_, index) => ({
+    index,
+    x: (index % columns) * input.frameWidth,
+    y: Math.floor(index / columns) * input.frameHeight,
+    width: input.frameWidth,
+    height: input.frameHeight
+  }));
 }
 
 function normalizeFormat(format: string | undefined): SupportedImageFormat | null {
