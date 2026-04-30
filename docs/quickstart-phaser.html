@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phaser Quickstart - openRender Docs</title>
+  <meta name="description" content="Run the v0.1 local workflow for a Vite + Phaser project: initialize, scan, compile, install, verify, report, and rollback.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <span class="brand-mark" aria-hidden="true">or</span>
+        <span>openRender</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="./quickstart-phaser.html">Docs</a>
+        <a href="./cli-reference.html">CLI</a>
+        <a href="./contracts.html">Contracts</a>
+        <a class="nav-cta" href="./developer-webpage.html#quickstart">Start</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <a class="is-active" href="./quickstart-phaser.html">Quickstart</a>
+          <a href="./cli-reference.html">CLI Reference</a>
+          <a href="./contracts.html">Contracts</a>
+          <a href="./troubleshooting.html">Troubleshooting</a>
+          <a href="./agent-usage.html">Agent Usage</a>
+          <a href="./known-limitations.html">Known Limitations</a>
+          <a href="./openRender_POC_v0.1.html">POC Spec</a>
+          <a href="./release-checklist.html">Release Checklist</a>
+          <a href="./developer-webpage-design-guide.html">Design Guide</a>
+      </nav>
+    </aside>
+
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>Phaser Quickstart</h1>
+        <p class="summary">Run the v0.1 local workflow for a Vite + Phaser project: initialize, scan, compile, install, verify, report, and rollback.</p>
+      </header>
+      <div class="doc-content">
+<p>This guide describes the intended v0.1 workflow for a Vite + Phaser project.</p>
+<h2 id="1-install">1. Install</h2>
+<p>During local development, run the CLI through the workspace:</p>
+<pre><code class="language-bash">pnpm dev:cli --help</code></pre>
+<p>After publishing the workspace packages, install the CLI package and use:</p>
+<pre><code class="language-bash">openrender --help</code></pre>
+<h2 id="2-initialize-a-target-project">2. Initialize A Target Project</h2>
+<p>From a Vite + Phaser project root:</p>
+<pre><code class="language-bash">openrender init --target phaser --framework vite</code></pre>
+<p>Expected files:</p>
+<pre><code class="language-text">openrender.config.json
+.openrender/
+  artifacts/
+  cache/
+  previews/
+  reports/
+  runs/
+  snapshots/</code></pre>
+<h2 id="3-scan">3. Scan</h2>
+<pre><code class="language-bash">openrender scan
+openrender scan --json</code></pre>
+<p>The scanner checks:</p>
+<ul>
+<li>package manager</li>
+<li>Vite dependency</li>
+<li>Phaser dependency</li>
+<li><code>public/assets</code></li>
+<li><code>src</code></li>
+<li>openRender config</li>
+<li>local state directory</li>
+</ul>
+<h2 id="4-dry-run-a-sprite-compile">4. Dry-Run A Sprite Compile</h2>
+<p>Implemented now:</p>
+<pre><code class="language-bash">openrender compile sprite \
+  --from ./tmp/slime_raw.png \
+  --target phaser \
+  --framework vite \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --layout horizontal \
+  --dry-run \
+  --json</code></pre>
+<p>This reads image metadata, builds a media contract, validates horizontal frame dimensions, and prints the Phaser output plan without writing files.</p>
+<h2 id="5-compile-and-install-a-sprite">5. Compile And Install A Sprite</h2>
+<p>Compile and install in one command:</p>
+<pre><code class="language-bash">openrender compile sprite \
+  --from ./tmp/slime_raw.png \
+  --target phaser \
+  --framework vite \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --layout horizontal \
+  --install</code></pre>
+<p>Compile output:</p>
+<pre><code class="language-text">.openrender/artifacts/{run_id}/{asset_file}.png
+.openrender/runs/{run_id}.json
+.openrender/runs/latest.json</code></pre>
+<p>Or install the latest compiled run separately:</p>
+<pre><code class="language-bash">openrender install --run latest</code></pre>
+<p>Expected install outputs:</p>
+<pre><code class="language-text">public/assets/{asset_file}.png
+src/assets/openrender-manifest.ts
+src/openrender/animations/{asset_file}.ts</code></pre>
+<h2 id="6-verify-report-roll-back">6. Verify, Report, Roll Back</h2>
+<pre><code class="language-bash">openrender verify --run latest
+openrender report --run latest --open
+openrender rollback --run latest</code></pre>
+<p><code>verify</code> is implemented for artifact, installed file, and image dimension checks. <code>report</code> writes local HTML/JSON reports. <code>rollback</code> restores snapshots or deletes files created by install.</p>
+<p>The v0.1 implementation should never require login, billing, cloud sync, telemetry, or a model provider key.</p>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

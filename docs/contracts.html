@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Media Contracts - openRender Docs</title>
+  <meta name="description" content="Media contract shapes used to turn generated images into explicit engine-ready artifacts.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <span class="brand-mark" aria-hidden="true">or</span>
+        <span>openRender</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="./quickstart-phaser.html">Docs</a>
+        <a href="./cli-reference.html">CLI</a>
+        <a href="./contracts.html">Contracts</a>
+        <a class="nav-cta" href="./developer-webpage.html#quickstart">Start</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <a href="./quickstart-phaser.html">Quickstart</a>
+          <a href="./cli-reference.html">CLI Reference</a>
+          <a class="is-active" href="./contracts.html">Contracts</a>
+          <a href="./troubleshooting.html">Troubleshooting</a>
+          <a href="./agent-usage.html">Agent Usage</a>
+          <a href="./known-limitations.html">Known Limitations</a>
+          <a href="./openRender_POC_v0.1.html">POC Spec</a>
+          <a href="./release-checklist.html">Release Checklist</a>
+          <a href="./developer-webpage-design-guide.html">Design Guide</a>
+      </nav>
+    </aside>
+
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>Media Contracts</h1>
+        <p class="summary">Media contract shapes used to turn generated images into explicit engine-ready artifacts.</p>
+      </header>
+      <div class="doc-content">
+<p>openRender uses media contracts instead of prompts as its core unit.</p>
+<p>A contract describes:</p>
+<ul>
+<li>input source</li>
+<li>media type</li>
+<li>target engine and framework</li>
+<li>output shape</li>
+<li>install destination</li>
+<li>generated code requirements</li>
+<li>verification expectations</li>
+</ul>
+<h2 id="poc-media-types">POC Media Types</h2>
+<pre><code class="language-text">visual.transparent_sprite
+visual.sprite_frame_set</code></pre>
+<p>Future media types are intentionally not implemented in v0.1:</p>
+<pre><code class="language-text">audio.sound_effect
+audio.music_loop
+video.cutscene_clip
+scene.prefab
+scene.patch</code></pre>
+<h2 id="sprite-frame-set">Sprite Frame Set</h2>
+<pre><code class="language-json">{
+  &quot;schemaVersion&quot;: &quot;0.1&quot;,
+  &quot;mediaType&quot;: &quot;visual.sprite_frame_set&quot;,
+  &quot;sourcePath&quot;: &quot;tmp/slime_raw.png&quot;,
+  &quot;target&quot;: {
+    &quot;engine&quot;: &quot;phaser&quot;,
+    &quot;framework&quot;: &quot;vite&quot;,
+    &quot;projectRoot&quot;: &quot;.&quot;
+  },
+  &quot;id&quot;: &quot;enemy.slime.idle&quot;,
+  &quot;visual&quot;: {
+    &quot;layout&quot;: &quot;horizontal_strip&quot;,
+    &quot;frames&quot;: 6,
+    &quot;frameWidth&quot;: 64,
+    &quot;frameHeight&quot;: 64,
+    &quot;padding&quot;: 4,
+    &quot;background&quot;: &quot;transparent&quot;,
+    &quot;outputFormat&quot;: &quot;png&quot;
+  },
+  &quot;install&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;assetRoot&quot;: &quot;public/assets&quot;,
+    &quot;writeManifest&quot;: true,
+    &quot;writeCodegen&quot;: true,
+    &quot;snapshotBeforeInstall&quot;: true
+  },
+  &quot;verify&quot;: {
+    &quot;preview&quot;: true,
+    &quot;checkFrameCount&quot;: true,
+    &quot;checkLoadPath&quot;: true
+  }
+}</code></pre>
+<h2 id="transparent-sprite">Transparent Sprite</h2>
+<pre><code class="language-json">{
+  &quot;schemaVersion&quot;: &quot;0.1&quot;,
+  &quot;mediaType&quot;: &quot;visual.transparent_sprite&quot;,
+  &quot;sourcePath&quot;: &quot;tmp/tree_raw.png&quot;,
+  &quot;target&quot;: {
+    &quot;engine&quot;: &quot;phaser&quot;,
+    &quot;framework&quot;: &quot;vite&quot;,
+    &quot;projectRoot&quot;: &quot;.&quot;
+  },
+  &quot;id&quot;: &quot;prop.tree.oak&quot;,
+  &quot;visual&quot;: {
+    &quot;outputWidth&quot;: 128,
+    &quot;outputHeight&quot;: 128,
+    &quot;padding&quot;: 8,
+    &quot;background&quot;: &quot;transparent&quot;,
+    &quot;outputFormat&quot;: &quot;png&quot;
+  },
+  &quot;install&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;assetRoot&quot;: &quot;public/assets/props&quot;,
+    &quot;writeManifest&quot;: true,
+    &quot;writeCodegen&quot;: false,
+    &quot;snapshotBeforeInstall&quot;: true
+  }
+}</code></pre>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

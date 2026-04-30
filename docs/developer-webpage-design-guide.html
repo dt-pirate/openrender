@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>openRender Developer Webpage Design Guide - openRender Docs</title>
+  <meta name="description" content="Design direction for the developer-facing openRender webpage and documentation pages.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <span class="brand-mark" aria-hidden="true">or</span>
+        <span>openRender</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="./quickstart-phaser.html">Docs</a>
+        <a href="./cli-reference.html">CLI</a>
+        <a href="./contracts.html">Contracts</a>
+        <a class="nav-cta" href="./developer-webpage.html#quickstart">Start</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <a href="./quickstart-phaser.html">Quickstart</a>
+          <a href="./cli-reference.html">CLI Reference</a>
+          <a href="./contracts.html">Contracts</a>
+          <a href="./troubleshooting.html">Troubleshooting</a>
+          <a href="./agent-usage.html">Agent Usage</a>
+          <a href="./known-limitations.html">Known Limitations</a>
+          <a href="./openRender_POC_v0.1.html">POC Spec</a>
+          <a href="./release-checklist.html">Release Checklist</a>
+          <a class="is-active" href="./developer-webpage-design-guide.html">Design Guide</a>
+      </nav>
+    </aside>
+
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>openRender Developer Webpage Design Guide</h1>
+        <p class="summary">Design direction for the developer-facing openRender webpage and documentation pages.</p>
+      </header>
+      <div class="doc-content">
+<p>Status: Draft guide Date: 2026-04-30 Source spec: <code>docs/openRender_POC_v0.1.md</code> Target surface: Simple developer-facing public webpage Primary inspiration: quiet developer-tool restraint, not Ollama's exact structure or visual identity</p>
+<h2 id="1-purpose">1. Purpose</h2>
+<p>This document defines the design direction for a simple openRender developer webpage.</p>
+<p>The page should make one idea immediately clear:</p>
+<pre><code class="language-text">openRender is a local-first compiler that turns AI-generated media into engine-ready game assets.</code></pre>
+<p>The first public page is not a SaaS landing page, not a hosted playground, and not a generic AI art product page. It is a compact developer page for people who want to understand and try a local CLI.</p>
+<p>The page should feel quiet, direct, command-line friendly, open-source oriented, and easy to start. It must not borrow Ollama's recognizable composition. openRender needs its own identity: media-to-engine pipelines, Phaser-ready artifacts, local reports, rollback, and agent-friendly commands.</p>
+<p>The hero should carry a product-specific run preview instead of a mascot. Use a compact artifact/report surface, sprite-strip preview, file paths, and rollback status to make the page approachable without copying another developer-tool homepage.</p>
+<h2 id="2-design-principles">2. Design Principles</h2>
+<h3 id="2-1-developer-first-not-marketing-first">2.1. Developer-first, not marketing-first</h3>
+<p>The page should prioritize comprehension over persuasion.</p>
+<p>Use short, concrete claims:</p>
+<ul>
+<li>Local-first CLI</li>
+<li>Image-to-Phaser POC</li>
+<li>Installable generated assets</li>
+<li>Report, verify, rollback</li>
+<li>No account, no billing, no cloud dependency in v0.1</li>
+</ul>
+<p>Avoid broad AI hype:</p>
+<ul>
+<li>Do not say &quot;revolutionary&quot;</li>
+<li>Do not say &quot;all-in-one game creation platform&quot;</li>
+<li>Do not imply model generation is included</li>
+<li>Do not imply cloud hosting exists</li>
+<li>Do not imply Unity/Godot support exists in v0.1</li>
+</ul>
+<h3 id="2-2-restrained-but-not-derivative">2.2. Restrained, but not derivative</h3>
+<p>Borrow these broad qualities from strong developer-tool pages:</p>
+<ul>
+<li>Minimal top navigation</li>
+<li>Restrained hero type</li>
+<li>Immediate local workflow signal</li>
+<li>Strong first CTA</li>
+<li>Calm neutral background</li>
+<li>Small product-specific visual surface</li>
+<li>Simple section rhythm</li>
+<li>Sparse copy</li>
+<li>Developer trust through exact commands</li>
+</ul>
+<p>Do not copy these qualities too closely:</p>
+<ul>
+<li>Do not reuse Ollama's hero structure</li>
+<li>Do not reuse the same hero wording rhythm</li>
+<li>Do not center the entire identity around one install command only</li>
+<li>Do not imitate Ollama's exact spacing, color, typography, button shape, or homepage section order</li>
+<li>Do not use the same nav item set</li>
+<li>Do not use a cloud pricing block in the POC page</li>
+<li>Do not use product phrasing that could be mistaken for Ollama's model runtime positioning</li>
+</ul>
+<p>openRender's own signal should be:</p>
+<pre><code class="language-text">raw image -&gt; contract -&gt; Phaser-ready asset -&gt; install -&gt; report -&gt; rollback</code></pre>
+<h3 id="2-3-local-first-trust">2.3. Local-first trust</h3>
+<p>The page should repeatedly reinforce that v0.1 is local:</p>
+<ul>
+<li>The CLI runs in the user's project</li>
+<li>Generated artifacts stay local</li>
+<li>Reports are local HTML/JSON files</li>
+<li>There is no account</li>
+<li>There is no billing</li>
+<li>There is no cloud API</li>
+<li>There is no model provider call in the POC path</li>
+</ul>
+<p>This should feel like a product constraint, not a disclaimer.</p>
+<h3 id="2-4-actual-product-surface-over-abstraction">2.4. Actual product surface over abstraction</h3>
+<p>The page must show the thing developers can run.</p>
+<p>Primary visuals should be:</p>
+<ul>
+<li>Terminal command block</li>
+<li>Small openRender-specific line illustration</li>
+<li>Media pipeline strip</li>
+<li>Example output file tree</li>
+<li>Report preview screenshot or report mock</li>
+<li>Phaser helper code snippet</li>
+</ul>
+<p>Avoid purely decorative visuals:</p>
+<ul>
+<li>No gradient blobs</li>
+<li>No abstract AI network illustrations</li>
+<li>No floating 3D shapes</li>
+<li>No generic robot imagery; the spot visual must be specific to rendering, sprites, files, or local reports</li>
+<li>No stock game-art collage</li>
+</ul>
+<h2 id="3-target-audience">3. Target Audience</h2>
+<h3 id="3-1-primary-user">3.1. Primary user</h3>
+<p>An individual developer using Codex, Cursor, Claude Code, or another coding agent to build a Web 2D prototype.</p>
+<p>They already have or can create:</p>
+<ul>
+<li>A Vite project</li>
+<li>Phaser installed</li>
+<li>A generated raw image</li>
+<li>A terminal workflow</li>
+</ul>
+<p>They want:</p>
+<ul>
+<li>A repeatable way to turn raw generated images into usable game assets</li>
+<li>Less custom scripting</li>
+<li>Stable frame slicing and output paths</li>
+<li>A report that both a human and an agent can inspect</li>
+<li>Safe rollback if generated files are wrong</li>
+</ul>
+<h3 id="3-2-secondary-user">3.2. Secondary user</h3>
+<p>An open-source or toolchain-oriented developer evaluating whether openRender is a useful compiler layer for agentic game development.</p>
+<p>They care about:</p>
+<ul>
+<li>Clear scope</li>
+<li>Clean contracts</li>
+<li>Local operation</li>
+<li>Adapter architecture</li>
+<li>Future support for media beyond images</li>
+</ul>
+<h3 id="3-3-non-target-users-for-this-page">3.3. Non-target users for this page</h3>
+<p>The page should not optimize for:</p>
+<ul>
+<li>Artists looking for an AI image generator</li>
+<li>Buyers looking for an asset marketplace</li>
+<li>SaaS users looking for hosted generation</li>
+<li>Teams comparing enterprise pricing</li>
+<li>Users seeking Unity/Godot support today</li>
+</ul>
+<h2 id="4-recommended-page-strategy">4. Recommended Page Strategy</h2>
+<h3 id="4-1-chosen-approach">4.1. Chosen approach</h3>
+<p>Use a single-page developer homepage with a sparse, documentation-adjacent layout:</p>
+<pre><code class="language-text">Header
+Hero with command and pipeline visual
+Quickstart
+How it works
+What gets written
+Local report and rollback
+Scope and limitations
+Developer docs footer</code></pre>
+<p>This approach is recommended because openRender is still a v0.1 POC. The page should help a developer understand and try the CLI, not create a large commercial impression that the product cannot yet support.</p>
+<h3 id="4-2-rejected-approach-saas-landing-page">4.2. Rejected approach: SaaS landing page</h3>
+<p>Do not use:</p>
+<ul>
+<li>Big gradient hero</li>
+<li>Customer logos</li>
+<li>Pricing cards</li>
+<li>&quot;Book a demo&quot;</li>
+<li>Feature grid with vague AI claims</li>
+<li>Cloud-first language</li>
+</ul>
+<p>Why rejected:</p>
+<p>The POC explicitly excludes account, billing, cloud API, and hosted playground. A SaaS page would misrepresent the project.</p>
+<h3 id="4-3-rejected-approach-full-documentation-homepage">4.3. Rejected approach: full documentation homepage</h3>
+<p>Do not make the first screen look like only a docs portal.</p>
+<p>Why rejected:</p>
+<p>The page still needs a strong product signal. Developers should understand the category and value before diving into CLI details.</p>
+<h3 id="4-4-rejected-approach-game-art-showcase">4.4. Rejected approach: game-art showcase</h3>
+<p>Do not make the page look like an asset generator or art gallery.</p>
+<p>Why rejected:</p>
+<p>openRender does not generate images. It compiles already-generated media into engine-ready project components.</p>
+<h2 id="5-information-architecture">5. Information Architecture</h2>
+<h3 id="5-1-header">5.1. Header</h3>
+<p>Header goals:</p>
+<ul>
+<li>Make the brand visible</li>
+<li>Keep navigation small</li>
+<li>Prioritize install/get started</li>
+</ul>
+<p>Recommended nav:</p>
+<pre><code class="language-text">openRender
+Docs
+CLI
+Contracts
+GitHub</code></pre>
+<p>Recommended actions:</p>
+<pre><code class="language-text">Get started</code></pre>
+<p>Header layout:</p>
+<ul>
+<li>Left: <code>openRender</code> wordmark</li>
+<li>Center or right: small text links</li>
+<li>Far right: bordered or filled <code>Get started</code> button</li>
+<li>Mobile: brand left, menu icon right, CTA inside menu</li>
+</ul>
+<p>Avoid:</p>
+<ul>
+<li>Pricing</li>
+<li>Sign in</li>
+<li>Dashboard</li>
+<li>Cloud</li>
+<li>Playground</li>
+</ul>
+<p>These surfaces are outside the v0.1 POC.</p>
+<h3 id="5-2-hero">5.2. Hero</h3>
+<p>The hero should identify openRender as a product immediately.</p>
+<p>Recommended H1:</p>
+<pre><code class="language-text">openRender</code></pre>
+<p>Recommended supporting line:</p>
+<pre><code class="language-text">Local-first media-to-engine compiler for agentic game development.</code></pre>
+<p>Alternative supporting line:</p>
+<pre><code class="language-text">Turn raw generated images into Phaser-ready assets, reports, and rollbackable local project changes.</code></pre>
+<p>Hero should include:</p>
+<ul>
+<li>One-line category</li>
+<li>Short paragraph</li>
+<li>Terminal command</li>
+<li>Primary CTA</li>
+<li>Secondary docs link</li>
+<li>Compact pipeline visual</li>
+</ul>
+<p>Hero should not exceed the first viewport. The next section should peek above the fold on common desktop and mobile sizes.</p>
+<p>Recommended hero composition:</p>
+<pre><code class="language-text">Left column:
+  scope badge
+  concise product headline
+  short local-first explanation
+  CTA row
+
+Right column:
+  local run/report preview with sprite strip, output paths, and rollback status</code></pre>
+<p>On mobile:</p>
+<pre><code class="language-text">Brand headline
+Short description
+CTA row
+Run/report preview</code></pre>
+<p>The hero should not use a mascot or large decorative illustration. It can use a compact report panel because that represents a real product surface.</p>
+<h3 id="5-3-hero-command-block">5.3. Hero command block</h3>
+<p>The command is supporting evidence, not the entire hero.</p>
+<p>Recommended hero command:</p>
+<pre><code class="language-bash">openrender compile sprite --install --open-report</code></pre>
+<p>Avoid a centered command-pill hero. The page should lead with what openRender compiles and what it writes to disk, then expose the command inside the run preview.</p>
+<p>Detailed source-checkout command:</p>
+<pre><code class="language-bash">pnpm dev:cli compile sprite \
+  --from tmp/slime_raw.png \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --install \
+  --json</code></pre>
+<p>Detailed public packaged command:</p>
+<pre><code class="language-bash">openrender compile sprite \
+  --from tmp/slime_raw.png \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --install \
+  --json</code></pre>
+<p>The webpage should choose command surfaces depending on release state:</p>
+<ul>
+<li>Hero: show a compact command only as part of the run/report preview</li>
+<li>Quickstart: show complete compile, verify, and report commands</li>
+<li>Source checkout note: mention <code>pnpm dev:cli</code> as the development fallback</li>
+</ul>
+<p>Command block behavior:</p>
+<ul>
+<li>Include a copy button with a copy icon</li>
+<li>Keep monospace text readable</li>
+<li>Wrap long commands cleanly on the page; avoid visible horizontal scroll on desktop</li>
+<li>Use syntax highlighting lightly</li>
+<li>Show a small label such as <code>local CLI</code></li>
+</ul>
+<p>Do not include:</p>
+<ul>
+<li>curl install script unless the package install path is real</li>
+<li>API key setup</li>
+<li>login command</li>
+<li>cloud endpoint</li>
+</ul>
+<h3 id="5-4-hero-product-visual">5.4. Hero product visual</h3>
+<p>The hero should include an openRender-specific run/report visual instead of a spot illustration.</p>
+<p>Visual direction:</p>
+<ul>
+<li>Compact report-style panel</li>
+<li>Sprite strip or transparent asset preview</li>
+<li>Output file paths</li>
+<li>Contract, frame, and rollback status</li>
+<li>Light neutral surface with one restrained accent color</li>
+</ul>
+<p>The visual must not copy Ollama's character, silhouette, centered mascot layout, or command-pill-first composition.</p>
+<p>Avoid:</p>
+<ul>
+<li>Generic robot head</li>
+<li>Parody of another brand's character</li>
+<li>Large mascot that dominates the page</li>
+<li>Cute character as the primary brand signal</li>
+<li>Complex SVG scene</li>
+<li>Multi-color illustration</li>
+</ul>
+<h3 id="5-5-pipeline-visual">5.5. Pipeline visual</h3>
+<p>The page needs one openRender-specific visual identity element.</p>
+<p>Recommended pipeline:</p>
+<pre><code class="language-text">raw image
+contract
+visual harness
+Phaser output
+local report
+rollback</code></pre>
+<p>Visual style:</p>
+<ul>
+<li>Use small rectangular nodes</li>
+<li>Use thin connector lines</li>
+<li>Use file/path labels</li>
+<li>Include one tiny sprite frame strip</li>
+<li>Include one report thumbnail</li>
+</ul>
+<p>This visual should be precise, not decorative.</p>
+<p>Do not use:</p>
+<ul>
+<li>A generic flowchart that could belong to any AI tool</li>
+<li>Heavy SVG illustration</li>
+<li>Animated particles</li>
+<li>Large mascot</li>
+</ul>
+<h3 id="5-6-quickstart-section">5.6. Quickstart section</h3>
+<p>Purpose:</p>
+<p>Help developers know the first three commands.</p>
+<p>Recommended content:</p>
+<pre><code class="language-text">1. Initialize local state
+2. Compile and install a sprite
+3. Verify and open the report</code></pre>
+<p>Example:</p>
+<pre><code class="language-bash">openrender init
+openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install
+openrender verify --run latest
+openrender report --run latest --open</code></pre>
+<p>Layout:</p>
+<ul>
+<li>Full-width section</li>
+<li>Three compact steps</li>
+<li>Each step has a short title, one command, and one sentence</li>
+<li>Avoid nested cards</li>
+<li>If cards are used, use one card per step only</li>
+</ul>
+<h3 id="5-7-how-it-works-section">5.7. How it works section</h3>
+<p>Purpose:</p>
+<p>Explain the actual compiler loop from the POC spec.</p>
+<p>Recommended section title:</p>
+<pre><code class="language-text">From generated media to playable project files</code></pre>
+<p>Content blocks:</p>
+<ul>
+<li><code>Scan</code>: detects Vite, Phaser, source root, asset root</li>
+<li><code>Compile</code>: reads image metadata, validates frames, writes artifacts</li>
+<li><code>Install</code>: copies assets and writes manifest/codegen</li>
+<li><code>Verify</code>: checks artifacts and installed files</li>
+<li><code>Report</code>: writes local HTML/JSON</li>
+<li><code>Rollback</code>: restores snapshots or deletes generated files</li>
+</ul>
+<p>Each block should name real files:</p>
+<pre><code class="language-text">.openrender/artifacts/{run_id}/
+.openrender/runs/latest.json
+public/assets/{asset}.png
+src/assets/openrender-manifest.ts
+src/openrender/animations/{asset}.ts
+.openrender/reports/latest.html</code></pre>
+<h3 id="5-8-what-gets-written-section">5.8. What gets written section</h3>
+<p>Purpose:</p>
+<p>Build trust by showing exactly what openRender changes.</p>
+<p>Recommended layout:</p>
+<pre><code class="language-text">Before
+  tmp/slime_raw.png
+
+After
+  .openrender/artifacts/run_.../enemy-slime-idle.png
+  public/assets/enemy-slime-idle.png
+  src/assets/openrender-manifest.ts
+  src/openrender/animations/enemy-slime-idle.ts
+  .openrender/reports/latest.html</code></pre>
+<p>Visual treatment:</p>
+<ul>
+<li>Use a file tree panel</li>
+<li>Highlight generated files</li>
+<li>Use muted labels for local state</li>
+<li>Use a clear &quot;no upload&quot; note nearby</li>
+</ul>
+<p>Avoid saying &quot;safe&quot; without showing why. Instead show:</p>
+<pre><code class="language-text">Snapshots are written before install. Rollback restores or deletes installed files.</code></pre>
+<h3 id="5-9-report-section">5.9. Report section</h3>
+<p>Purpose:</p>
+<p>Show that openRender is not just a converter. It creates inspectable records.</p>
+<p>Recommended title:</p>
+<pre><code class="language-text">Reports for humans and agents</code></pre>
+<p>Show:</p>
+<ul>
+<li>HTML report preview</li>
+<li>JSON run record mention</li>
+<li>Visual overlay for asset bounds or frame slices</li>
+<li>Verification checks</li>
+</ul>
+<p>Copy should emphasize:</p>
+<ul>
+<li>The agent can read the run JSON</li>
+<li>A human can inspect the HTML report</li>
+<li>The report is local</li>
+<li>No project files are uploaded</li>
+</ul>
+<h3 id="5-10-scope-section">5.10. Scope section</h3>
+<p>Purpose:</p>
+<p>Set expectations without weakening the page.</p>
+<p>Recommended title:</p>
+<pre><code class="language-text">v0.1 scope is intentionally narrow</code></pre>
+<p>Use two columns:</p>
+<p>Included:</p>
+<ul>
+<li>Vite + Phaser</li>
+<li>Image assets</li>
+<li>Transparent sprites</li>
+<li>Sprite frame sets</li>
+<li>Local CLI</li>
+<li>Local report</li>
+<li>Rollback</li>
+</ul>
+<p>Not included:</p>
+<ul>
+<li>Account</li>
+<li>Billing</li>
+<li>Cloud API</li>
+<li>Hosted playground</li>
+<li>Model provider calls</li>
+<li>Audio/video compiler</li>
+<li>Full MCP server</li>
+<li>Godot/Pixi/Unity adapters</li>
+</ul>
+<p>This section should be visually calm and direct. It should not feel like legal fine print.</p>
+<h3 id="5-11-footer">5.11. Footer</h3>
+<p>Footer links:</p>
+<ul>
+<li>Docs</li>
+<li>Quickstart</li>
+<li>CLI reference</li>
+<li>Contracts</li>
+<li>GitHub</li>
+<li>License</li>
+</ul>
+<p>Footer tone:</p>
+<ul>
+<li>Sparse</li>
+<li>No newsletter unless there is a real mailing list</li>
+<li>No social links unless official accounts exist</li>
+</ul>
+<h2 id="6-visual-system">6. Visual System</h2>
+<h3 id="6-1-overall-feel">6.1. Overall feel</h3>
+<p>Desired feel:</p>
+<ul>
+<li>Quiet</li>
+<li>Technical</li>
+<li>Precise</li>
+<li>Local</li>
+<li>Open-source</li>
+<li>Slightly tactile through file/report surfaces</li>
+</ul>
+<p>Avoid:</p>
+<ul>
+<li>Neon cyberpunk</li>
+<li>Purple AI SaaS gradients</li>
+<li>Heavy dark-mode dashboard</li>
+<li>Beige-only editorial page</li>
+<li>Game marketplace look</li>
+<li>Decorative card-heavy page</li>
+</ul>
+<h3 id="6-2-color-palette">6.2. Color palette</h3>
+<p>The palette should be neutral and developer-friendly, but not an Ollama clone.</p>
+<p>Recommended tokens:</p>
+<pre><code class="language-css">--color-canvas: #fafaf7;
+--color-surface: #ffffff;
+--color-ink: #141414;
+--color-muted: #66625d;
+--color-subtle: #8a857d;
+--color-rule: #e4e0d7;
+--color-code-bg: #111111;
+--color-code-fg: #f6f3ec;
+--color-accent: #0f766e;
+--color-accent-strong: #0d9488;
+--color-link: #1d4ed8;
+--color-success: #16a34a;
+--color-warning: #b45309;</code></pre>
+<p>Usage:</p>
+<ul>
+<li>Canvas uses warm off-white, but keep it close to white</li>
+<li>Main text uses near-black</li>
+<li>Code panels use black or deep charcoal</li>
+<li>Accent teal is for pipeline edges, verification, and active UI</li>
+<li>Blue is for documentation links</li>
+<li>Do not let beige, teal, blue, or dark charcoal dominate the whole page alone</li>
+</ul>
+<p>Do not use:</p>
+<ul>
+<li>Purple-blue gradient as the brand signature</li>
+<li>Large beige/tan fields with brown text</li>
+<li>Blue/slate-only dashboard palette</li>
+<li>Rainbow AI gradient</li>
+</ul>
+<h3 id="6-3-typography">6.3. Typography</h3>
+<p>Recommended typography:</p>
+<ul>
+<li>Sans: system UI stack or a clean grotesk such as Inter/Geist if already available</li>
+<li>Mono: <code>ui-monospace</code>, <code>SFMono-Regular</code>, <code>Menlo</code>, <code>Monaco</code>, <code>Consolas</code>, monospace</li>
+</ul>
+<p>Type scale:</p>
+<pre><code class="language-css">--text-xs: 12px;
+--text-sm: 14px;
+--text-base: 16px;
+--text-md: 18px;
+--text-lg: 22px;
+--text-xl: 30px;
+--text-hero: 64px;</code></pre>
+<p>Responsive type:</p>
+<ul>
+<li>Do not scale font size directly with viewport width</li>
+<li>Use breakpoint-based sizes</li>
+<li>Keep mobile hero around 42px</li>
+<li>Keep desktop hero around 64px to 72px</li>
+<li>Letter spacing should stay at <code>0</code></li>
+</ul>
+<p>Tone:</p>
+<ul>
+<li>H1 should be calm and large</li>
+<li>Body copy should be concise</li>
+<li>Code should be highly readable</li>
+<li>Section headings should be direct, not clever</li>
+</ul>
+<h3 id="6-4-layout">6.4. Layout</h3>
+<p>Page width:</p>
+<pre><code class="language-css">--max-content: 1120px;
+--max-readable: 720px;</code></pre>
+<p>Spacing:</p>
+<pre><code class="language-css">--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 24px;
+--space-6: 32px;
+--space-7: 48px;
+--space-8: 72px;
+--space-9: 96px;</code></pre>
+<p>Layout rules:</p>
+<ul>
+<li>Use wide whitespace</li>
+<li>Keep content aligned to a consistent grid</li>
+<li>Prefer full-width sections with constrained inner content</li>
+<li>Do not put page sections inside large floating cards</li>
+<li>Do not put cards inside cards</li>
+<li>Use cards only for repeated items, terminal panels, report panels, or step blocks</li>
+<li>Border radius should be 8px or less</li>
+<li>Rules/dividers should be thin and quiet</li>
+</ul>
+<h3 id="6-5-component-style">6.5. Component style</h3>
+<p>Buttons:</p>
+<ul>
+<li>Primary: filled dark or accent</li>
+<li>Secondary: subtle outline</li>
+<li>Height: 40px to 44px</li>
+<li>Radius: 6px to 8px</li>
+<li>Use icons only when they improve recognition</li>
+<li>For copy buttons, use a copy icon with tooltip</li>
+</ul>
+<p>Links:</p>
+<ul>
+<li>Underline on hover</li>
+<li>Keep nav links understated</li>
+<li>Use blue or ink, not bright accent everywhere</li>
+</ul>
+<p>Code panels:</p>
+<ul>
+<li>Dark background</li>
+<li>Rounded 8px</li>
+<li>Thin border</li>
+<li>Copy button top right</li>
+<li>Preserve command indentation</li>
+<li>Use horizontal scroll on mobile</li>
+</ul>
+<p>File tree panels:</p>
+<ul>
+<li>Light surface</li>
+<li>Mono text</li>
+<li>Muted path prefixes</li>
+<li>Accent highlight for generated outputs</li>
+</ul>
+<p>Pills/badges:</p>
+<ul>
+<li>Use sparingly</li>
+<li>Good labels: <code>local</code>, <code>v0.1</code>, <code>Phaser</code>, <code>image-only</code>, <code>no account</code></li>
+<li>Avoid filling the page with badges</li>
+</ul>
+<p>Icons:</p>
+<ul>
+<li>Use lucide icons if the frontend stack includes lucide</li>
+<li>Suggested icons: Terminal, FileCode, Image, RotateCcw, CheckCircle, Shield, Copy, Github</li>
+<li>Keep icon strokes thin and consistent</li>
+</ul>
+<h2 id="7-copywriting-guide">7. Copywriting Guide</h2>
+<h3 id="7-1-voice">7.1. Voice</h3>
+<p>Voice should be:</p>
+<ul>
+<li>Direct</li>
+<li>Plain</li>
+<li>Technically specific</li>
+<li>Developer-respectful</li>
+<li>Honest about scope</li>
+</ul>
+<p>Do not over-explain the obvious. Do not hide limitations.</p>
+<h3 id="7-2-recommended-hero-copy">7.2. Recommended hero copy</h3>
+<p>Option A:</p>
+<pre><code class="language-text">openRender
+Local-first media-to-engine compiler for agentic game development.
+
+Turn raw generated images into Phaser-ready assets, codegen, local reports, and rollbackable project changes.</code></pre>
+<p>Option B:</p>
+<pre><code class="language-text">openRender
+Compile generated media into game-ready project files.
+
+Start with image-to-Phaser assets today. Keep the workflow local, inspectable, and agent-friendly.</code></pre>
+<p>Option C:</p>
+<pre><code class="language-text">openRender
+From raw image to Phaser-ready asset.
+
+A local CLI for compiling, installing, verifying, reporting, and rolling back generated game media.</code></pre>
+<p>Recommended: Option A. It is closest to the POC positioning while still being short.</p>
+<h3 id="7-3-cta-copy">7.3. CTA copy</h3>
+<p>Primary CTA:</p>
+<pre><code class="language-text">Get started</code></pre>
+<p>Secondary CTA:</p>
+<pre><code class="language-text">Read the CLI reference</code></pre>
+<p>Alternative:</p>
+<pre><code class="language-text">View contracts</code></pre>
+<p>Avoid:</p>
+<pre><code class="language-text">Start building with AI
+Try the cloud
+Generate assets
+Sign up free</code></pre>
+<p>These either overpromise or contradict POC scope.</p>
+<h3 id="7-4-section-title-examples">7.4. Section title examples</h3>
+<p>Good:</p>
+<pre><code class="language-text">Run it inside your project
+What openRender writes
+Reports for humans and agents
+v0.1 scope is intentionally narrow
+Designed for rollback</code></pre>
+<p>Avoid:</p>
+<pre><code class="language-text">Unleash creativity
+The future of game assets
+AI-powered magic
+Create anything instantly</code></pre>
+<h2 id="8-page-wireframe">8. Page Wireframe</h2>
+<h3 id="8-1-desktop-wireframe">8.1. Desktop wireframe</h3>
+<pre><code class="language-text">+--------------------------------------------------------------+
+| openRender                         Docs  CLI  Contracts Start |
++--------------------------------------------------------------+
+| Local POC badge                  run_20260430_001 / passed    |
+| A compiler for generated         [transparent sprite strip]   |
+| game media.                      contract / frames / rollback |
+|                                  input / asset / helper       |
+| [Start local loop] [POC spec]    command + copy icon          |
++--------------------------------------------------------------+
+| The local loop: init / compile + install / report             |
++--------------------------------------------------------------+
+| Visible files: .openrender, public assets, TypeScript helpers |
++--------------------------------------------------------------+
+| Built for agents: contract / adapter / report                 |
++--------------------------------------------------------------+
+| Narrow v0.1 scope                                             |
++--------------------------------------------------------------+</code></pre>
+<h3 id="8-2-mobile-wireframe">8.2. Mobile wireframe</h3>
+<pre><code class="language-text">+--------------------------+
+| openRender               |
++--------------------------+
+| Local POC badge          |
+| A compiler for generated |
+| game media.              |
+| [Start local loop]       |
+| [POC spec]               |
+|                          |
+| run report / passed      |
+| sprite strip preview     |
+| output paths             |
+| command + copy icon      |
++--------------------------+
+| Local loop               |
+| Step 1                   |
+| Step 2                   |
+| Step 3                   |
++--------------------------+</code></pre>
+<p>Mobile requirements:</p>
+<ul>
+<li>No overlapping text</li>
+<li>No clipped command buttons</li>
+<li>Command blocks scroll horizontally</li>
+<li>CTA buttons can stack</li>
+<li>Header remains simple</li>
+<li>Pipeline visual can become a vertical list</li>
+</ul>
+<h2 id="9-interaction-guidelines">9. Interaction Guidelines</h2>
+<h3 id="9-1-copy-command">9.1. Copy command</h3>
+<p>Command panels should include copy behavior.</p>
+<p>States:</p>
+<ul>
+<li>Default: copy icon</li>
+<li>Hover: tooltip <code>Copy command</code></li>
+<li>Copied: check icon and <code>Copied</code></li>
+<li>Error: keep command visible, no intrusive alert</li>
+</ul>
+<h3 id="9-2-tabs-or-segmented-controls">9.2. Tabs or segmented controls</h3>
+<p>Use tabs only where they reduce clutter.</p>
+<p>Possible tab groups:</p>
+<ul>
+<li><code>From source</code> / <code>Installed CLI</code></li>
+<li><code>Sprite frame set</code> / <code>Transparent sprite</code></li>
+<li><code>HTML report</code> / <code>JSON run</code></li>
+</ul>
+<p>Do not add tabs just for visual sophistication.</p>
+<h3 id="9-3-motion">9.3. Motion</h3>
+<p>Motion should be minimal:</p>
+<ul>
+<li>Subtle hover states</li>
+<li>Optional short pipeline reveal on first load</li>
+<li>No constant animation</li>
+<li>No animated background</li>
+<li>No scroll-jacking</li>
+</ul>
+<p>The page should feel fast and stable.</p>
+<h2 id="10-accessibility">10. Accessibility</h2>
+<p>Requirements:</p>
+<ul>
+<li>Body text contrast should meet WCAG AA</li>
+<li>Code text must be readable on dark background</li>
+<li>Buttons need visible focus states</li>
+<li>Icons used without text need <code>aria-label</code></li>
+<li>Copy buttons need screen-reader labels</li>
+<li>Pipeline visual needs text fallback</li>
+<li>Do not rely on color alone for status</li>
+<li>Command blocks should be selectable text</li>
+<li>Links must be keyboard reachable</li>
+</ul>
+<p>Recommended focus style:</p>
+<pre><code class="language-css">outline: 2px solid #0d9488;
+outline-offset: 2px;</code></pre>
+<h2 id="11-responsive-rules">11. Responsive Rules</h2>
+<p>Breakpoints:</p>
+<pre><code class="language-css">mobile: &lt; 640px
+tablet: 640px - 1023px
+desktop: &gt;= 1024px
+wide: &gt;= 1280px</code></pre>
+<p>Rules:</p>
+<ul>
+<li>Desktop hero can use two columns</li>
+<li>Tablet can keep two columns if command block remains readable</li>
+<li>Mobile should stack everything</li>
+<li>Keep max content width around 1120px</li>
+<li>Keep readable text width around 720px</li>
+<li>Avoid viewport-width font scaling</li>
+<li>Do not let long file paths overflow without scroll or wrapping</li>
+</ul>
+<h2 id="12-implementation-notes-for-future-build">12. Implementation Notes For Future Build</h2>
+<h3 id="12-1-recommended-route">12.1. Recommended route</h3>
+<p>If implemented in a web app later, use:</p>
+<pre><code class="language-text">/</code></pre>
+<p>as the product/developer homepage.</p>
+<p>If docs are separate, use:</p>
+<pre><code class="language-text">/docs
+/docs/quickstart
+/docs/cli
+/docs/contracts</code></pre>
+<h3 id="12-2-recommended-assets">12.2. Recommended assets</h3>
+<p>Use real or product-derived visuals:</p>
+<ul>
+<li>Screenshot of generated report</li>
+<li>Screenshot of CLI output</li>
+<li>Tiny generated sprite strip fixture</li>
+<li>File tree from a sample run</li>
+</ul>
+<p>Do not use unrelated stock images.</p>
+<h3 id="12-3-content-source-of-truth">12.3. Content source of truth</h3>
+<p>Use these docs as source:</p>
+<ul>
+<li><code>docs/openRender_POC_v0.1.md</code></li>
+<li><code>docs/quickstart-phaser.md</code></li>
+<li><code>docs/cli-reference.md</code></li>
+<li><code>docs/contracts.md</code></li>
+<li><code>docs/known-limitations.md</code></li>
+</ul>
+<p>If implementation and docs differ, prefer current CLI behavior and update docs separately.</p>
+<h3 id="12-4-suggested-section-data-model">12.4. Suggested section data model</h3>
+<p>If using React or another component framework, keep page content structured:</p>
+<pre><code class="language-ts">type QuickstartStep = {
+  title: string;
+  command: string;
+  description: string;
+};
+
+type PipelineStage = {
+  label: string;
+  detail: string;
+  output?: string;
+};
+
+type ScopeItem = {
+  label: string;
+  included: boolean;
+};</code></pre>
+<p>This makes it easier to keep copy consistent with docs.</p>
+<h2 id="13-quality-checklist">13. Quality Checklist</h2>
+<p>Before shipping the page, verify:</p>
+<ul>
+<li>The first viewport clearly says <code>openRender</code></li>
+<li>The page does not look like a copied Ollama page</li>
+<li>The main command is real for the current release state</li>
+<li>No account, pricing, API key, cloud, or hosted playground is implied</li>
+<li>The POC scope is clear</li>
+<li>The page shows actual files or commands</li>
+<li>The color palette is not one-note beige, purple, or dark blue</li>
+<li>Text does not overlap on mobile</li>
+<li>Long commands and file paths remain readable</li>
+<li>Buttons have hover and focus states</li>
+<li>Copy buttons work</li>
+<li>The report preview uses a real or faithful product visual</li>
+<li>The page loads without external heavy visual dependencies</li>
+<li>Links point to existing docs</li>
+</ul>
+<h2 id="14-summary-direction">14. Summary Direction</h2>
+<p>The developer webpage should feel like a restrained open-source tool page:</p>
+<pre><code class="language-text">Developer-tool clarity and immediacy.
+openRender-specific in pipeline visuals, local asset outputs, reports, and rollback.</code></pre>
+<p>The winning design is not a large AI landing page. It is a precise developer entry point that helps someone understand the POC, copy a command, and trust what the CLI will write to their project.</p>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

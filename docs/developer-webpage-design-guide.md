@@ -4,7 +4,7 @@ Status: Draft guide
 Date: 2026-04-30  
 Source spec: `docs/openRender_POC_v0.1.md`  
 Target surface: Simple developer-facing public webpage  
-Primary inspiration: Ollama homepage structure and restraint, not its exact visual identity
+Primary inspiration: quiet developer-tool restraint, not Ollama's exact structure or visual identity
 
 ## 1. Purpose
 
@@ -18,9 +18,9 @@ openRender is a local-first compiler that turns AI-generated media into engine-r
 
 The first public page is not a SaaS landing page, not a hosted playground, and not a generic AI art product page. It is a compact developer page for people who want to understand and try a local CLI.
 
-The page should feel close to the developer confidence of Ollama: quiet, direct, command-line friendly, open-source oriented, and easy to start. It must not look copied. openRender needs its own identity: media-to-engine pipelines, Phaser-ready artifacts, local reports, rollback, and agent-friendly commands.
+The page should feel quiet, direct, command-line friendly, open-source oriented, and easy to start. It must not borrow Ollama's recognizable composition. openRender needs its own identity: media-to-engine pipelines, Phaser-ready artifacts, local reports, rollback, and agent-friendly commands.
 
-The hero should also carry a small friendly visual signal. Ollama uses a cute line-art character; openRender should use its own simple black-line spot illustration tied to asset compilation, such as a tiny renderer figure holding a sprite strip. The illustration should make the page feel approachable without turning the product into a game-art showcase.
+The hero should carry a product-specific run preview instead of a mascot. Use a compact artifact/report surface, sprite-strip preview, file paths, and rollback status to make the page approachable without copying another developer-tool homepage.
 
 ## 2. Design Principles
 
@@ -44,22 +44,23 @@ Avoid broad AI hype:
 - Do not imply cloud hosting exists
 - Do not imply Unity/Godot support exists in v0.1
 
-### 2.2. Inspired by Ollama, distinct from Ollama
+### 2.2. Restrained, but not derivative
 
-Borrow these qualities:
+Borrow these broad qualities from strong developer-tool pages:
 
 - Minimal top navigation
-- Large restrained hero type
-- Immediate terminal command
+- Restrained hero type
+- Immediate local workflow signal
 - Strong first CTA
 - Calm neutral background
-- Small friendly line-art spot visual
+- Small product-specific visual surface
 - Simple section rhythm
 - Sparse copy
 - Developer trust through exact commands
 
 Do not copy these qualities too closely:
 
+- Do not reuse Ollama's hero structure
 - Do not reuse the same hero wording rhythm
 - Do not center the entire identity around one install command only
 - Do not imitate Ollama's exact spacing, color, typography, button shape, or homepage section order
@@ -281,13 +282,13 @@ Recommended hero composition:
 
 ```text
 Left column:
-  openRender
-  Local-first media-to-engine compiler...
-  command block
+  scope badge
+  concise product headline
+  short local-first explanation
   CTA row
 
 Right column:
-  pipeline visual or local report preview
+  local run/report preview with sprite strip, output paths, and rollback status
 ```
 
 On mobile:
@@ -295,24 +296,23 @@ On mobile:
 ```text
 Brand headline
 Short description
-Command block
 CTA row
-Pipeline visual
+Run/report preview
 ```
 
-The hero should not use a large decorative card. It can use a terminal panel and a report panel because those represent real product surfaces.
+The hero should not use a mascot or large decorative illustration. It can use a compact report panel because that represents a real product surface.
 
 ### 5.3. Hero command block
 
-The command block is the main conversion point.
+The command is supporting evidence, not the entire hero.
 
 Recommended hero command:
 
 ```bash
-openrender init
+openrender compile sprite --install --open-report
 ```
 
-This keeps the first screen close to Ollama's short command-pill feel. Detailed compile commands should remain in the quickstart section.
+Avoid a centered command-pill hero. The page should lead with what openRender compiles and what it writes to disk, then expose the command inside the run preview.
 
 Detailed source-checkout command:
 
@@ -340,7 +340,7 @@ openrender compile sprite \
 
 The webpage should choose command surfaces depending on release state:
 
-- Hero: show a short, complete command such as `openrender init`
+- Hero: show a compact command only as part of the run/report preview
 - Quickstart: show complete compile, verify, and report commands
 - Source checkout note: mention `pnpm dev:cli` as the development fallback
 
@@ -348,7 +348,7 @@ Command block behavior:
 
 - Include a copy button with a copy icon
 - Keep monospace text readable
-- Allow horizontal scroll on mobile instead of wrapping command flags poorly
+- Wrap long commands cleanly on the page; avoid visible horizontal scroll on desktop
 - Use syntax highlighting lightly
 - Show a small label such as `local CLI`
 
@@ -359,25 +359,26 @@ Do not include:
 - login command
 - cloud endpoint
 
-### 5.4. Hero spot illustration
+### 5.4. Hero product visual
 
-The hero should include a small openRender-specific line illustration above the main headline.
+The hero should include an openRender-specific run/report visual instead of a spot illustration.
 
 Visual direction:
 
-- Black stroke on white background
-- Friendly, simple, and compact
-- Based on openRender concepts: sprite strip, file tile, renderer box, report frame, or local project folder
-- Sized around 140-180px desktop and 110-140px mobile
-- Centered above the eyebrow or headline
+- Compact report-style panel
+- Sprite strip or transparent asset preview
+- Output file paths
+- Contract, frame, and rollback status
+- Light neutral surface with one restrained accent color
 
-The visual must not copy Ollama's character or silhouette. It should only borrow the idea of a cute, approachable line drawing.
+The visual must not copy Ollama's character, silhouette, centered mascot layout, or command-pill-first composition.
 
 Avoid:
 
 - Generic robot head
 - Parody of another brand's character
 - Large mascot that dominates the page
+- Cute character as the primary brand signal
 - Complex SVG scene
 - Multi-color illustration
 
@@ -865,29 +866,21 @@ Create anything instantly
 
 ```text
 +--------------------------------------------------------------+
-| openRender                 Docs  CLI  Contracts  Get started |
+| openRender                         Docs  CLI  Contracts Start |
 +--------------------------------------------------------------+
-|                                                              |
-|                         [line spot]                          |
-|                 openRender v0.1 local CLI                    |
-|      Turn generated images into Phaser-ready assets           |
-|                                                              |
-|             [ openrender init                         copy ]  |
-|             Developing this repository? pnpm dev:cli          |
-|             [Get started] [CLI reference]                     |
-|                                                              |
+| Local POC badge                  run_20260430_001 / passed    |
+| A compiler for generated         [transparent sprite strip]   |
+| game media.                      contract / frames / rollback |
+|                                  input / asset / helper       |
+| [Start local loop] [POC spec]    command + copy icon          |
 +--------------------------------------------------------------+
-| Local pipeline + report preview                              |
+| The local loop: init / compile + install / report             |
 +--------------------------------------------------------------+
-| Quickstart: init / compile / verify                          |
+| Visible files: .openrender, public assets, TypeScript helpers |
 +--------------------------------------------------------------+
-| How it works: scan / compile / install / verify / report      |
+| Built for agents: contract / adapter / report                 |
 +--------------------------------------------------------------+
-| What gets written: file tree                                  |
-+--------------------------------------------------------------+
-| Local report preview + rollback note                         |
-+--------------------------------------------------------------+
-| v0.1 included / not included                                 |
+| Narrow v0.1 scope                                             |
 +--------------------------------------------------------------+
 ```
 
@@ -897,19 +890,18 @@ Create anything instantly
 +--------------------------+
 | openRender               |
 +--------------------------+
-|       [line spot]        |
-| openRender v0.1 local CLI|
-| Turn generated images    |
-| into Phaser-ready assets |
+| Local POC badge          |
+| A compiler for generated |
+| game media.              |
+| [Start local loop]       |
+| [POC spec]               |
 |                          |
-| [ openrender init  copy ]|
-| [Get started]            |
-| [CLI reference]          |
+| run report / passed      |
+| sprite strip preview     |
+| output paths             |
+| command + copy icon      |
 +--------------------------+
-| run pipeline             |
-| openRender report        |
-+--------------------------+
-| Quickstart               |
+| Local loop               |
 | Step 1                   |
 | Step 2                   |
 | Step 3                   |
@@ -1097,7 +1089,7 @@ Before shipping the page, verify:
 The developer webpage should feel like a restrained open-source tool page:
 
 ```text
-Ollama-like in clarity and developer immediacy.
+Developer-tool clarity and immediacy.
 openRender-specific in pipeline visuals, local asset outputs, reports, and rollback.
 ```
 

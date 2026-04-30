@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CLI Reference - openRender Docs</title>
+  <meta name="description" content="Implemented local CLI commands and options for the openRender v0.1 POC.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <span class="brand-mark" aria-hidden="true">or</span>
+        <span>openRender</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="./quickstart-phaser.html">Docs</a>
+        <a href="./cli-reference.html">CLI</a>
+        <a href="./contracts.html">Contracts</a>
+        <a class="nav-cta" href="./developer-webpage.html#quickstart">Start</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <a href="./quickstart-phaser.html">Quickstart</a>
+          <a class="is-active" href="./cli-reference.html">CLI Reference</a>
+          <a href="./contracts.html">Contracts</a>
+          <a href="./troubleshooting.html">Troubleshooting</a>
+          <a href="./agent-usage.html">Agent Usage</a>
+          <a href="./known-limitations.html">Known Limitations</a>
+          <a href="./openRender_POC_v0.1.html">POC Spec</a>
+          <a href="./release-checklist.html">Release Checklist</a>
+          <a href="./developer-webpage-design-guide.html">Design Guide</a>
+      </nav>
+    </aside>
+
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>CLI Reference</h1>
+        <p class="summary">Implemented local CLI commands and options for the openRender v0.1 POC.</p>
+      </header>
+      <div class="doc-content">
+<p>The CLI command is:</p>
+<pre><code class="language-bash">openrender</code></pre>
+<h2 id="implemented-in-the-bootstrap">Implemented In The Bootstrap</h2>
+<pre><code class="language-bash">openrender init
+openrender scan
+openrender doctor
+openrender compile sprite
+openrender install
+openrender verify
+openrender report
+openrender rollback
+openrender --help
+openrender --version</code></pre>
+<h2 id="poc-implementation-status">POC Implementation Status</h2>
+<p>All required v0.1 POC commands have an initial local implementation. Advanced runtime smoke checks and stable public schemas for every JSON command remain out of scope for the current POC pass.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="openrender-init"><code>openrender init</code></h3>
+<p>Creates <code>openrender.config.json</code> and <code>.openrender</code> state directories.</p>
+<p>Options:</p>
+<ul>
+<li><code>--target phaser</code></li>
+<li><code>--framework vite</code></li>
+<li><code>--force</code></li>
+<li><code>--json</code></li>
+</ul>
+<h3 id="openrender-scan"><code>openrender scan</code></h3>
+<p>Detects local project shape.</p>
+<p>Options:</p>
+<ul>
+<li><code>--json</code></li>
+</ul>
+<h3 id="openrender-doctor"><code>openrender doctor</code></h3>
+<p>Runs environment and project diagnostics.</p>
+<p>Options:</p>
+<ul>
+<li><code>--json</code></li>
+</ul>
+<h3 id="openrender-compile-sprite"><code>openrender compile sprite</code></h3>
+<p>Converts a local raw image into a compiled artifact under <code>.openrender/artifacts/{run_id}/</code>, creates a media contract, validates frame dimensions, builds a Phaser output plan, and writes <code>.openrender/runs/{run_id}.json</code> plus <code>.openrender/runs/latest.json</code>.</p>
+<p>Dry-run mode prints the same contract and install plan without writing files:</p>
+<pre><code class="language-bash">openrender compile sprite \
+  --from tmp/slime.png \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --dry-run \
+  --json</code></pre>
+<p>Options currently supported:</p>
+<ul>
+<li><code>--from</code></li>
+<li><code>--id</code></li>
+<li><code>--target phaser</code></li>
+<li><code>--framework vite</code></li>
+<li><code>--frames</code></li>
+<li><code>--frame-size</code></li>
+<li><code>--layout horizontal</code></li>
+<li><code>--padding</code></li>
+<li><code>--output-size</code></li>
+<li><code>--asset-root</code></li>
+<li><code>--install</code></li>
+<li><code>--force</code> when used with <code>--install</code></li>
+<li><code>--dry-run</code></li>
+<li><code>--json</code></li>
+</ul>
+<p><code>--install</code> runs the install step immediately after a successful compile. In <code>--dry-run</code> mode, it only marks the generated install plan as enabled.</p>
+<h3 id="openrender-install"><code>openrender install</code></h3>
+<p>Applies the install plan from a compiled run.</p>
+<pre><code class="language-bash">openrender install --run latest
+openrender install --run run_20260430T120000Z --json</code></pre>
+<p>Default behavior:</p>
+<ul>
+<li>reads <code>.openrender/runs/latest.json</code> unless <code>--run</code> is provided</li>
+<li>snapshots destination files into <code>.openrender/snapshots/{run_id}/</code></li>
+<li>refuses to overwrite existing files unless <code>--force</code> is provided</li>
+<li>copies the compiled artifact into <code>public/assets</code></li>
+<li>writes the generated manifest/codegen files from the install plan</li>
+</ul>
+<h3 id="openrender-verify"><code>openrender verify</code></h3>
+<p>Checks the compiled artifact, installed files, and installed asset dimensions for a run.</p>
+<pre><code class="language-bash">openrender verify --run latest
+openrender verify --run latest --json</code></pre>
+<p>Runtime smoke checks are out of scope for v0.1; <code>verify</code> checks local files and image-level invariants only.</p>
+<h3 id="openrender-report"><code>openrender report</code></h3>
+<p>Writes local report files for a run. The HTML report includes the run contract, input, artifact metadata, install plan, validation and verification results, next-action suggestions for failures, and a visual overlay for the compiled asset or frame slices when image metadata is available.</p>
+<pre><code class="language-bash">openrender report --run latest
+openrender report --run latest --json
+openrender report --run latest --open</code></pre>
+<p>Current outputs:</p>
+<ul>
+<li><code>.openrender/reports/{run_id}.html</code></li>
+<li><code>.openrender/reports/{run_id}.json</code></li>
+<li><code>.openrender/reports/latest.html</code></li>
+<li><code>.openrender/reports/latest.json</code></li>
+<li><code>.openrender/previews/{run_id}.html</code></li>
+<li><code>.openrender/previews/latest.html</code></li>
+</ul>
+<p><code>--open</code> opens the generated HTML report with the local OS file opener.</p>
+<h3 id="openrender-rollback"><code>openrender rollback</code></h3>
+<p>Restores or deletes files changed by <code>openrender install</code>.</p>
+<pre><code class="language-bash">openrender rollback --run latest
+openrender rollback --run latest --json</code></pre>
+<p>If a destination file existed before install, rollback restores the snapshot. If install created a new file, rollback deletes it.</p>
+<h2 id="commands-excluded-from-v0-1">Commands Excluded From v0.1</h2>
+<pre><code class="language-bash">openrender login
+openrender license
+openrender billing
+openrender sync
+openrender worker
+openrender generate</code></pre>
+      </div>
+    </article>
+  </main>
+</body>
+</html>
