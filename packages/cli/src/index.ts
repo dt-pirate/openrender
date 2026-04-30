@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import {
   createPhaserInstallPlan,
@@ -631,15 +632,46 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     allowOverwrite: true
   });
 
-  return {
+  const result: ReportCommandResult = {
     runId: record.run.runId,
     jsonPath: reportJsonPath,
     htmlPath: reportHtmlPath,
     previewHtmlPath,
     latestJsonPath: ".openrender/reports/latest.json",
     latestHtmlPath: ".openrender/reports/latest.html",
-    latestPreviewHtmlPath: ".openrender/previews/latest.html"
+    latestPreviewHtmlPath: ".openrender/previews/latest.html",
+    opened: false
   };
+
+  if (parsed.flags.get("open") === true) {
+    await openLocalFile(resolveInsideProject(projectRoot, reportHtmlPath));
+    result.opened = true;
+  }
+
+  return result;
+}
+
+async function openLocalFile(filePath: string): Promise<void> {
+  const command = process.platform === "darwin"
+    ? "open"
+    : process.platform === "win32"
+      ? "cmd"
+      : "xdg-open";
+  const args = process.platform === "win32"
+    ? ["/c", "start", "", filePath]
+    : [filePath];
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore"
+    });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
 }
 
 async function rollbackRun(parsed: ParsedFlags): Promise<RollbackCommandResult> {
@@ -811,6 +843,7 @@ interface ReportCommandResult {
   latestJsonPath: string;
   latestHtmlPath: string;
   latestPreviewHtmlPath: string;
+  opened: boolean;
 }
 
 interface RollbackCommandResult {

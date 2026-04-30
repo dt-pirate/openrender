@@ -114,7 +114,7 @@ src/openrender/animations/{asset_file}.ts
 
 ```bash
 openrender verify --run latest
-openrender report --run latest
+openrender report --run latest --open
 openrender rollback --run latest
 ```
 

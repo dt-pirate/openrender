@@ -2027,7 +2027,7 @@ Tasks:
 - [x] report file writing
 - [x] preview file writing
 - [x] latest report copy
-- [ ] `openrender report --open`
+- [x] `openrender report --open`
 
 ### 21.8. Milestone 7 — POC polish
 

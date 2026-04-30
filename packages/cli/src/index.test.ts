@@ -244,6 +244,7 @@ test("report latest run writes html and json reports", async () => {
     latestHtmlPath: string;
     latestJsonPath: string;
     latestPreviewHtmlPath: string;
+    opened: boolean;
   };
 
   assert.equal(await fileExists(path.join(root, result.htmlPath)), true);
@@ -252,6 +253,7 @@ test("report latest run writes html and json reports", async () => {
   assert.equal(await fileExists(path.join(root, result.latestHtmlPath)), true);
   assert.equal(await fileExists(path.join(root, result.latestJsonPath)), true);
   assert.equal(await fileExists(path.join(root, result.latestPreviewHtmlPath)), true);
+  assert.equal(result.opened, false);
   assert.match(await fs.readFile(path.join(root, result.htmlPath), "utf8"), /openRender report/);
 });
 

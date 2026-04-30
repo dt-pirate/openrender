@@ -122,6 +122,7 @@ Writes local report files for a run.
 ```bash
 openrender report --run latest
 openrender report --run latest --json
+openrender report --run latest --open
 ```
 
 Current outputs:
@@ -133,7 +134,7 @@ Current outputs:
 - `.openrender/previews/{run_id}.html`
 - `.openrender/previews/latest.html`
 
-`--open` is planned but not implemented yet.
+`--open` opens the generated HTML report with the local OS file opener.
 
 ### `openrender rollback`
 
