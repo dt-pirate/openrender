@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>openRender - Local media-to-engine compiler</title>
+  <meta
+    name="description"
+    content="openRender is a local-first compiler that turns generated images into Phaser-ready assets, reports, and rollbackable project changes."
+  >
+  <style>
+    :root {
+      color-scheme: light;
+      --canvas: #fafaf7;
+      --surface: #ffffff;
+      --surface-soft: #f3f1eb;
+      --ink: #141414;
+      --muted: #66625d;
+      --subtle: #8a857d;
+      --rule: #e4e0d7;
+      --code-bg: #111111;
+      --code-fg: #f6f3ec;
+      --accent: #0f766e;
+      --accent-strong: #0d9488;
+      --link: #1d4ed8;
+      --success: #15803d;
+      --warning: #b45309;
+      --max-content: 1120px;
+      --radius: 8px;
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent-strong);
+      outline-offset: 3px;
+    }
+
+    .site-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: color-mix(in srgb, var(--canvas) 92%, transparent);
+      border-bottom: 1px solid var(--rule);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      width: min(100% - 40px, var(--max-content));
+      min-height: 66px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--ink);
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav a {
+      white-space: nowrap;
+    }
+
+    .button {
+      min-height: 42px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--ink);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: #fff;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+    }
+
+    .button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--ink);
+      border-color: var(--rule);
+    }
+
+    .button.secondary:hover {
+      border-color: var(--ink);
+      background: var(--surface);
+    }
+
+    main {
+      overflow: hidden;
+    }
+
+    .section {
+      width: min(100% - 40px, var(--max-content));
+      margin: 0 auto;
+      padding: 84px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .hero {
+      min-height: calc(100vh - 66px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(380px, 0.98fr);
+      align-items: center;
+      gap: 56px;
+      padding-top: 54px;
+      padding-bottom: 64px;
+    }
+
+    .hero > *,
+    .written-layout > *,
+    .report-layout > * {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      margin: 0 0 18px;
+      padding: 5px 9px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 18px;
+      font-size: 68px;
+      line-height: 0.98;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      max-width: 640px;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.58;
+      overflow-wrap: anywhere;
+    }
+
+    .hero-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .code-card {
+      position: relative;
+      margin-top: 30px;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid #000;
+      border-radius: var(--radius);
+      background: var(--code-bg);
+      color: var(--code-fg);
+      box-shadow: 0 24px 70px rgb(20 20 20 / 12%);
+    }
+
+    .code-card-header {
+      min-height: 42px;
+      padding: 0 12px 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgb(255 255 255 / 12%);
+      color: #c8c2b7;
+      font-size: 13px;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #79746b;
+    }
+
+    .copy-button {
+      min-width: 72px;
+      height: 28px;
+      padding: 0 9px;
+      border: 1px solid rgb(255 255 255 / 18%);
+      border-radius: 6px;
+      background: rgb(255 255 255 / 7%);
+      color: var(--code-fg);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .copy-button:hover {
+      background: rgb(255 255 255 / 13%);
+    }
+
+    pre {
+      margin: 0;
+      padding: 18px;
+      overflow-x: auto;
+      color: inherit;
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre;
+    }
+
+    .product-visual {
+      align-self: center;
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .visual-panel {
+      min-width: 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 18px 60px rgb(20 20 20 / 9%);
+    }
+
+    .visual-panel.pipeline {
+      padding: 18px;
+    }
+
+    .panel-title {
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-pill {
+      padding: 3px 7px;
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--rule));
+      border-radius: 999px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .pipeline-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .pipeline-row {
+      display: grid;
+      grid-template-columns: 94px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .pipeline-label {
+      color: var(--subtle);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .pipeline-node {
+      min-width: 0;
+      min-height: 42px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--rule);
+      border-radius: 7px;
+      background: var(--surface-soft);
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .pipeline-node span,
+    .pipeline-node strong {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: inherit;
+    }
+
+    .pipeline-node strong {
+      font-weight: 650;
+    }
+
+    .sprite-strip {
+      display: flex;
+      gap: 3px;
+    }
+
+    .sprite-strip span {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgb(15 118 110 / 34%);
+      border-radius: 4px;
+      background:
+        linear-gradient(135deg, transparent 0 45%, rgb(15 118 110 / 20%) 45% 55%, transparent 55%),
+        color-mix(in srgb, var(--accent) 9%, #fff);
+    }
+
+    .visual-panel.report {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .report-bar {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--rule);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .report-body {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+    }
+
+    .report-preview {
+      min-height: 176px;
+      position: relative;
+      border: 1px solid var(--rule);
+      border-radius: 7px;
+      background:
+        linear-gradient(45deg, #d7d2c6 25%, transparent 25%),
+        linear-gradient(-45deg, #d7d2c6 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d7d2c6 75%),
+        linear-gradient(-45deg, transparent 75%, #d7d2c6 75%);
+      background-color: #f7f5ef;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background-size: 24px 24px;
+      overflow: hidden;
+    }
+
+    .asset-box {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 132px;
+      height: 82px;
+      transform: translate(-50%, -50%);
+      border: 1px solid var(--accent);
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+
+    .asset-box::before,
+    .asset-box::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgb(15 118 110 / 55%);
+    }
+
+    .asset-box::before {
+      left: 33.33%;
+    }
+
+    .asset-box::after {
+      left: 66.66%;
+    }
+
+    .report-checks {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .check-row {
+      padding: 10px 11px;
+      border: 1px solid var(--rule);
+      border-radius: 7px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .check-row strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .section-heading {
+      max-width: 760px;
+      margin-bottom: 34px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      font-size: 34px;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    .section-heading p {
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .quickstart-grid,
+    .flow-grid,
+    .scope-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .quickstart-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .step-card,
+    .flow-card,
+    .scope-card {
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .step-card {
+      padding: 18px;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .step-card p,
+    .flow-card p,
+    .scope-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .mini-command {
+      margin-top: 16px;
+      padding: 10px;
+      max-width: 100%;
+      overflow-x: auto;
+      border-radius: 6px;
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .flow-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .flow-card {
+      padding: 16px;
+      min-height: 150px;
+    }
+
+    .flow-card code {
+      display: inline-block;
+      margin-top: 12px;
+      color: var(--accent);
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .written-layout {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .file-tree {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .file-tree-header {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--rule);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .file-tree pre {
+      padding: 16px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .accent-line {
+      color: var(--accent);
+    }
+
+    .note-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .note {
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .note strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .note p {
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .report-layout {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .scope-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .scope-card {
+      padding: 20px;
+    }
+
+    .scope-list {
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 9px;
+    }
+
+    .scope-list li {
+      display: flex;
+      gap: 9px;
+      align-items: baseline;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .scope-list li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--success);
+      transform: translateY(-1px);
+    }
+
+    .scope-card.excluded .scope-list li::before {
+      background: var(--warning);
+    }
+
+    .footer {
+      width: min(100% - 40px, var(--max-content));
+      margin: 0 auto;
+      padding: 34px 0 44px;
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    @media (max-width: 1023px) {
+      .hero,
+      .written-layout,
+      .report-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 64px;
+      }
+
+      .product-visual {
+        max-width: 680px;
+      }
+
+      .quickstart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar-inner,
+      .section,
+      .footer {
+        width: min(100% - 28px, var(--max-content));
+      }
+
+      .topbar-inner {
+        min-height: 60px;
+      }
+
+      .nav {
+        display: none;
+      }
+
+      .section {
+        padding: 58px 0;
+      }
+
+      .hero {
+        gap: 34px;
+        padding-top: 44px;
+      }
+
+      h1 {
+        font-size: 44px;
+        line-height: 1.02;
+      }
+
+      h2 {
+        font-size: 28px;
+      }
+
+      .hero-copy,
+      .section-heading p {
+        font-size: 16px;
+      }
+
+      .hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .pipeline-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      .report-body {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-grid,
+      .scope-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="#" aria-label="openRender home">
+          <span class="brand-mark" aria-hidden="true">or</span>
+          <span>openRender</span>
+        </a>
+        <nav class="nav" aria-label="Primary navigation">
+          <a href="./quickstart-phaser.md">Docs</a>
+          <a href="./cli-reference.md">CLI</a>
+          <a href="./contracts.md">Contracts</a>
+          <a class="button" href="#quickstart">Get started</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section hero" aria-labelledby="hero-title">
+        <div>
+          <p class="eyebrow">Local-first image-to-Phaser POC</p>
+          <h1 id="hero-title">openRender</h1>
+          <p class="hero-copy">
+            Local-first media-to-engine compiler for agentic game development.
+            Turn raw generated images into Phaser-ready assets, codegen, local
+            reports, and rollbackable project changes.
+          </p>
+          <div class="code-card" aria-label="openRender compile command">
+            <div class="code-card-header">
+              <span>from source local CLI</span>
+              <button class="copy-button" type="button" data-copy-target="hero-command" aria-label="Copy command">Copy</button>
+            </div>
+            <pre id="hero-command">pnpm dev:cli compile sprite \
+  --from tmp/slime_raw.png \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --install \
+  --json</pre>
+          </div>
+          <div class="hero-actions">
+            <a class="button" href="#quickstart">Get started</a>
+            <a class="button secondary" href="./cli-reference.md">Read the CLI reference</a>
+          </div>
+        </div>
+
+        <div class="product-visual" aria-label="openRender local compiler pipeline">
+          <div class="visual-panel pipeline">
+            <p class="panel-title">
+              <span>run pipeline</span>
+              <span class="status-pill">no upload</span>
+            </p>
+            <div class="pipeline-list">
+              <div class="pipeline-row">
+                <span class="pipeline-label">input</span>
+                <div class="pipeline-node">
+                  <strong>tmp/slime_raw.png</strong>
+                  <span class="sprite-strip" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                </div>
+              </div>
+              <div class="pipeline-row">
+                <span class="pipeline-label">contract</span>
+                <div class="pipeline-node"><strong>visual.sprite_frame_set</strong><span>6 x 64</span></div>
+              </div>
+              <div class="pipeline-row">
+                <span class="pipeline-label">output</span>
+                <div class="pipeline-node"><strong>public/assets/enemy-slime-idle.png</strong><span>Phaser</span></div>
+              </div>
+              <div class="pipeline-row">
+                <span class="pipeline-label">report</span>
+                <div class="pipeline-node"><strong>.openrender/reports/latest.html</strong><span>local</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="visual-panel report">
+            <div class="report-bar">
+              <span>openRender report</span>
+              <span class="status-pill">verified</span>
+            </div>
+            <div class="report-body">
+              <div class="report-preview" aria-label="Asset frame overlay preview">
+                <div class="asset-box"></div>
+              </div>
+              <div class="report-checks">
+                <div class="check-row"><strong>compiled_artifact_exists</strong>passed</div>
+                <div class="check-row"><strong>compiled_asset_installed</strong>public/assets</div>
+                <div class="check-row"><strong>installed_asset_dimensions</strong>384x64</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="quickstart" aria-labelledby="quickstart-title">
+        <div class="section-heading">
+          <h2 id="quickstart-title">Run it inside your project</h2>
+          <p>
+            Start from a Vite + Phaser project, then let the CLI create local
+            state, compile a sprite, and write an inspectable report.
+          </p>
+        </div>
+
+        <div class="quickstart-grid">
+          <article class="step-card">
+            <div class="step-number">1</div>
+            <h3>Initialize local state</h3>
+            <p>Create config and local run directories. No account or cloud setup is required.</p>
+            <div class="mini-command">pnpm dev:cli init</div>
+          </article>
+          <article class="step-card">
+            <div class="step-number">2</div>
+            <h3>Compile and install</h3>
+            <p>Convert a raw image into a Phaser-ready asset, manifest, and animation helper.</p>
+            <div class="mini-command">pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install</div>
+          </article>
+          <article class="step-card">
+            <div class="step-number">3</div>
+            <h3>Verify and report</h3>
+            <p>Check local files and open the generated HTML report for inspection.</p>
+            <div class="mini-command">pnpm dev:cli verify --run latest && pnpm dev:cli report --run latest --open</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="workflow-title">
+        <div class="section-heading">
+          <h2 id="workflow-title">From generated media to playable project files</h2>
+          <p>
+            The v0.1 loop is intentionally narrow: image input, deterministic
+            local processing, Phaser output, report, and rollback.
+          </p>
+        </div>
+
+        <div class="flow-grid">
+          <article class="flow-card">
+            <h3>Scan</h3>
+            <p>Detect project shape, package manager, Vite, Phaser, source root, and asset root.</p>
+            <code>openrender scan</code>
+          </article>
+          <article class="flow-card">
+            <h3>Compile</h3>
+            <p>Read image metadata, validate frames, and write a compiled artifact.</p>
+            <code>.openrender/artifacts</code>
+          </article>
+          <article class="flow-card">
+            <h3>Install</h3>
+            <p>Copy the asset and write Phaser manifest or animation helper files.</p>
+            <code>public/assets</code>
+          </article>
+          <article class="flow-card">
+            <h3>Verify</h3>
+            <p>Check artifact presence, installed files, and image dimensions.</p>
+            <code>openrender verify</code>
+          </article>
+          <article class="flow-card">
+            <h3>Report</h3>
+            <p>Write local HTML and JSON records that humans and agents can inspect.</p>
+            <code>.openrender/reports</code>
+          </article>
+          <article class="flow-card">
+            <h3>Rollback</h3>
+            <p>Restore snapshots or delete files created by install.</p>
+            <code>openrender rollback</code>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="written-title">
+        <div class="written-layout">
+          <div class="section-heading">
+            <h2 id="written-title">What openRender writes</h2>
+            <p>
+              The page is explicit about local project changes because that is
+              the trust model. openRender should be understandable from the
+              files it creates.
+            </p>
+          </div>
+
+          <div class="file-tree" aria-label="Generated file tree">
+            <div class="file-tree-header">sample run output</div>
+            <pre><span class="accent-line">.openrender/</span>
+  artifacts/run_20260430T120000Z/enemy-slime-idle.png
+  runs/latest.json
+  reports/latest.html
+  snapshots/run_20260430T120000Z/
+<span class="accent-line">public/</span>
+  assets/enemy-slime-idle.png
+<span class="accent-line">src/</span>
+  assets/openrender-manifest.ts
+  openrender/animations/enemy-slime-idle.ts</pre>
+          </div>
+        </div>
+
+        <div class="note-list" style="margin-top: 24px;">
+          <div class="note">
+            <strong>Snapshots before install</strong>
+            <p>Install records destination files before writing so rollback can restore or delete local changes.</p>
+          </div>
+          <div class="note">
+            <strong>Reports stay local</strong>
+            <p>HTML previews and JSON run records are written under `.openrender`; no project files are uploaded.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="report-title">
+        <div class="report-layout">
+          <div class="visual-panel report">
+            <div class="report-bar">
+              <span>.openrender/reports/latest.html</span>
+              <span class="status-pill">local file</span>
+            </div>
+            <div class="report-body">
+              <div class="report-preview">
+                <div class="asset-box"></div>
+              </div>
+              <div class="report-checks">
+                <div class="check-row"><strong>Contract</strong>visual.sprite_frame_set</div>
+                <div class="check-row"><strong>Install plan</strong>asset, manifest, codegen</div>
+                <div class="check-row"><strong>Validation</strong>frame_count_match passed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-heading">
+            <h2 id="report-title">Reports for humans and agents</h2>
+            <p>
+              Every run leaves a record. A developer can inspect the HTML
+              report, and an agent can read the JSON run state before deciding
+              whether to iterate or roll back.
+            </p>
+            <div class="hero-actions">
+              <a class="button secondary" href="./contracts.md">View media contracts</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="scope-title">
+        <div class="section-heading">
+          <h2 id="scope-title">v0.1 scope is intentionally narrow</h2>
+          <p>
+            This first page should be honest about the POC. It proves the local
+            compiler loop before adding accounts, hosted services, or more engines.
+          </p>
+        </div>
+
+        <div class="scope-grid">
+          <article class="scope-card">
+            <h3>Included</h3>
+            <ul class="scope-list">
+              <li>Vite + Phaser projects</li>
+              <li>Image assets</li>
+              <li>Transparent sprites</li>
+              <li>Sprite frame sets</li>
+              <li>Local CLI workflow</li>
+              <li>HTML and JSON reports</li>
+              <li>Rollback from install snapshots</li>
+            </ul>
+          </article>
+          <article class="scope-card excluded">
+            <h3>Not included</h3>
+            <ul class="scope-list">
+              <li>Account or billing</li>
+              <li>Cloud API or hosted playground</li>
+              <li>Model provider calls</li>
+              <li>Audio or video compiler</li>
+              <li>Full MCP server</li>
+              <li>Godot, Pixi, Unity, or Canvas adapters</li>
+              <li>Automatic scene patching</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>openRender v0.1 POC</span>
+      <div class="footer-links">
+        <a href="./openRender_POC_v0.1.md">POC spec</a>
+        <a href="./quickstart-phaser.md">Quickstart</a>
+        <a href="./cli-reference.md">CLI reference</a>
+        <a href="./known-limitations.md">Known limitations</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const buttons = document.querySelectorAll("[data-copy-target]");
+
+    for (const button of buttons) {
+      button.addEventListener("click", async () => {
+        const target = document.getElementById(button.dataset.copyTarget);
+        if (!target) return;
+
+        const text = target.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          window.setTimeout(() => {
+            button.textContent = previous;
+          }, 1400);
+        } catch {
+          button.textContent = "Select";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
