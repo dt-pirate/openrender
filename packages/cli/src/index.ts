@@ -239,6 +239,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   if (frames !== undefined || frameSize !== undefined) {
     if (frames === undefined) throw new Error("--frames is required when --frame-size is provided.");
     if (frameSize === undefined) throw new Error("--frame-size is required when --frames is provided.");
+    if (outputSize !== undefined) throw new Error("--output-size is only supported for transparent sprites.");
 
     contract = {
       schemaVersion: OPENRENDER_POC_VERSION,
@@ -371,14 +372,11 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         outputPath: absoluteArtifactPath
       });
     } else {
-      if (outputSize) {
-        throw new Error("--output-size is only planned in dry-run mode right now.");
-      }
-
       artifact = await cropAlphaBoundsToPng({
         sourcePath,
         outputPath: absoluteArtifactPath,
-        padding
+        padding,
+        outputSize
       });
     }
 
@@ -458,10 +456,12 @@ function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: numbe
   const match = /^(\d+)x(\d+)$/.exec(value);
   if (!match) throw new Error(`--${name} must use WIDTHxHEIGHT format.`);
 
-  return {
+  const size = {
     width: Number.parseInt(match[1] ?? "0", 10),
     height: Number.parseInt(match[2] ?? "0", 10)
   };
+  if (size.width <= 0 || size.height <= 0) throw new Error(`--${name} must use positive dimensions.`);
+  return size;
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
@@ -964,7 +964,7 @@ Usage:
   openrender init [--target phaser] [--framework vite] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install --run latest [--force] [--json]
   openrender verify --run latest [--json]
   openrender report --run latest [--open] [--json]

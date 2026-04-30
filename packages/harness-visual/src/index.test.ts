@@ -220,6 +220,51 @@ test("cropAlphaBoundsToPng crops transparent edges and applies padding", async (
   assert.equal(output.alphaCleanupThreshold, 2);
 });
 
+test("cropAlphaBoundsToPng can fit the crop into an exact output size", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-crop-resize-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp({
+    create: {
+      width: 6,
+      height: 4,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 2,
+            height: 1,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        })
+          .png()
+          .toBuffer(),
+        left: 2,
+        top: 1
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const output = await cropAlphaBoundsToPng({
+    sourcePath,
+    outputPath,
+    outputSize: { width: 8, height: 8 }
+  });
+
+  assert.deepEqual(output.bounds, { x: 2, y: 1, width: 2, height: 1 });
+  assert.deepEqual(output.outputSize, { width: 8, height: 8 });
+  assert.equal(output.metadata.width, 8);
+  assert.equal(output.metadata.height, 8);
+  assert.equal(output.metadata.format, "png");
+});
+
 test("cropAlphaBoundsToPng can remove simple solid backgrounds before cropping", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-crop-solid-bg-"));
   const sourcePath = path.join(root, "sprite.png");

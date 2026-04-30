@@ -53,11 +53,17 @@ export interface PixelBounds {
   height: number;
 }
 
+export interface OutputSize {
+  width: number;
+  height: number;
+}
+
 export interface CroppedImageOutput extends NormalizedImageOutput {
   bounds: PixelBounds;
   padding: number;
   alphaCleanupThreshold: number;
   removedSolidBackground: boolean;
+  outputSize?: OutputSize;
 }
 
 export const VISUAL_HARNESS_POC_STAGES = [
@@ -220,8 +226,13 @@ export async function cropAlphaBoundsToPng(input: {
   alphaCleanupThreshold?: number;
   removeSolidBackground?: boolean;
   backgroundTolerance?: number;
+  outputSize?: OutputSize;
 }): Promise<CroppedImageOutput> {
   await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  if (input.outputSize && (input.outputSize.width <= 0 || input.outputSize.height <= 0)) {
+    throw new Error("outputSize must use positive dimensions.");
+  }
+
   const preparedSourcePath = input.removeSolidBackground
     ? path.join(path.dirname(input.outputPath), `.${path.basename(input.outputPath)}.background-cleaned.tmp.png`)
     : input.sourcePath;
@@ -264,15 +275,24 @@ export async function cropAlphaBoundsToPng(input: {
       .toBuffer({ resolveWithObject: true });
     const cleaned = cleanupAlphaEdges(data, alphaCleanupThreshold);
 
-    await sharp(cleaned, {
+    let pipeline = sharp(cleaned, {
       raw: {
         width: info.width,
         height: info.height,
         channels: 4
       }
-    })
-      .png()
-      .toFile(input.outputPath);
+    });
+
+    if (input.outputSize) {
+      pipeline = pipeline.resize({
+        width: input.outputSize.width,
+        height: input.outputSize.height,
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      });
+    }
+
+    await pipeline.png().toFile(input.outputPath);
   } finally {
     if (input.removeSolidBackground) {
       await fs.rm(preparedSourcePath, { force: true });
@@ -285,7 +305,8 @@ export async function cropAlphaBoundsToPng(input: {
     bounds,
     padding,
     alphaCleanupThreshold,
-    removedSolidBackground: input.removeSolidBackground === true
+    removedSolidBackground: input.removeSolidBackground === true,
+    outputSize: input.outputSize
   };
 }
 

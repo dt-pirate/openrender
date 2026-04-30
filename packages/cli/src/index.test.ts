@@ -29,6 +29,7 @@ test("help prints the npm package version and supported options", async () => {
 
   assert.match(stdout, /^openRender 0\.1\.0/m);
   assert.match(stdout, /openrender --version/);
+  assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /openrender install --run latest \[--force\] \[--json\]/);
   assert.match(stdout, /openrender report --run latest \[--open\] \[--json\]/);
 });
@@ -130,6 +131,34 @@ test("compile sprite dry-run validates a horizontal frame set", async () => {
   assert.deepEqual(result.frameSlices, [{ index: 0, x: 0, y: 0, width: 1, height: 1 }]);
 });
 
+test("compile sprite rejects output-size for frame sets", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-frame-output-size-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [
+      cliPath,
+      "compile",
+      "sprite",
+      "--from",
+      "sprite.png",
+      "--id",
+      "enemy.dot.idle",
+      "--frames",
+      "1",
+      "--frame-size",
+      "1x1",
+      "--output-size",
+      "8x8",
+      "--json"
+    ], {
+      cwd: root
+    }),
+    /--output-size is only supported for transparent sprites/
+  );
+});
+
 test("compile sprite writes artifact and run JSON without install", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-compile-"));
   const imagePath = path.join(root, "sprite.png");
@@ -146,6 +175,8 @@ test("compile sprite writes artifact and run JSON without install", async () => 
     "sprite.png",
     "--id",
     "prop.dot",
+    "--output-size",
+    "8x8",
     "--json"
   ], {
     cwd: root
@@ -153,12 +184,17 @@ test("compile sprite writes artifact and run JSON without install", async () => 
 
   const result = JSON.parse(stdout) as {
     dryRun: boolean;
-    artifact: { path: string; metadata: { format: string } };
+    contract: { visual: { outputWidth: number; outputHeight: number } };
+    artifact: { path: string; metadata: { format: string; width: number; height: number } };
     run: { runId: string; status: string; outputs: Array<{ path: string }> };
   };
 
   assert.equal(result.dryRun, false);
+  assert.equal(result.contract.visual.outputWidth, 8);
+  assert.equal(result.contract.visual.outputHeight, 8);
   assert.equal(result.artifact.metadata.format, "png");
+  assert.equal(result.artifact.metadata.width, 8);
+  assert.equal(result.artifact.metadata.height, 8);
   assert.equal(result.run.status, "completed");
   assert.match(result.run.outputs[0]?.path ?? "", /^\.openrender\/artifacts\/run_/);
   assert.equal(await fileExists(path.join(root, result.run.outputs[0]?.path ?? "")), true);
