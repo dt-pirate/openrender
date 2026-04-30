@@ -11,9 +11,9 @@
   <style>
     :root {
       color-scheme: light;
-      --canvas: #fafaf7;
+      --canvas: #ffffff;
       --surface: #ffffff;
-      --surface-soft: #f3f1eb;
+      --surface-soft: #f5f4f1;
       --ink: #141414;
       --muted: #66625d;
       --subtle: #8a857d;
@@ -76,8 +76,7 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: color-mix(in srgb, var(--canvas) 92%, transparent);
-      border-bottom: 1px solid var(--rule);
+      background: color-mix(in srgb, var(--canvas) 94%, transparent);
       backdrop-filter: blur(14px);
     }
 
@@ -178,13 +177,16 @@
     }
 
     .hero {
-      min-height: calc(100vh - 66px);
-      display: grid;
-      grid-template-columns: minmax(0, 1.02fr) minmax(380px, 0.98fr);
+      min-height: 760px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 56px;
-      padding-top: 54px;
-      padding-bottom: 64px;
+      justify-content: center;
+      gap: 0;
+      padding-top: 80px;
+      padding-bottom: 92px;
+      text-align: center;
+      border-bottom: 0;
     }
 
     .hero > *,
@@ -193,9 +195,25 @@
       min-width: 0;
     }
 
+    .hero-content {
+      width: min(100%, 720px);
+      margin: 0 auto;
+    }
+
+    .mascot {
+      width: 178px;
+      height: 178px;
+      margin: 0 auto 26px;
+      display: block;
+    }
+
+    .mascot * {
+      vector-effect: non-scaling-stroke;
+    }
+
     .eyebrow {
       width: fit-content;
-      margin: 0 0 18px;
+      margin: 0 auto 18px;
       padding: 5px 9px;
       border: 1px solid var(--rule);
       border-radius: 999px;
@@ -214,17 +232,19 @@
 
     h1 {
       margin-bottom: 18px;
-      font-size: 68px;
-      line-height: 0.98;
-      font-weight: 720;
+      font-size: 48px;
+      line-height: 1.08;
+      font-weight: 700;
       letter-spacing: 0;
     }
 
     .hero-copy {
-      max-width: 640px;
+      max-width: 620px;
+      margin-left: auto;
+      margin-right: auto;
       color: var(--muted);
-      font-size: 19px;
-      line-height: 1.58;
+      font-size: 17px;
+      line-height: 1.62;
       overflow-wrap: anywhere;
     }
 
@@ -232,7 +252,70 @@
       margin-top: 28px;
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
       gap: 12px;
+    }
+
+    .command-pill {
+      width: min(100%, 520px);
+      min-height: 46px;
+      margin: 30px auto 0;
+      padding: 0 8px 0 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      background: #f1f1f0;
+      color: var(--ink);
+    }
+
+    .command-pill pre {
+      flex: 1 1 auto;
+      padding: 0;
+      overflow-x: auto;
+      text-align: left;
+      color: inherit;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre;
+    }
+
+    .command-pill .copy-button {
+      flex: 0 0 auto;
+      min-width: 34px;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0;
+    }
+
+    .command-pill .copy-button::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      display: block;
+      margin: 0 auto;
+      border: 1.7px solid currentColor;
+      border-radius: 3px;
+      box-shadow: 4px -4px 0 -1px #f1f1f0, 4px -4px 0 0 currentColor;
+    }
+
+    .command-pill .copy-button.is-copied::before {
+      width: 15px;
+      height: 8px;
+      border-top: 0;
+      border-right: 0;
+      border-radius: 0;
+      box-shadow: none;
+      transform: rotate(-45deg) translateY(-1px);
+    }
+
+    .command-pill .copy-button:hover {
+      background: #e8e8e6;
     }
 
     .code-card {
@@ -252,6 +335,7 @@
       margin: 10px 0 0;
       color: var(--subtle);
       font-size: 13px;
+      text-align: center;
     }
 
     .command-note code {
@@ -322,12 +406,23 @@
       min-width: 0;
     }
 
+    .showcase {
+      padding-top: 0;
+    }
+
+    .showcase .product-visual {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      align-items: stretch;
+    }
+
     .visual-panel {
       min-width: 0;
       border: 1px solid var(--rule);
       border-radius: var(--radius);
       background: var(--surface);
-      box-shadow: 0 18px 60px rgb(20 20 20 / 9%);
+      box-shadow: 0 14px 44px rgb(20 20 20 / 6%);
     }
 
     .visual-panel.pipeline {
@@ -723,7 +818,6 @@
     }
 
     @media (max-width: 1023px) {
-      .hero,
       .written-layout,
       .report-layout {
         grid-template-columns: 1fr;
@@ -736,6 +830,10 @@
 
       .product-visual {
         max-width: 680px;
+      }
+
+      .showcase .product-visual {
+        grid-template-columns: 1fr;
       }
 
       .quickstart-grid {
@@ -771,8 +869,14 @@
         padding-top: 44px;
       }
 
+      .mascot {
+        width: 136px;
+        height: 136px;
+        margin-bottom: 22px;
+      }
+
       h1 {
-        font-size: 44px;
+        font-size: 38px;
         line-height: 1.02;
       }
 
@@ -792,6 +896,16 @@
 
       .button {
         width: 100%;
+      }
+
+      .command-pill {
+        min-height: 46px;
+        margin-top: 26px;
+        padding-left: 14px;
+      }
+
+      .command-pill pre {
+        font-size: 12px;
       }
 
       .pipeline-row {
@@ -833,26 +947,31 @@
 
     <main>
       <section class="section hero" aria-labelledby="hero-title">
-        <div>
-          <p class="eyebrow">Local-first image-to-Phaser POC</p>
-          <h1 id="hero-title">openRender</h1>
+        <div class="hero-content">
+          <svg class="mascot" viewBox="0 0 220 220" role="img" aria-label="openRender line illustration">
+            <g fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+              <path d="M80 56c0-18 12-30 30-30s30 12 30 30" />
+              <path d="M72 61c-17 7-28 23-28 43v22c0 36 28 63 66 63s66-27 66-63v-22c0-20-11-36-28-43" />
+              <path d="M79 60c-7-18-18-26-32-24-2 17 6 28 25 34" />
+              <path d="M141 60c7-18 18-26 32-24 2 17-6 28-25 34" />
+              <circle cx="88" cy="111" r="6" fill="#111111" />
+              <circle cx="132" cy="111" r="6" fill="#111111" />
+              <path d="M104 125c4 5 8 7 12 7s8-2 12-7" />
+              <path d="M50 128c-18 11-27 28-25 50 22 1 38-8 48-26" />
+              <path d="M170 128c18 11 27 28 25 50-22 1-38-8-48-26" />
+              <rect x="66" y="146" width="88" height="31" rx="8" />
+              <path d="M88 146v31M110 146v31M132 146v31" />
+            </g>
+          </svg>
+          <p class="eyebrow">openRender v0.1 local CLI</p>
+          <h1 id="hero-title">Turn generated images into Phaser-ready assets</h1>
           <p class="hero-copy">
-            Local-first media-to-engine compiler for agentic game development.
-            Turn raw generated images into Phaser-ready assets, codegen, local
-            reports, and rollbackable project changes.
+            Compile, install, verify, report, and roll back local game asset
+            changes without an account, cloud API, or model provider call.
           </p>
-          <div class="code-card" aria-label="openRender compile command">
-            <div class="code-card-header">
-              <span>local CLI</span>
-              <button class="copy-button" type="button" data-copy-target="hero-command" aria-label="Copy command">Copy</button>
-            </div>
-            <pre id="hero-command">openrender compile sprite \
-  --from tmp/slime_raw.png \
-  --id enemy.slime.idle \
-  --frames 6 \
-  --frame-size 64x64 \
-  --install \
-  --json</pre>
+          <div class="command-pill" aria-label="openRender compile command">
+            <pre id="hero-command">openrender compile sprite --from tmp/slime_raw.png --install</pre>
+            <button class="copy-button" type="button" data-copy-target="hero-command" aria-label="Copy command">Copy</button>
           </div>
           <p class="command-note">
             Developing this repository? Use <code>pnpm dev:cli</code> with the same arguments.
@@ -862,8 +981,10 @@
             <a class="button secondary" href="./cli-reference.md">Read the CLI reference</a>
           </div>
         </div>
+      </section>
 
-        <div class="product-visual" aria-label="openRender local compiler pipeline">
+      <section class="section showcase" aria-label="openRender local compiler pipeline">
+        <div class="product-visual">
           <div class="visual-panel pipeline">
             <p class="panel-title">
               <span>run pipeline</span>
@@ -1118,9 +1239,11 @@
         try {
           await navigator.clipboard.writeText(text);
           const previous = button.textContent;
+          button.classList.add("is-copied");
           button.textContent = "Copied";
           window.setTimeout(() => {
             button.textContent = previous;
+            button.classList.remove("is-copied");
           }, 1400);
         } catch {
           button.textContent = "Select";
