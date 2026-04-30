@@ -129,6 +129,8 @@ Current outputs:
 - `.openrender/reports/{run_id}.json`
 - `.openrender/reports/latest.html`
 - `.openrender/reports/latest.json`
+- `.openrender/previews/{run_id}.html`
+- `.openrender/previews/latest.html`
 
 `--open` is planned but not implemented yet.
 

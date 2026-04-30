@@ -215,14 +215,18 @@ test("report latest run writes html and json reports", async () => {
   const result = JSON.parse(stdout) as {
     htmlPath: string;
     jsonPath: string;
+    previewHtmlPath: string;
     latestHtmlPath: string;
     latestJsonPath: string;
+    latestPreviewHtmlPath: string;
   };
 
   assert.equal(await fileExists(path.join(root, result.htmlPath)), true);
   assert.equal(await fileExists(path.join(root, result.jsonPath)), true);
+  assert.equal(await fileExists(path.join(root, result.previewHtmlPath)), true);
   assert.equal(await fileExists(path.join(root, result.latestHtmlPath)), true);
   assert.equal(await fileExists(path.join(root, result.latestJsonPath)), true);
+  assert.equal(await fileExists(path.join(root, result.latestPreviewHtmlPath)), true);
   assert.match(await fs.readFile(path.join(root, result.htmlPath), "utf8"), /openRender report/);
 });
 

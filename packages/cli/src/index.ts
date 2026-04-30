@@ -32,7 +32,7 @@ import {
   type FrameValidationResult,
   type ImageMetadata
 } from "@openrender/harness-visual";
-import { createReportHtml } from "@openrender/reporter";
+import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -571,6 +571,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const record = await readCompileRecord(projectRoot, runId);
   const reportJsonPath = path.posix.join(".openrender", "reports", `${record.run.runId}.json`);
   const reportHtmlPath = path.posix.join(".openrender", "reports", `${record.run.runId}.html`);
+  const previewHtmlPath = path.posix.join(".openrender", "previews", `${record.run.runId}.html`);
   const json = `${JSON.stringify(record, null, 2)}\n`;
   const html = createReportHtml({
     title: `openRender report ${record.run.runId}`,
@@ -582,6 +583,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) }
     ]
+  });
+  const previewHtml = createPreviewHtml({
+    title: `openRender preview ${record.run.runId}`,
+    assetUrl: record.outputPlan.publicUrl
   });
 
   await safeWriteProjectFile({
@@ -608,13 +613,27 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     contents: html,
     allowOverwrite: true
   });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: previewHtmlPath,
+    contents: previewHtml,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: ".openrender/previews/latest.html",
+    contents: previewHtml,
+    allowOverwrite: true
+  });
 
   return {
     runId: record.run.runId,
     jsonPath: reportJsonPath,
     htmlPath: reportHtmlPath,
+    previewHtmlPath,
     latestJsonPath: ".openrender/reports/latest.json",
-    latestHtmlPath: ".openrender/reports/latest.html"
+    latestHtmlPath: ".openrender/reports/latest.html",
+    latestPreviewHtmlPath: ".openrender/previews/latest.html"
   };
 }
 
@@ -729,6 +748,7 @@ function printReportResult(result: ReportCommandResult): void {
   console.log(`Run: ${result.runId}`);
   console.log(`HTML: ${result.htmlPath}`);
   console.log(`JSON: ${result.jsonPath}`);
+  console.log(`Preview: ${result.previewHtmlPath}`);
 }
 
 function printRollbackResult(result: RollbackCommandResult): void {
@@ -782,8 +802,10 @@ interface ReportCommandResult {
   runId: string;
   jsonPath: string;
   htmlPath: string;
+  previewHtmlPath: string;
   latestJsonPath: string;
   latestHtmlPath: string;
+  latestPreviewHtmlPath: string;
 }
 
 interface RollbackCommandResult {
