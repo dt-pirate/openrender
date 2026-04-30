@@ -30,6 +30,7 @@ This document tracks intentional v0.1 POC limits. These are not bugs unless the 
 
 - `compile sprite`, `install`, `verify`, `report`, and `rollback` have local implementations.
 - HTML reports include a basic SVG visual overlay for asset bounds or frame slices.
+- Runtime schema validation is implemented for the core config, media contract, and run models.
 - `--json` is implemented for the main machine-readable commands, but not every command output has a stable public schema.
 - Overwrite requires `--force` for install.
 

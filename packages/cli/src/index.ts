@@ -18,6 +18,8 @@ import {
   safeWriteProjectFile,
   snapshotProjectFile,
   scanProject,
+  validateMediaContract,
+  validateOpenRenderRun,
   type MediaContract,
   type ProjectScan
 } from "@openrender/core";
@@ -464,12 +466,7 @@ async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
   const projectRoot = process.cwd();
   const runId = readStringFlag(parsed, "run", "latest");
   const force = parsed.flags.get("force") === true;
-  const recordPath = runId === "latest"
-    ? ".openrender/runs/latest.json"
-    : path.posix.join(".openrender", "runs", `${runId}.json`);
-  const record = JSON.parse(
-    await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
-  ) as CompileSpriteResult;
+  const record = await readCompileRecord(projectRoot, runId);
   return installCompiledRecord({ projectRoot, record, force });
 }
 
@@ -539,9 +536,25 @@ async function readCompileRecord(projectRoot: string, runId: string): Promise<Co
   const recordPath = runId === "latest"
     ? ".openrender/runs/latest.json"
     : path.posix.join(".openrender", "runs", `${runId}.json`);
-  return JSON.parse(
+  const record = JSON.parse(
     await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
   ) as CompileSpriteResult;
+  const contractValidation = validateMediaContract(record.contract);
+  const runValidation = validateOpenRenderRun(record.run);
+  const issues = [
+    ...(contractValidation.ok
+      ? []
+      : contractValidation.issues.map((issue) => `contract${issue.path.slice(1)}: ${issue.message}`)),
+    ...(runValidation.ok
+      ? []
+      : runValidation.issues.map((issue) => `run${issue.path.slice(1)}: ${issue.message}`))
+  ];
+
+  if (issues.length > 0) {
+    throw new Error(`Invalid openRender run record at ${recordPath}: ${issues.join("; ")}`);
+  }
+
+  return record;
 }
 
 async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {

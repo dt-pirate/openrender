@@ -214,6 +214,27 @@ test("compile sprite can install the compiled run", async () => {
   assert.equal(await fileExists(path.join(root, ".openrender/runs", `${result.run.runId}.install.json`)), true);
 });
 
+test("install rejects malformed run records", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-invalid-run-"));
+  await fs.mkdir(path.join(root, ".openrender/runs"), { recursive: true });
+  await fs.writeFile(path.join(root, ".openrender/runs/latest.json"), JSON.stringify({
+    contract: { mediaType: "visual.unknown" },
+    run: { runId: "run_bad", outputs: [], privacy: {} },
+    installPlan: { files: [] }
+  }), "utf8");
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [cliPath, "install", "--run", "latest"], { cwd: root }),
+    (error: unknown) => {
+      const stderr = error instanceof Error && "stderr" in error
+        ? String(error.stderr)
+        : "";
+      assert.match(stderr, /Invalid openRender run record/);
+      return true;
+    }
+  );
+});
+
 test("verify latest run passes after install", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-verify-"));
   const imagePath = path.join(root, "sprite.png");

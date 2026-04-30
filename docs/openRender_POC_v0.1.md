@@ -1937,7 +1937,7 @@ Tasks:
 - [x] path normalization helper
 - [x] safe project root validation
 - [x] output descriptor model
-- [ ] runtime schema validation
+- [x] runtime schema validation
 
 ### 21.3. Milestone 2 — CLI init/scan
 
