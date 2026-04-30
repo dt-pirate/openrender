@@ -10,6 +10,8 @@ The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, instal
 
 This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser code-generation helpers, install, verify, report, preview, and rollback.
 
+The npm packages are prepared for `0.1.0` publication but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
+
 ## Scope
 
 v0.1 proves this loop:
@@ -83,18 +85,48 @@ pnpm build
 node packages/cli/dist/index.js scan
 ```
 
-From a Vite + Phaser project directory, the POC CLI supports:
+## CLI Workflow
+
+From a Vite + Phaser project directory, initialize local openRender state:
 
 ```bash
 openrender init
 openrender scan
+```
+
+Compile a sprite without writing project files:
+
+```bash
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
+```
+
+Compile and install the sprite into the project:
+
+```bash
 openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
+```
+
+Review, verify, and roll back the latest run:
+
+```bash
 openrender install --run latest
 openrender verify --run latest
 openrender report --run latest
 openrender rollback --run latest
 ```
+
+The CLI writes local state under `.openrender/`, generated assets under `public/assets/`, and generated Phaser helpers under `src/`.
+
+## Packages
+
+The v0.1 package set is:
+
+- `@openrender/core`
+- `@openrender/adapter-phaser`
+- `@openrender/harness-visual`
+- `@openrender/reporter`
+- `@openrender/doctor`
+- `@openrender/cli`
 
 ## Not This
 
