@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/harness-visual" },
+    { "path": "./packages/adapters/phaser" },
+    { "path": "./packages/reporter" },
+    { "path": "./packages/doctor" },
+    { "path": "./packages/cli" },
+    { "path": "./examples/vite-phaser-basic" }
+  ]
+}

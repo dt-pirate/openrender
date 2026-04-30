@@ -1,0 +1,114 @@
+# openRender
+
+openRender is open infrastructure for AI agents turning generated media into engine-ready playable projects.
+
+The v0.1 POC focuses on local image-to-Phaser asset compilation: compile, install, verify, report, and rollback.
+
+## Current Status
+
+This repository is bootstrapped for v0.1 POC development. The first working surface is a local CLI for Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, CLI shell, project scanner, doctor checks, Phaser code-generation helpers, and a Vite + Phaser example.
+
+Image processing and install/rollback execution are the next implementation milestones.
+
+## Scope
+
+v0.1 proves this loop:
+
+```text
+raw generated image
+-> deterministic visual harness
+-> Phaser-ready asset output
+-> local project install
+-> preview/report
+-> verify
+-> rollback
+```
+
+POC boundaries:
+
+- No account
+- No billing
+- No cloud API
+- No hosted playground
+- No model provider calls
+- No telemetry
+- No MCP server implementation yet
+- Vite + Phaser only
+- Image assets only
+
+## Workspace
+
+```text
+packages/core              shared config, contract, path, run state models
+packages/cli               openrender command-line interface
+packages/harness-visual    visual pipeline boundary
+packages/adapters/phaser   Phaser/Vite output helpers
+packages/reporter          report and preview generation boundary
+packages/doctor            environment diagnostics
+examples/vite-phaser-basic minimal target project
+docs/                      POC spec and developer docs
+```
+
+## Development
+
+Prerequisites:
+
+- Node.js 22 or newer
+- pnpm 10 or newer
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Build and verify:
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+Run the CLI from source:
+
+```bash
+pnpm dev:cli scan --json
+pnpm dev:cli doctor
+```
+
+Build the CLI:
+
+```bash
+pnpm build
+node packages/cli/dist/index.js scan
+```
+
+## Example Project
+
+The example target lives at `examples/vite-phaser-basic`.
+
+```bash
+pnpm --filter vite-phaser-basic dev
+```
+
+From that directory, the POC CLI should eventually support:
+
+```bash
+openrender init
+openrender scan
+openrender compile sprite --from tmp/slime_raw.png --target phaser --id enemy.slime.idle --frames 6 --frame-size 64x64 --install
+openrender verify --run latest --open
+openrender report --open
+```
+
+## Documentation
+
+- [POC spec](docs/openRender_POC_v0.1.md)
+- [Phaser quickstart](docs/quickstart-phaser.md)
+- [CLI reference](docs/cli-reference.md)
+- [Media contracts](docs/contracts.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
+## Not This
+
+openRender is not an AI image generator, asset marketplace, prompt playground, hosted game asset API, or credit-based generation service.

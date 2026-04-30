@@ -1,0 +1,21 @@
+{
+  "name": "openrender-repo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "open infrastructure for AI agents turning generated media into engine-ready playable projects",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "find packages examples -type d -name dist -prune -exec rm -rf {} + && find packages examples -type f \\( -name '*.tsbuildinfo' -o -name 'tsconfig.tsbuildinfo' \\) -delete",
+    "dev:cli": "pnpm --filter @openrender/cli build && node packages/cli/dist/index.js",
+    "lint": "pnpm typecheck",
+    "test": "pnpm build && node --test \"packages/*/dist/**/*.test.js\" \"packages/adapters/*/dist/**/*.test.js\"",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}
