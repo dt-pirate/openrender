@@ -5,6 +5,8 @@ import path from "node:path";
 import { test } from "node:test";
 import sharp from "sharp";
 import {
+  cropAlphaBoundsToPng,
+  detectAlphaBounds,
   loadImageMetadata,
   normalizeImageToPng,
   validateHorizontalFrameSet
@@ -63,6 +65,82 @@ test("normalizeImageToPng writes png output metadata", async () => {
   assert.equal(output.path, outputPath);
   assert.equal(output.metadata.width, 5);
   assert.equal(output.metadata.height, 2);
+  assert.equal(output.metadata.format, "png");
+});
+
+test("detectAlphaBounds finds non-transparent pixels", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bounds-"));
+  const imagePath = path.join(root, "sprite.png");
+
+  await sharp({
+    create: {
+      width: 6,
+      height: 4,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 2,
+            height: 2,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        })
+          .png()
+          .toBuffer(),
+        left: 2,
+        top: 1
+      }
+    ])
+    .png()
+    .toFile(imagePath);
+
+  const bounds = await detectAlphaBounds({ sourcePath: imagePath });
+
+  assert.deepEqual(bounds, { x: 2, y: 1, width: 2, height: 2 });
+});
+
+test("cropAlphaBoundsToPng crops transparent edges and applies padding", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-crop-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  await sharp({
+    create: {
+      width: 6,
+      height: 4,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 2,
+            height: 2,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        })
+          .png()
+          .toBuffer(),
+        left: 2,
+        top: 1
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const output = await cropAlphaBoundsToPng({ sourcePath, outputPath, padding: 1 });
+
+  assert.deepEqual(output.bounds, { x: 2, y: 1, width: 2, height: 2 });
+  assert.equal(output.metadata.width, 4);
+  assert.equal(output.metadata.height, 4);
   assert.equal(output.metadata.format, "png");
 });
 

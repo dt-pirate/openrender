@@ -38,6 +38,18 @@ export interface NormalizedImageOutput {
   metadata: ImageMetadata;
 }
 
+export interface PixelBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CroppedImageOutput extends NormalizedImageOutput {
+  bounds: PixelBounds;
+  padding: number;
+}
+
 export const VISUAL_HARNESS_POC_STAGES = [
   "input_load",
   "format_detection",
@@ -88,6 +100,83 @@ export async function normalizeImageToPng(input: {
   return {
     path: input.outputPath,
     metadata: await loadImageMetadata(input.outputPath)
+  };
+}
+
+export async function detectAlphaBounds(input: {
+  sourcePath: string;
+  alphaThreshold?: number;
+}): Promise<PixelBounds | null> {
+  const alphaThreshold = input.alphaThreshold ?? 0;
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  let minX = info.width;
+  let minY = info.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const alpha = data[(y * info.width + x) * info.channels + 3] ?? 0;
+      if (alpha <= alphaThreshold) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
+}
+
+export async function cropAlphaBoundsToPng(input: {
+  sourcePath: string;
+  outputPath: string;
+  padding?: number;
+  alphaThreshold?: number;
+}): Promise<CroppedImageOutput> {
+  const sourceMetadata = await loadImageMetadata(input.sourcePath);
+  const detectedBounds = await detectAlphaBounds({
+    sourcePath: input.sourcePath,
+    alphaThreshold: input.alphaThreshold
+  });
+  const bounds = detectedBounds ?? {
+    x: 0,
+    y: 0,
+    width: sourceMetadata.width,
+    height: sourceMetadata.height
+  };
+  const padding = input.padding ?? 0;
+
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .extract({ left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height })
+    .extend({
+      top: padding,
+      bottom: padding,
+      left: padding,
+      right: padding,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    })
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath),
+    bounds,
+    padding
   };
 }
 

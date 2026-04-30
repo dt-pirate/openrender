@@ -1970,8 +1970,8 @@ Tasks:
 - [x] metadata extraction
 - [x] PNG output normalization
 - [x] alpha detection
-- [ ] basic crop
-- [ ] padding
+- [x] basic alpha-bounds crop
+- [x] padding
 - [ ] frame slicing
 - [x] horizontal strip frame validation helper
 - [x] integrated frame validation in `compile sprite --dry-run`
