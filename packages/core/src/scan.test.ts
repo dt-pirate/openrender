@@ -31,3 +31,20 @@ test("scanProject detects Vite and Phaser dependencies", async () => {
   assert.equal(scan.assetRootExists, true);
   assert.equal(scan.sourceRootExists, true);
 });
+
+test("scanProject detects Godot projects", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-godot-"));
+  await fs.mkdir(path.join(root, "assets/openrender"), { recursive: true });
+  await fs.mkdir(path.join(root, "scripts/openrender"), { recursive: true });
+  await fs.writeFile(path.join(root, "project.godot"), "[application]\nconfig/name=\"Sample\"\n", "utf8");
+
+  const scan = await scanProject(root);
+
+  assert.equal(scan.framework, "godot");
+  assert.equal(scan.engine, "godot");
+  assert.equal(scan.assetRoot, "assets/openrender");
+  assert.equal(scan.assetRootExists, true);
+  assert.equal(scan.sourceRoot, "scripts/openrender");
+  assert.equal(scan.sourceRootExists, true);
+  assert.equal(path.basename(scan.manifestPath), "openrender_assets.gd");
+});

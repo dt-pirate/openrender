@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/harness-visual" },
     { "path": "./packages/adapters/phaser" },
+    { "path": "./packages/adapters/godot" },
     { "path": "./packages/reporter" },
     { "path": "./packages/doctor" },
     { "path": "./packages/cli" }

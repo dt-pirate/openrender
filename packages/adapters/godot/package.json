@@ -1,13 +1,13 @@
 {
-  "name": "@openrender/harness-visual",
+  "name": "@openrender/adapter-godot",
   "version": "0.1.0",
-  "description": "Deterministic visual processing boundary for openRender",
+  "description": "Godot adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dt-pirate/openrender.git",
-    "directory": "packages/harness-visual"
+    "directory": "packages/adapters/godot"
   },
   "bugs": {
     "url": "https://github.com/dt-pirate/openrender/issues"
@@ -15,11 +15,9 @@
   "homepage": "https://github.com/dt-pirate/openrender#readme",
   "keywords": [
     "game-dev",
-    "phaser",
     "godot",
     "assets",
-    "sprites",
-    "image-processing"
+    "sprites"
   ],
   "engines": {
     "node": ">=22"
@@ -45,7 +43,6 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@openrender/core": "workspace:*",
-    "sharp": "^0.34.5"
+    "@openrender/core": "workspace:*"
   }
 }

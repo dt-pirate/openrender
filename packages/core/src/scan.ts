@@ -24,21 +24,39 @@ export async function scanProject(projectRootInput = process.cwd()): Promise<Pro
 
   const assetRoot = "public/assets";
   const sourceRoot = "src";
+  const godotAssetRoot = "assets/openrender";
+  const godotSourceRoot = "scripts/openrender";
+  const godotProjectPath = path.join(projectRoot, "project.godot");
+  const hasGodotProject = await pathExists(godotProjectPath);
+  const framework = hasGodotProject
+    ? "godot"
+    : dependencyNames.has("vite")
+      ? "vite"
+      : "unknown";
+  const engine = hasGodotProject
+    ? "godot"
+    : dependencyNames.has("phaser")
+      ? "phaser"
+      : "unknown";
+  const detectedAssetRoot = engine === "godot" ? godotAssetRoot : assetRoot;
+  const detectedSourceRoot = engine === "godot" ? godotSourceRoot : sourceRoot;
   const configPath = path.join(projectRoot, OPENRENDER_CONFIG_FILE);
   const statePath = path.join(projectRoot, OPENRENDER_STATE_DIR);
-  const manifestPath = path.join(projectRoot, sourceRoot, "assets", "openrender-manifest.ts");
+  const manifestPath = engine === "godot"
+    ? path.join(projectRoot, detectedSourceRoot, "openrender_assets.gd")
+    : path.join(projectRoot, detectedSourceRoot, "assets", "openrender-manifest.ts");
 
   return {
     projectRoot,
     packageManager: await detectPackageManager(projectRoot),
     packageJsonPath: (await pathExists(packageJsonPath)) ? packageJsonPath : null,
     packageName: typeof packageJson?.name === "string" ? packageJson.name : null,
-    framework: dependencyNames.has("vite") ? "vite" : "unknown",
-    engine: dependencyNames.has("phaser") ? "phaser" : "unknown",
-    assetRoot,
-    assetRootExists: await pathExists(path.join(projectRoot, assetRoot)),
-    sourceRoot,
-    sourceRootExists: await pathExists(path.join(projectRoot, sourceRoot)),
+    framework,
+    engine,
+    assetRoot: detectedAssetRoot,
+    assetRootExists: await pathExists(path.join(projectRoot, detectedAssetRoot)),
+    sourceRoot: detectedSourceRoot,
+    sourceRootExists: await pathExists(path.join(projectRoot, detectedSourceRoot)),
     configPath,
     configExists: await pathExists(configPath),
     statePath,

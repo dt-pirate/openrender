@@ -51,6 +51,9 @@ const outputKinds = [
   "snapshot"
 ] as const;
 
+const targetEngines = ["phaser", "godot"] as const;
+const targetFrameworks = ["vite", "godot"] as const;
+
 export function validateOpenRenderConfig(input: unknown): SchemaValidationResult<OpenRenderConfig> {
   const issues: SchemaValidationIssue[] = [];
   const root = expectRecord(input, "$", issues);
@@ -66,8 +69,9 @@ export function validateOpenRenderConfig(input: unknown): SchemaValidationResult
 
   const target = expectRecord(root.target, "$.target", issues);
   if (target) {
-    expectOneOf(target.engine, "$.target.engine", ["phaser"], issues);
-    expectOneOf(target.framework, "$.target.framework", ["vite"], issues);
+    expectOneOf(target.engine, "$.target.engine", targetEngines, issues);
+    expectOneOf(target.framework, "$.target.framework", targetFrameworks, issues);
+    validateTargetFrameworkPair(target.engine, target.framework, "$.target", issues);
     expectString(target.assetRoot, "$.target.assetRoot", issues);
     expectString(target.sourceRoot, "$.target.sourceRoot", issues);
   }
@@ -182,9 +186,27 @@ export function validateOpenRenderRun(input: unknown): SchemaValidationResult<Op
 function validateTargetContract(input: unknown, path: string, issues: SchemaValidationIssue[]): void {
   const target = expectRecord(input, path, issues);
   if (!target) return;
-  expectOneOf(target.engine, `${path}.engine`, ["phaser"], issues);
-  expectOneOf(target.framework, `${path}.framework`, ["vite"], issues);
+  expectOneOf(target.engine, `${path}.engine`, targetEngines, issues);
+  expectOneOf(target.framework, `${path}.framework`, targetFrameworks, issues);
+  validateTargetFrameworkPair(target.engine, target.framework, path, issues);
   expectString(target.projectRoot, `${path}.projectRoot`, issues);
+}
+
+function validateTargetFrameworkPair(
+  engine: unknown,
+  framework: unknown,
+  path: string,
+  issues: SchemaValidationIssue[]
+): void {
+  if (typeof engine !== "string" || typeof framework !== "string") return;
+
+  if (engine === "phaser" && framework !== "vite") {
+    issues.push({ path: `${path}.framework`, message: "phaser target requires vite framework" });
+  }
+
+  if (engine === "godot" && framework !== "godot") {
+    issues.push({ path: `${path}.framework`, message: "godot target requires godot framework" });
+  }
 }
 
 function validateInstallContract(input: unknown, path: string, issues: SchemaValidationIssue[]): void {

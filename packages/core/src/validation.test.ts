@@ -7,7 +7,7 @@ import {
   validateOpenRenderConfig,
   validateOpenRenderRun
 } from "./validation.js";
-import type { MediaContract } from "./types.js";
+import { OPENRENDER_DEVKIT_VERSION, type MediaContract } from "./types.js";
 
 test("validateOpenRenderConfig accepts the default config", () => {
   const result = validateOpenRenderConfig(createDefaultConfig("sample-game"));
@@ -33,7 +33,7 @@ test("validateOpenRenderConfig rejects cloud-enabled privacy flags", () => {
 
 test("validateMediaContract accepts a transparent sprite contract", () => {
   const contract: MediaContract = {
-    schemaVersion: "0.0.1",
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
     mediaType: "visual.transparent_sprite",
     sourcePath: "tmp/slime.png",
     target: {
@@ -65,7 +65,7 @@ test("validateMediaContract accepts a transparent sprite contract", () => {
 
 test("validateMediaContract rejects invalid sprite frame dimensions", () => {
   const result = validateMediaContract({
-    schemaVersion: "0.0.1",
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
     mediaType: "visual.sprite_frame_set",
     sourcePath: "tmp/slime.png",
     target: {
@@ -95,6 +95,71 @@ test("validateMediaContract rejects invalid sprite frame dimensions", () => {
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.equal(result.issues.some((issue) => issue.path === "$.visual.frames"), true);
+  }
+});
+
+test("validateMediaContract accepts a Godot transparent sprite contract", () => {
+  const contract: MediaContract = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    mediaType: "visual.transparent_sprite",
+    sourcePath: "tmp/tree.png",
+    target: {
+      engine: "godot",
+      framework: "godot",
+      projectRoot: "/tmp/game"
+    },
+    id: "prop.tree",
+    visual: {
+      outputWidth: 128,
+      outputHeight: 128,
+      padding: 0,
+      background: "transparent",
+      outputFormat: "png"
+    },
+    install: {
+      enabled: true,
+      assetRoot: "assets/openrender",
+      writeManifest: true,
+      writeCodegen: false,
+      snapshotBeforeInstall: true
+    }
+  };
+
+  const result = validateMediaContract(contract);
+
+  assert.equal(result.ok, true);
+});
+
+test("validateMediaContract rejects invalid target framework pairs", () => {
+  const result = validateMediaContract({
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    mediaType: "visual.transparent_sprite",
+    sourcePath: "tmp/tree.png",
+    target: {
+      engine: "godot",
+      framework: "vite",
+      projectRoot: "/tmp/game"
+    },
+    id: "prop.tree",
+    visual: {
+      outputWidth: 128,
+      outputHeight: 128,
+      padding: 0,
+      background: "transparent",
+      outputFormat: "png"
+    },
+    install: {
+      enabled: true,
+      assetRoot: "assets/openrender",
+      writeManifest: true,
+      writeCodegen: false,
+      snapshotBeforeInstall: true
+    }
+  });
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.issues.some((issue) => issue.path === "$.target.framework"), true);
   }
 });
 

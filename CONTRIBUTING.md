@@ -1,12 +1,12 @@
 # Contributing
 
-openRender Developer Kit v0.0.1 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit 0.1.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
 - Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
-- Keep the first target Vite + Phaser.
+- Keep the current targets focused on Vite + Phaser and Godot 4.
 - Keep the first media scope image-only.
-- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit v0.0.1.
+- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.1.0.
 - Add tests for shared contracts, path safety, code generation, and CLI behavior.
 
 ## Setup
@@ -23,6 +23,7 @@ pnpm test
 - `@openrender/cli` owns command parsing and orchestration.
 - `@openrender/harness-visual` owns deterministic visual processing.
 - `@openrender/adapter-phaser` owns Phaser/Vite output generation.
+- `@openrender/adapter-godot` owns Godot 4 output generation.
 - `@openrender/reporter` owns local report and preview generation.
 - `@openrender/doctor` owns environment diagnostics.
 
@@ -50,6 +51,15 @@ openrender scan --json
 openrender doctor --json
 openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --install --json
+openrender verify --run latest --json
+openrender report --run latest --json
+```
+
+Godot workflows should use the same dry-run/install/verify/report loop:
+
+```bash
+openrender compile sprite --from tmp/slime.png --target godot --id enemy.slime --output-size 64x64 --dry-run --json
+openrender compile sprite --from tmp/slime.png --target godot --id enemy.slime --output-size 64x64 --install --json
 openrender verify --run latest --json
 openrender report --run latest --json
 ```

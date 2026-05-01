@@ -37,11 +37,11 @@ openrender report --run latest --json
 ## Agent context
 
 - Was this run by an AI agent? yes/no
-- Target project type: Vite + Phaser / other
+- Target project type: Vite + Phaser / Godot 4 / other
 - Asset mode: transparent sprite / sprite frame set
 - Did the command use `--dry-run` before install? yes/no
 - Did the command use `--force`? yes/no
 
 ## Scope check
 
-openRender Developer Kit v0.0.1 is local-first, image-only, and Vite + Phaser focused. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.1.0 is local-first, image-only, and focused on Vite + Phaser plus Godot 4 asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

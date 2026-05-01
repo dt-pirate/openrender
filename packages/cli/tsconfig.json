@@ -11,6 +11,7 @@
     { "path": "../doctor" },
     { "path": "../harness-visual" },
     { "path": "../adapters/phaser" },
+    { "path": "../adapters/godot" },
     { "path": "../reporter" }
   ]
 }

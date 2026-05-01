@@ -1,6 +1,6 @@
 # Security
 
-openRender Developer Kit v0.0.1 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
+openRender Developer Kit 0.1.0 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
 
 ## Developer Kit Safety Rules
 
@@ -9,6 +9,7 @@ openRender Developer Kit v0.0.1 is local-first and agent-first. It should not up
 - Snapshot files before install writes.
 - Keep reports local.
 - Do not add network calls to the Developer Kit path.
+- Do not create Godot `.import` files or write into `.godot/`; Godot owns its import metadata.
 
 ## Agent Safety Rules
 

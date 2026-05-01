@@ -26,16 +26,24 @@ export async function runDoctor(projectRoot = process.cwd()): Promise<DoctorResu
     status: scan.packageJsonPath ? "passed" : "warning",
     message: scan.packageJsonPath ? `found ${path.basename(scan.packageJsonPath)}` : "package.json not found"
   });
-  checks.push({
-    name: "vite",
-    status: scan.framework === "vite" ? "passed" : "warning",
-    message: scan.framework === "vite" ? "Vite detected" : "Vite dependency not detected"
-  });
-  checks.push({
-    name: "phaser",
-    status: scan.engine === "phaser" ? "passed" : "warning",
-    message: scan.engine === "phaser" ? "Phaser detected" : "Phaser dependency not detected"
-  });
+  if (scan.engine === "godot") {
+    checks.push({
+      name: "godot",
+      status: "passed",
+      message: "Godot project detected"
+    });
+  } else {
+    checks.push({
+      name: "vite",
+      status: scan.framework === "vite" ? "passed" : "warning",
+      message: scan.framework === "vite" ? "Vite detected" : "Vite dependency not detected"
+    });
+    checks.push({
+      name: "phaser",
+      status: scan.engine === "phaser" ? "passed" : "warning",
+      message: scan.engine === "phaser" ? "Phaser detected" : "Phaser dependency not detected"
+    });
+  }
   checks.push({
     name: "write_permission",
     status: (await canWrite(scan.projectRoot)) ? "passed" : "failed",

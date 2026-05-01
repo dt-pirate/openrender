@@ -1,6 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { OPENRENDER_DEVKIT_VERSION, type OpenRenderConfig } from "./types.js";
+import {
+  OPENRENDER_DEVKIT_VERSION,
+  type OpenRenderConfig,
+  type TargetEngine,
+  type TargetFramework
+} from "./types.js";
 
 export const OPENRENDER_CONFIG_FILE = "openrender.config.json";
 export const OPENRENDER_STATE_DIR = ".openrender";
@@ -15,8 +20,8 @@ export const OPENRENDER_STATE_SUBDIRS = [
 
 export interface InitOptions {
   projectRoot: string;
-  target?: "phaser";
-  framework?: "vite";
+  target?: TargetEngine;
+  framework?: TargetFramework;
   force?: boolean;
 }
 
@@ -28,7 +33,12 @@ export interface InitResult {
   stateDirectoriesCreated: string[];
 }
 
-export function createDefaultConfig(projectName = "local"): OpenRenderConfig {
+export function createDefaultConfig(
+  projectName = "local",
+  target: TargetEngine = "phaser"
+): OpenRenderConfig {
+  const targetDefaults = getTargetDefaults(target);
+
   return {
     version: OPENRENDER_DEVKIT_VERSION,
     project: {
@@ -36,10 +46,10 @@ export function createDefaultConfig(projectName = "local"): OpenRenderConfig {
       name: projectName
     },
     target: {
-      engine: "phaser",
-      framework: "vite",
-      assetRoot: "public/assets",
-      sourceRoot: "src"
+      engine: target,
+      framework: targetDefaults.framework,
+      assetRoot: targetDefaults.assetRoot,
+      sourceRoot: targetDefaults.sourceRoot
     },
     install: {
       writeManifest: true,
@@ -61,6 +71,9 @@ export function createDefaultConfig(projectName = "local"): OpenRenderConfig {
 
 export async function initializeOpenRenderProject(options: InitOptions): Promise<InitResult> {
   const projectRoot = path.resolve(options.projectRoot);
+  const target = options.target ?? "phaser";
+  const framework = options.framework ?? getTargetDefaults(target).framework;
+  validateTargetFrameworkPair(target, framework);
   const configPath = path.join(projectRoot, OPENRENDER_CONFIG_FILE);
   const statePath = path.join(projectRoot, OPENRENDER_STATE_DIR);
   const configExists = await pathExists(configPath);
@@ -75,9 +88,8 @@ export async function initializeOpenRenderProject(options: InitOptions): Promise
   const shouldWriteConfig = options.force === true || !configExists;
   if (shouldWriteConfig) {
     const projectName = await readProjectName(projectRoot);
-    const config = createDefaultConfig(projectName);
-    config.target.engine = options.target ?? "phaser";
-    config.target.framework = options.framework ?? "vite";
+    const config = createDefaultConfig(projectName, target);
+    config.target.framework = framework;
     await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
   }
 
@@ -88,6 +100,32 @@ export async function initializeOpenRenderProject(options: InitOptions): Promise
     configOverwritten: configExists && options.force === true,
     stateDirectoriesCreated
   };
+}
+
+function getTargetDefaults(target: TargetEngine): Pick<OpenRenderConfig["target"], "framework" | "assetRoot" | "sourceRoot"> {
+  if (target === "godot") {
+    return {
+      framework: "godot",
+      assetRoot: "assets/openrender",
+      sourceRoot: "scripts/openrender"
+    };
+  }
+
+  return {
+    framework: "vite",
+    assetRoot: "public/assets",
+    sourceRoot: "src"
+  };
+}
+
+function validateTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
+  if (target === "phaser" && framework !== "vite") {
+    throw new Error("Phaser target requires the vite framework.");
+  }
+
+  if (target === "godot" && framework !== "godot") {
+    throw new Error("Godot target requires the godot framework.");
+  }
 }
 
 export async function pathExists(filePath: string): Promise<boolean> {

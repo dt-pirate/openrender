@@ -1,6 +1,6 @@
 {
   "name": "openrender-repo",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "open infrastructure for AI agents turning generated media into engine-ready playable projects",
   "license": "Apache-2.0",
@@ -15,6 +15,7 @@
   "keywords": [
     "game-dev",
     "phaser",
+    "godot",
     "assets",
     "sprites",
     "ai-agents"

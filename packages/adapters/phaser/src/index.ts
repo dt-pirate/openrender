@@ -10,8 +10,10 @@ import {
 
 export interface PhaserAssetDescriptor {
   id: string;
+  engine: "phaser";
   type: "sprite_frame_set" | "transparent_sprite";
   assetPath: string;
+  loadPath: string;
   publicUrl: string;
   codegenPath: string | null;
   manifestPath: string;
@@ -51,11 +53,13 @@ export function createPhaserAssetDescriptor(
 
   return {
     id: contract.id,
+    engine: "phaser",
     type:
       contract.mediaType === "visual.sprite_frame_set"
         ? "sprite_frame_set"
         : "transparent_sprite",
     assetPath,
+    loadPath: publicUrl,
     publicUrl,
     codegenPath:
       contract.mediaType === "visual.sprite_frame_set" && contract.install.writeCodegen

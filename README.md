@@ -4,23 +4,23 @@
 
 openRender is local infrastructure for AI agents turning generated media into engine-ready playable projects.
 
-Developer Kit v0.0.1 is an agent-safe asset handoff tool. It helps an AI agent take an existing generated image, inspect a local Vite + Phaser project, compile the image into a Phaser-ready asset, install generated files with snapshots, verify the result, produce a local report, and roll back the install if needed.
+Developer Kit 0.1.0 targets agent-safe image asset handoff for Phaser and Godot 4 projects. It helps an AI agent take an existing generated image, inspect a local game project, compile the image into an engine-ready asset, install generated files with snapshots, verify the result, produce a local report, and roll back the install if needed.
 
 ## Current Status
 
-This repository is bootstrapped for Developer Kit v0.0.1. The first working surface is a local CLI designed to be called by AI coding agents inside Vite + Phaser projects. The implementation currently includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser code-generation helpers, install, verify, report, preview, and rollback.
+The tracked implementation contains the 0.1.0 local CLI surface for Phaser and Godot 4 image asset workflows. It includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser TypeScript helpers, Godot GDScript helpers, install, verify, report, preview, and rollback.
 
-The npm packages are prepared for `0.0.1` publication but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
+The npm packages are prepared for local development but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
 
 ## Scope
 
-Developer Kit v0.0.1 proves this agent loop:
+Developer Kit 0.1.0 is intended to prove this agent loop:
 
 ```text
 agent receives or creates an image file
 -> agent scans the game project
 -> openRender builds a contract and install plan
--> openRender compiles a Phaser-ready PNG artifact
+-> openRender compiles an engine-ready PNG artifact
 -> agent reviews JSON output
 -> openRender installs generated files with snapshots
 -> openRender verifies and reports
@@ -28,20 +28,22 @@ agent receives or creates an image file
 -> rollback remains available for the asset install
 ```
 
-Developer Kit boundaries:
+Developer Kit 0.1.0 is intentionally narrow:
 
-- No account
-- No billing
-- No cloud API
-- No hosted playground
-- No model provider calls
-- No telemetry
-- Vite + Phaser only
-- Image assets only
+- Local-first CLI workflow with no required account or hosted service.
+- Deterministic file operations that stay inside the target project.
+- JSON-first command output for AI agents.
+- Vite + Phaser asset installation.
+- Godot 4 image asset installation.
+- Image asset compilation to engine-loadable PNG files.
+- Local run records, reports, previews, snapshots, verification, and rollback.
+- Model generation, billing, telemetry, and cloud orchestration stay outside this package.
 
 ## Agent Quickstart
 
 Use JSON output whenever an AI agent calls openRender. Treat each command result as structured state for the next decision.
+
+### Current Phaser Workflow
 
 From a Vite + Phaser project directory:
 
@@ -95,17 +97,36 @@ If the installed asset is wrong or the agent needs to abandon the asset change:
 openrender rollback --run latest --json
 ```
 
+### Godot 4 Workflow
+
+From a Godot 4 project directory:
+
+```bash
+openrender init --target godot --json
+openrender scan --json
+openrender compile sprite \
+  --from tmp/slime_idle_strip.png \
+  --target godot \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --dry-run \
+  --json
+```
+
+Godot installs PNG assets under `assets/openrender/`, generates GDScript helpers under `scripts/openrender/`, uses `res://` load paths, and does not write `.import` or `.godot/` files. Godot owns its own import metadata when the project is opened or refreshed.
+
 ## Agent Decision Rules
 
 An AI agent should follow these rules:
 
-- Run `scan --json` before assuming the project is Vite + Phaser.
+- Run `scan --json` before assuming the project type.
 - Run `doctor --json` before writing project files when starting from an unfamiliar project.
 - Prefer `compile sprite --dry-run --json` before `--install`.
 - Do not pass `--force` unless the user explicitly accepts overwriting generated destination files.
 - If frame validation fails, read the `validation.reason` and generate a new compile command with corrected `--frames`, `--frame-size`, or source image dimensions.
 - After install, run `verify --run latest --json`.
-- Use `outputPlan.assetPath`, `outputPlan.publicUrl`, `outputPlan.manifestPath`, and `outputPlan.codegenPath` to decide what game code to edit.
+- Use `outputPlan.assetPath`, `outputPlan.publicUrl` or `outputPlan.loadPath`, `outputPlan.manifestPath`, and `outputPlan.codegenPath` to decide what game code to edit.
 - If verification fails, run `report --run latest --json` and inspect the generated local report before changing unrelated game code.
 - Use `rollback --run latest --json` for the openRender install only. It does not revert the agent's separate game code edits.
 
@@ -117,6 +138,7 @@ The CLI is intended to be machine-readable. Important fields in `compile sprite 
 - `input`: source image metadata, including dimensions, format, hash, alpha, and color space.
 - `outputPlan.assetPath`: where the compiled asset will be installed.
 - `outputPlan.publicUrl`: the URL Phaser can load from a Vite public asset.
+- `outputPlan.loadPath`: engine load path for Godot and future adapters.
 - `outputPlan.manifestPath`: generated asset manifest path.
 - `outputPlan.codegenPath`: generated Phaser animation helper path for frame sets.
 - `installPlan.files`: exact files that install will copy or write.
@@ -125,7 +147,7 @@ The CLI is intended to be machine-readable. Important fields in `compile sprite 
 - `run.runId`: stable run identifier for verify, report, and rollback.
 - `installResult`: files written and snapshots captured when `--install` is used.
 
-## Agent Handoff Example
+## Phaser Handoff Example
 
 After installing an animation frame set, the agent can wire generated helpers into a Phaser scene:
 
@@ -164,6 +186,7 @@ packages/core              shared config, contract, path, run state models
 packages/cli               openrender command-line interface
 packages/harness-visual    visual pipeline boundary
 packages/adapters/phaser   Phaser/Vite output helpers
+packages/adapters/godot    Godot 4 output helpers
 packages/reporter          report and preview generation boundary
 packages/doctor            environment diagnostics
 ```
@@ -205,7 +228,7 @@ pnpm build
 node packages/cli/dist/index.js scan
 ```
 
-## CLI Workflow
+## Current CLI Workflow
 
 For human operators, the same CLI can be used directly. From a Vite + Phaser project directory, initialize local openRender state:
 
@@ -237,7 +260,7 @@ openrender report --run latest
 openrender rollback --run latest
 ```
 
-The CLI writes local state under `.openrender/`, generated assets under `public/assets/`, and generated Phaser helpers under `src/`.
+The current CLI writes local state under `.openrender/`, generated assets under `public/assets/`, and generated Phaser helpers under `src/`.
 
 Generated local paths:
 
@@ -249,13 +272,16 @@ Generated local paths:
 - `public/assets/`: installed Phaser-loadable assets.
 - `src/assets/openrender-manifest.ts`: generated asset manifest.
 - `src/openrender/animations/`: generated Phaser animation helpers.
+- `assets/openrender/`: Godot asset install root.
+- `scripts/openrender/`: Godot GDScript helper root.
 
 ## Packages
 
-The Developer Kit v0.0.1 package set is:
+The current package set is:
 
 - `@openrender/core`
 - `@openrender/adapter-phaser`
+- `@openrender/adapter-godot`
 - `@openrender/harness-visual`
 - `@openrender/reporter`
 - `@openrender/doctor`

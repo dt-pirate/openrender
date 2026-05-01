@@ -9,6 +9,12 @@ import {
   generateManifestSource
 } from "@openrender/adapter-phaser";
 import {
+  createGodotAssetDescriptor,
+  createGodotInstallPlan,
+  generateGodotAnimationHelperSource,
+  generateGodotManifestSource
+} from "@openrender/adapter-godot";
+import {
   createInitialRun,
   initializeOpenRenderProject,
   OPENRENDER_DEVKIT_VERSION,
@@ -21,7 +27,9 @@ import {
   validateMediaContract,
   validateOpenRenderRun,
   type MediaContract,
-  type ProjectScan
+  type ProjectScan,
+  type TargetEngine,
+  type TargetFramework
 } from "@openrender/core";
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
 import {
@@ -37,7 +45,15 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.0.1";
+const CLI_VERSION = "0.1.0";
+
+type EngineAssetDescriptor =
+  | ReturnType<typeof createPhaserAssetDescriptor>
+  | ReturnType<typeof createGodotAssetDescriptor>;
+
+type EngineInstallPlan =
+  | ReturnType<typeof createPhaserInstallPlan>
+  | ReturnType<typeof createGodotInstallPlan>;
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -64,10 +80,13 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (command === "init") {
+    const target = readTargetFlag(parsed, "phaser");
+    const framework = readFrameworkFlag(parsed, defaultFrameworkForTarget(target));
+    assertTargetFrameworkPair(target, framework);
     const result = await initializeOpenRenderProject({
       projectRoot: process.cwd(),
-      target: readStringFlag(parsed, "target", "phaser") as "phaser",
-      framework: readStringFlag(parsed, "framework", "vite") as "vite",
+      target,
+      framework,
       force: parsed.flags.get("force") === true
     });
 
@@ -211,19 +230,48 @@ function requireStringFlag(parsed: ParsedFlags, name: string): string {
   return value;
 }
 
+function readTargetFlag(parsed: ParsedFlags, fallback: TargetEngine): TargetEngine {
+  const value = readStringFlag(parsed, "target", fallback);
+  if (value === "phaser" || value === "godot") return value;
+  throw new Error(`Unsupported target for Developer Kit: ${value}`);
+}
+
+function readFrameworkFlag(parsed: ParsedFlags, fallback: TargetFramework): TargetFramework {
+  const value = readStringFlag(parsed, "framework", fallback);
+  if (value === "vite" || value === "godot") return value;
+  throw new Error(`Unsupported framework for Developer Kit: ${value}`);
+}
+
+function defaultFrameworkForTarget(target: TargetEngine): TargetFramework {
+  return target === "godot" ? "godot" : "vite";
+}
+
+function defaultAssetRootForTarget(target: TargetEngine): string {
+  return target === "godot" ? "assets/openrender" : "public/assets";
+}
+
+function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
+  if (target === "phaser" && framework !== "vite") {
+    throw new Error("Phaser target requires the vite framework.");
+  }
+
+  if (target === "godot" && framework !== "godot") {
+    throw new Error("Godot target requires the godot framework.");
+  }
+}
+
 async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> {
   const projectRoot = process.cwd();
   const sourcePath = resolveInsideProject(projectRoot, requireStringFlag(parsed, "from"));
   const id = requireStringFlag(parsed, "id");
-  const target = readStringFlag(parsed, "target", "phaser");
-  const framework = readStringFlag(parsed, "framework", "vite");
-  const assetRoot = readStringFlag(parsed, "asset-root", "public/assets");
+  const target = readTargetFlag(parsed, "phaser");
+  const framework = readFrameworkFlag(parsed, defaultFrameworkForTarget(target));
+  assertTargetFrameworkPair(target, framework);
+  const assetRoot = readStringFlag(parsed, "asset-root", defaultAssetRootForTarget(target));
   const layout = readStringFlag(parsed, "layout", "horizontal");
   const padding = readIntegerFlag(parsed, "padding", 0);
   const dryRun = parsed.flags.get("dry-run") === true;
 
-  if (target !== "phaser") throw new Error(`Unsupported target for Developer Kit: ${target}`);
-  if (framework !== "vite") throw new Error(`Unsupported framework for Developer Kit: ${framework}`);
   if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
     throw new Error(`Unsupported sprite layout: ${layout}`);
   }
@@ -246,8 +294,8 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       mediaType: "visual.sprite_frame_set",
       sourcePath: path.relative(projectRoot, sourcePath),
       target: {
-        engine: "phaser",
-        framework: "vite",
+        engine: target,
+        framework,
         projectRoot
       },
       id,
@@ -308,8 +356,8 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       mediaType: "visual.transparent_sprite",
       sourcePath: path.relative(projectRoot, sourcePath),
       target: {
-        engine: "phaser",
-        framework: "vite",
+        engine: target,
+        framework,
         projectRoot
       },
       id,
@@ -335,12 +383,13 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     };
   }
 
-  const descriptor = createPhaserAssetDescriptor(contract);
+  const descriptor = createEngineAssetDescriptor(contract);
   const run = createInitialRun({ id, mediaType: contract.mediaType });
   const artifactPath = path.posix.join(".openrender", "artifacts", run.runId, path.posix.basename(descriptor.assetPath));
-  const installPlan = createPhaserInstallPlan({
+  const installPlan = createEngineInstallPlan({
     contract,
-    compiledAssetPath: artifactPath
+    compiledAssetPath: artifactPath,
+    frameSlices
   });
   let artifact: CompileSpriteResult["artifact"];
   run.status = dryRun ? "harness_ready" : "completed";
@@ -390,15 +439,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     outputPlan: descriptor,
     installPlan,
     artifact,
-    generatedSources:
-      contract.mediaType === "visual.sprite_frame_set"
-        ? {
-            manifest: generateManifestSource([contract]),
-            animationHelper: generateAnimationHelperSource(contract)
-          }
-        : {
-            manifest: generateManifestSource([contract])
-          },
+    generatedSources: createGeneratedSources(contract, frameSlices),
     validation,
     frameSlices,
     run
@@ -462,6 +503,62 @@ function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: numbe
   };
   if (size.width <= 0 || size.height <= 0) throw new Error(`--${name} must use positive dimensions.`);
   return size;
+}
+
+function createEngineAssetDescriptor(contract: MediaContract): EngineAssetDescriptor {
+  if (contract.target.engine === "godot") {
+    return createGodotAssetDescriptor(contract);
+  }
+
+  return createPhaserAssetDescriptor(contract);
+}
+
+function createEngineInstallPlan(input: {
+  contract: MediaContract;
+  compiledAssetPath: string;
+  frameSlices?: FrameSlice[];
+}): EngineInstallPlan {
+  if (input.contract.target.engine === "godot") {
+    return createGodotInstallPlan(input);
+  }
+
+  return createPhaserInstallPlan({
+    contract: input.contract,
+    compiledAssetPath: input.compiledAssetPath
+  });
+}
+
+function createGeneratedSources(
+  contract: MediaContract,
+  frameSlices?: FrameSlice[]
+): CompileSpriteResult["generatedSources"] {
+  if (contract.target.engine === "godot") {
+    return contract.mediaType === "visual.sprite_frame_set"
+      ? {
+          manifest: generateGodotManifestSource([contract]),
+          animationHelper: generateGodotAnimationHelperSource(contract, frameSlices)
+        }
+      : {
+          manifest: generateGodotManifestSource([contract])
+        };
+  }
+
+  return contract.mediaType === "visual.sprite_frame_set"
+    ? {
+        manifest: generateManifestSource([contract]),
+        animationHelper: generateAnimationHelperSource(contract)
+      }
+    : {
+        manifest: generateManifestSource([contract])
+    };
+}
+
+function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
+  if (outputPlan.engine === "godot") {
+    return outputPlan.loadPath.startsWith("res://") && outputPlan.loadPath.endsWith(".png");
+  }
+
+  return outputPlan.publicUrl.startsWith("/") && outputPlan.publicUrl.endsWith(".png");
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
@@ -598,6 +695,13 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
     });
   }
 
+  checks.push({
+    name: "engine_load_path_shape",
+    status: isLoadPathValid(record.outputPlan) ? "passed" : "failed",
+    path: record.outputPlan.loadPath ?? ("publicUrl" in record.outputPlan ? record.outputPlan.publicUrl : undefined),
+    message: record.outputPlan.engine
+  });
+
   const result: VerifyCommandResult = {
     runId: record.run.runId,
     status: checks.every((check) => check.status === "passed") ? "passed" : "failed",
@@ -631,12 +735,18 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) },
       { heading: "Run Verification", body: JSON.stringify(record.run.verification ?? null, null, 2) },
+      ...(record.contract.target.engine === "godot"
+        ? [{
+            heading: "Godot Import Note",
+            body: "openRender installs source PNG assets and GDScript helpers only. Godot owns .import metadata and .godot/ cache files; open the project or run Godot's import flow before assuming editor-side imported resources exist."
+          }]
+        : []),
       ...(nextAction ? [{ heading: "Next Action", body: nextAction }] : [])
     ]
   });
   const previewHtml = createPreviewHtml({
     title: `openRender preview ${record.run.runId}`,
-    assetUrl: record.outputPlan.publicUrl
+    assetUrl: createPreviewAssetUrl(record)
   });
 
   await safeWriteProjectFile({
@@ -716,6 +826,14 @@ async function openLocalFile(filePath: string): Promise<void> {
       resolve();
     });
   });
+}
+
+function createPreviewAssetUrl(record: CompileSpriteResult): string | undefined {
+  if ("publicUrl" in record.outputPlan) return record.outputPlan.publicUrl;
+
+  const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
+  if (!artifactPath) return undefined;
+  return path.posix.relative(".openrender/previews", artifactPath);
 }
 
 function createVisualOverlayHtml(record: CompileSpriteResult): string | null {
@@ -902,6 +1020,7 @@ function printCompileSprite(result: CompileSpriteResult): void {
   console.log(`Asset id: ${result.contract.id}`);
   console.log(`Media type: ${result.contract.mediaType}`);
   console.log(`Output asset: ${result.outputPlan.assetPath}`);
+  console.log(`Load path: ${result.outputPlan.loadPath}`);
   if (result.artifact) console.log(`Compiled artifact: ${result.run.outputs[0]?.path ?? result.artifact.path}`);
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
@@ -961,10 +1080,10 @@ function printHelp(): void {
 
 Usage:
   openrender --version
-  openrender init [--target phaser] [--framework vite] [--force] [--json]
+  openrender init [--target phaser|godot] [--framework vite|godot] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender compile sprite --from <path> --id <asset.id> [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender compile sprite --from <path> --id <asset.id> [--target phaser|godot] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install --run latest [--force] [--json]
   openrender verify --run latest [--json]
   openrender report --run latest [--open] [--json]
@@ -1014,8 +1133,8 @@ interface CompileSpriteResult {
   projectRoot: string;
   input: ImageMetadata;
   contract: MediaContract;
-  outputPlan: ReturnType<typeof createPhaserAssetDescriptor>;
-  installPlan: ReturnType<typeof createPhaserInstallPlan>;
+  outputPlan: EngineAssetDescriptor;
+  installPlan: EngineInstallPlan;
   artifact?: {
     path: string;
     metadata: ImageMetadata;

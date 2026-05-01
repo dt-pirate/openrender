@@ -1,6 +1,6 @@
 {
   "name": "@openrender/cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Command-line interface for openRender",
   "license": "Apache-2.0",
   "type": "module",
@@ -16,6 +16,7 @@
   "keywords": [
     "game-dev",
     "phaser",
+    "godot",
     "assets",
     "sprites",
     "cli"
@@ -47,6 +48,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@openrender/adapter-godot": "workspace:*",
     "@openrender/adapter-phaser": "workspace:*",
     "@openrender/core": "workspace:*",
     "@openrender/doctor": "workspace:*",
