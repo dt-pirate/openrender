@@ -4,6 +4,8 @@
 
 Describe the bug, question, or proposal.
 
+If this came from an AI agent workflow, include the exact openRender command sequence the agent ran. Do not include private source files, generated assets, credentials, or local reports unless they are safe to share.
+
 ## Expected behavior
 
 What did you expect openRender to do?
@@ -12,8 +14,17 @@ What did you expect openRender to do?
 
 ```bash
 openrender --version
-openrender scan
+openrender scan --json
+openrender doctor --json
 openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
+```
+
+If the issue happened after install:
+
+```bash
+openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
+openrender verify --run latest --json
+openrender report --run latest --json
 ```
 
 ## Environment
@@ -22,6 +33,14 @@ openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frame
 - Node.js:
 - pnpm:
 - openRender command:
+
+## Agent context
+
+- Was this run by an AI agent? yes/no
+- Target project type: Vite + Phaser / other
+- Asset mode: transparent sprite / sprite frame set
+- Did the command use `--dry-run` before install? yes/no
+- Did the command use `--force`? yes/no
 
 ## Scope check
 

@@ -1,8 +1,9 @@
 # Contributing
 
-openRender Developer Kit v0.0.1 is local-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit v0.0.1 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
+- Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
 - Keep the first target Vite + Phaser.
 - Keep the first media scope image-only.
 - Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit v0.0.1.
@@ -26,3 +27,35 @@ pnpm test
 - `@openrender/doctor` owns environment diagnostics.
 
 Do not add cloud, billing, auth, or provider integration code to these Developer Kit packages.
+
+## Agent-Facing CLI Rules
+
+When changing CLI behavior, preserve these agent contracts:
+
+- Every workflow command should remain usable with `--json`.
+- JSON fields should be stable, explicit, and safe for an agent to branch on.
+- Dry-run output should describe planned files without writing project files.
+- Install should snapshot destination files before writing.
+- Existing destination files should not be overwritten unless the caller explicitly passes `--force`.
+- Verification failures should return non-zero and include enough structured detail for an agent to choose the next command.
+- Reports should stay local and should explain likely next actions when validation or verification fails.
+- Rollback should only operate on files recorded by the openRender install result.
+
+## Expected Agent Workflow
+
+Use this workflow as the baseline when reviewing changes:
+
+```bash
+openrender scan --json
+openrender doctor --json
+openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --dry-run --json
+openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --install --json
+openrender verify --run latest --json
+openrender report --run latest --json
+```
+
+Frame-set workflows should also cover validation failures:
+
+```bash
+openrender compile sprite --from tmp/slime_idle.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
+```
