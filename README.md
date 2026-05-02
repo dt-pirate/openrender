@@ -2,13 +2,15 @@
 
 [![CI](https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg)](https://github.com/dt-pirate/openrender/actions/workflows/ci.yml)
 
-openRender turns existing generated images into engine-ready game project assets.
+openRender turns existing generated images into engine-ready game project assets and helps AI coding agents avoid repeated token-heavy asset handoff work.
 
 It is built for AI coding agents working inside local game projects. The CLI scans the project, compiles a PNG asset, creates engine-specific helper files, installs with snapshots, verifies the result, writes a local report, and keeps rollback available.
 
+The 0.3.1 reference direction keeps local compile/install as the free core. Future paid value should come from recipe packs, agent packs, update access, support bundles, optional hosted workers, and OEM/platform licensing.
+
 ## Status
 
-Developer Kit `0.3.0` supports image asset handoff for:
+The implemented Developer Kit core currently supports image asset handoff for:
 
 - Vite + Phaser
 - Godot 4
@@ -17,6 +19,20 @@ Developer Kit `0.3.0` supports image asset handoff for:
 The current implementation includes project scanning, doctor checks, image normalization, transparent crop/background cleanup, sprite frame validation, install plans, JSON output, local previews, reports, snapshots, verification, and rollback.
 
 Packages are prepared for local development. Until they are published, run the CLI from this repository.
+
+## 0.3.1 Reference Direction
+
+The active local reference document is `docs/openRender_v0.3.1.md`. The `docs/` folder is intentionally kept out of Git.
+
+0.3.1 adds product direction around agent token savings and pack boundaries without turning local compile into a hosted metered service:
+
+- Local compile and install remain free, local-first core behavior.
+- Agent and engine recipe packs can reduce repeated prompt, schema, helper, and repair work.
+- Future update access can distribute newer framework conventions and helper templates.
+- Support, studio bundles, hosted workers, and OEM/platform licensing are separate paid surfaces.
+- The server, if introduced later, should be license, pack, update, and OEM infrastructure, not a required compile server.
+
+This means openRender should be described as a local-first media-to-engine compiler plus a recipe/pack strategy for reducing agent waste, not as an image generator, credit wallet, marketplace, or hosted asset API.
 
 ## Quickstart
 
@@ -113,6 +129,7 @@ Use `rollback --run latest --json` to undo files written by a specific openRende
 - After install, run `verify --run latest --json`.
 - Use the generated `outputPlan` paths when editing game code.
 - Use `rollback --run latest --json` only for the openRender install. It does not revert separate game code edits.
+- Treat any future pack or recipe output as a way to reduce repeated agent context, not as a reason to skip dry-run, verification, or rollback boundaries.
 
 ## Workspace
 
