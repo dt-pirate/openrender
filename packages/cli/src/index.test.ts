@@ -46,6 +46,16 @@ test("schema command emits official schemas", async () => {
 
   assert.equal(schema.title, "openRender Media Contract");
   assert.equal(schema.properties.schemaVersion.const, "0.6.0");
+
+  const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "schema",
+    "media-p4"
+  ]);
+  const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
+
+  assert.equal(p4Schema.title, "openRender 0.6.0 P4 Media Contracts");
+  assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
 test("pack and recipe commands expose built-in local core metadata", async () => {

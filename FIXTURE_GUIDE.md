@@ -10,4 +10,4 @@ openrender fixture capture --name sample-dot --from sprite.png --target canvas -
 
 Fixture capture writes sanitized fixture metadata and refuses files outside the project root. Do not include private project files, credentials, generated assets, or local reports in public fixture contributions.
 
-Each adapter should keep at least two golden fixtures before being considered ready for broader use.
+Each built-in adapter keeps at least two golden fixtures. The fixture test suite enforces this for Phaser, Godot, LOVE2D, PixiJS, and Canvas.

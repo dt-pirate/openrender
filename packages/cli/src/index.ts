@@ -46,6 +46,7 @@ import {
   validateMediaContract,
   validateOpenRenderRun,
   type MediaContract,
+  type OpenRenderAdapter,
   type ProjectScan,
   type SpriteFrameSetContract,
   type TransparentSpriteContract,
@@ -92,6 +93,154 @@ type EngineInstallPlan =
   | ReturnType<typeof createCanvasInstallPlan>;
 
 type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
+type SpriteAdapter = OpenRenderAdapter<EngineAssetDescriptor, EngineInstallPlan>;
+
+const SPRITE_ADAPTER_REGISTRY: Record<TargetEngine, SpriteAdapter> = {
+  phaser: {
+    id: "phaser",
+    framework: "vite",
+    detect: (scan) => scan.engine === "phaser",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createPhaserAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createPhaserInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath
+      });
+    },
+    generateSources: (contract) => {
+      assertSpriteCompileContract(contract);
+      return contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generateManifestSource([contract]),
+            animationHelper: generateAnimationHelperSource(contract)
+          }
+        : {
+            manifest: generateManifestSource([contract])
+          };
+    },
+    verify: (descriptor) => "publicUrl" in descriptor && descriptor.publicUrl.startsWith("/") && descriptor.publicUrl.endsWith(".png")
+  },
+  godot: {
+    id: "godot",
+    framework: "godot",
+    detect: (scan) => scan.engine === "godot",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createGodotAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createGodotInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath,
+        frameSlices: input.frameSlices
+      });
+    },
+    generateSources: (contract, frameSlices) => {
+      assertSpriteCompileContract(contract);
+      return contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generateGodotManifestSource([contract]),
+            animationHelper: generateGodotAnimationHelperSource(contract, frameSlices)
+          }
+        : {
+            manifest: generateGodotManifestSource([contract])
+          };
+    },
+    verify: (descriptor) => descriptor.engine === "godot" && descriptor.loadPath.startsWith("res://") && descriptor.loadPath.endsWith(".png")
+  },
+  love2d: {
+    id: "love2d",
+    framework: "love2d",
+    detect: (scan) => scan.engine === "love2d",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createLove2DAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createLove2DInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath,
+        frameSlices: input.frameSlices
+      });
+    },
+    generateSources: (contract, frameSlices) => {
+      assertSpriteCompileContract(contract);
+      return contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generateLove2DManifestSource([contract]),
+            animationHelper: generateLove2DAnimationHelperSource(contract, frameSlices)
+          }
+        : {
+            manifest: generateLove2DManifestSource([contract])
+          };
+    },
+    verify: (descriptor) => descriptor.engine === "love2d" && !descriptor.loadPath.startsWith("/") && !descriptor.loadPath.includes("..") && descriptor.loadPath.endsWith(".png")
+  },
+  pixi: {
+    id: "pixi",
+    framework: "vite",
+    detect: (scan) => scan.engine === "pixi",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createPixiAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createPixiInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath,
+        frameSlices: input.frameSlices
+      });
+    },
+    generateSources: (contract, frameSlices) => {
+      assertSpriteCompileContract(contract);
+      return contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generatePixiManifestSource([contract]),
+            animationHelper: generatePixiAnimationHelperSource(contract, frameSlices)
+          }
+        : {
+            manifest: generatePixiManifestSource([contract])
+          };
+    },
+    verify: (descriptor) => descriptor.engine === "pixi" && descriptor.publicUrl.startsWith("/") && descriptor.publicUrl.endsWith(".png")
+  },
+  canvas: {
+    id: "canvas",
+    framework: "vite",
+    detect: (scan) => scan.engine === "canvas",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createCanvasAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createCanvasInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath,
+        frameSlices: input.frameSlices
+      });
+    },
+    generateSources: (contract, frameSlices) => {
+      assertSpriteCompileContract(contract);
+      return contract.mediaType === "visual.sprite_frame_set"
+        ? {
+            manifest: generateCanvasManifestSource([contract]),
+            animationHelper: generateCanvasAnimationHelperSource(contract, frameSlices)
+          }
+        : {
+            manifest: generateCanvasManifestSource([contract])
+          };
+    },
+    verify: (descriptor) => descriptor.engine === "canvas" && descriptor.publicUrl.startsWith("/") && descriptor.publicUrl.endsWith(".png")
+  }
+};
 
 const CORE_PACK_ID = "core";
 const CORE_RECIPES = [
@@ -260,6 +409,34 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
         items: { type: "string" }
       },
       summary: { type: "string" }
+    }
+  },
+  "media-p4": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/media-p4.schema.json",
+    title: "openRender 0.6.0 P4 Media Contracts",
+    type: "object",
+    required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
+    properties: {
+      schemaVersion: { const: OPENRENDER_DEVKIT_VERSION },
+      mediaType: {
+        enum: [
+          "audio.sound_effect",
+          "audio.music_loop",
+          "visual.tileset",
+          "visual.atlas",
+          "visual.ui_button",
+          "visual.ui_panel",
+          "visual.icon_set"
+        ]
+      },
+      sourcePath: { type: "string" },
+      id: { type: "string" },
+      audio: { type: "object" },
+      visual: { type: "object" },
+      ui: { type: "object" },
+      target: { type: "object" },
+      install: { type: "object" }
     }
   }
 };
@@ -898,7 +1075,7 @@ function getSchemaResult(name: string | undefined): { name: string; schema: Reco
   const normalized = name ?? "contract";
   const schema = OPENRENDER_SCHEMAS[normalized];
   if (!schema) {
-    throw new Error(`Unknown schema: ${normalized}. Use contract, output, report, install-plan, or pack-manifest.`);
+    throw new Error(`Unknown schema: ${normalized}. Use contract, output, report, install-plan, pack-manifest, or media-p4.`);
   }
   return { name: normalized, schema };
 }
@@ -1247,7 +1424,36 @@ async function serveReports(parsed: ParsedFlags): Promise<ReportsServeCommandRes
 async function createReportsGalleryHtml(projectRoot: string): Promise<string> {
   const reportsDir = resolveInsideProject(projectRoot, ".openrender/reports");
   const files = (await pathExists(reportsDir)) ? (await fs.readdir(reportsDir)).filter((file) => file.endsWith(".json")) : [];
-  const items = files.sort().map((file) => `<li><a href="./${escapeHtmlAttribute(file)}">${escapeHtmlText(file)}</a></li>`).join("");
+  const sections = [];
+
+  for (const file of files.sort()) {
+    const raw = await fs.readFile(path.join(reportsDir, file), "utf8");
+    const record = JSON.parse(raw) as Partial<CompileSpriteResult>;
+    const runId = record.run?.runId ?? file.replace(/\.json$/, "");
+    const outputs = record.run?.outputs ?? [];
+    const checks = record.run?.verification?.checks ?? [];
+    const helperCode = record.installPlan?.files.filter((plannedFile) => plannedFile.kind === "codegen").map((plannedFile) => plannedFile.to) ?? [];
+    const preview = outputs.find((output) => output.kind === "preview")?.path ?? null;
+    const diff = {
+      filesPlanned: record.installPlan?.files.map((plannedFile) => plannedFile.to) ?? [],
+      helperCodeGenerated: helperCode,
+      rollbackCommand: record.installResult ? `openrender rollback --run ${runId} --json` : null
+    };
+
+    sections.push(`<section class="run-detail">
+  <h2>${escapeHtmlText(runId)}</h2>
+  <p>Asset: ${escapeHtmlText(record.contract?.id ?? "unknown")} / Target: ${escapeHtmlText(record.contract?.target.engine ?? "unknown")}</p>
+  <h3>Previews</h3>
+  <p>${escapeHtmlText(preview ?? "No frame sheet preview for this run")}</p>
+  <h3>Verification checks</h3>
+  <ul>${checks.map((check) => `<li>${escapeHtmlText(check.name)}: ${escapeHtmlText(check.status)}${check.path ? ` (${escapeHtmlText(check.path)})` : ""}</li>`).join("")}</ul>
+  <h3>Helper code</h3>
+  <ul>${helperCode.map((helperPath) => `<li>${escapeHtmlText(helperPath)}</li>`).join("")}</ul>
+  <h3>Diff</h3>
+  <pre>${escapeHtmlText(JSON.stringify(diff, null, 2))}</pre>
+</section>`);
+  }
+
   return `<!doctype html>
 <html>
 <head><meta charset="utf-8"><title>openRender reports</title></head>
@@ -1255,7 +1461,7 @@ async function createReportsGalleryHtml(projectRoot: string): Promise<string> {
   <main>
     <h1>openRender reports</h1>
     <p>Local-only gallery. No upload, telemetry, or sync.</p>
-    <ul>${items}</ul>
+    ${sections.length > 0 ? sections.join("\n") : "<p>No local reports found.</p>"}
   </main>
 </body>
 </html>`;
@@ -1272,9 +1478,9 @@ function assetIdToPascalCase(value: string): string {
 function notImplementedIn031(commandName: string): NotImplementedCommandResult {
   return {
     ok: false,
-    code: "not_implemented_in_0_3_1",
+    code: "future_surface",
     command: commandName,
-    message: `${commandName} is planned for a later release. openRender core works locally without login, billing, telemetry, or remote sync.`,
+    message: `${commandName} is an explicit future surface. openRender core works locally without login, billing, telemetry, or remote sync.`,
     nextActions: [
       "Use the built-in core recipes with openrender recipe list --json.",
       "Run local compile, verify, report, explain, diff, and rollback commands without an account."
@@ -1570,23 +1776,7 @@ function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: numbe
 }
 
 function createEngineAssetDescriptor(contract: SpriteCompileContract): EngineAssetDescriptor {
-  if (contract.target.engine === "godot") {
-    return createGodotAssetDescriptor(contract);
-  }
-
-  if (contract.target.engine === "love2d") {
-    return createLove2DAssetDescriptor(contract);
-  }
-
-  if (contract.target.engine === "pixi") {
-    return createPixiAssetDescriptor(contract);
-  }
-
-  if (contract.target.engine === "canvas") {
-    return createCanvasAssetDescriptor(contract);
-  }
-
-  return createPhaserAssetDescriptor(contract);
+  return getSpriteAdapter(contract.target.engine).describe(contract);
 }
 
 function createEngineInstallPlan(input: {
@@ -1594,108 +1784,28 @@ function createEngineInstallPlan(input: {
   compiledAssetPath: string;
   frameSlices?: FrameSlice[];
 }): EngineInstallPlan {
-  if (input.contract.target.engine === "godot") {
-    return createGodotInstallPlan(input);
-  }
-
-  if (input.contract.target.engine === "love2d") {
-    return createLove2DInstallPlan(input);
-  }
-
-  if (input.contract.target.engine === "pixi") {
-    return createPixiInstallPlan({
-      contract: input.contract,
-      compiledAssetPath: input.compiledAssetPath,
-      frameSlices: input.frameSlices
-    });
-  }
-
-  if (input.contract.target.engine === "canvas") {
-    return createCanvasInstallPlan({
-      contract: input.contract,
-      compiledAssetPath: input.compiledAssetPath,
-      frameSlices: input.frameSlices
-    });
-  }
-
-  return createPhaserInstallPlan({
-    contract: input.contract,
-    compiledAssetPath: input.compiledAssetPath
-  });
+  return getSpriteAdapter(input.contract.target.engine).plan(input);
 }
 
 function createGeneratedSources(
   contract: SpriteCompileContract,
   frameSlices?: FrameSlice[]
 ): CompileSpriteResult["generatedSources"] {
-  if (contract.target.engine === "godot") {
-    return contract.mediaType === "visual.sprite_frame_set"
-      ? {
-          manifest: generateGodotManifestSource([contract]),
-          animationHelper: generateGodotAnimationHelperSource(contract, frameSlices)
-        }
-      : {
-          manifest: generateGodotManifestSource([contract])
-        };
-  }
-
-  if (contract.target.engine === "love2d") {
-    return contract.mediaType === "visual.sprite_frame_set"
-      ? {
-          manifest: generateLove2DManifestSource([contract]),
-          animationHelper: generateLove2DAnimationHelperSource(contract, frameSlices)
-        }
-      : {
-          manifest: generateLove2DManifestSource([contract])
-        };
-  }
-
-  if (contract.target.engine === "pixi") {
-    return contract.mediaType === "visual.sprite_frame_set"
-      ? {
-          manifest: generatePixiManifestSource([contract]),
-          animationHelper: generatePixiAnimationHelperSource(contract, frameSlices)
-        }
-      : {
-          manifest: generatePixiManifestSource([contract])
-        };
-  }
-
-  if (contract.target.engine === "canvas") {
-    return contract.mediaType === "visual.sprite_frame_set"
-      ? {
-          manifest: generateCanvasManifestSource([contract]),
-          animationHelper: generateCanvasAnimationHelperSource(contract, frameSlices)
-        }
-      : {
-          manifest: generateCanvasManifestSource([contract])
-        };
-  }
-
-  return contract.mediaType === "visual.sprite_frame_set"
-    ? {
-        manifest: generateManifestSource([contract]),
-        animationHelper: generateAnimationHelperSource(contract)
-      }
-    : {
-        manifest: generateManifestSource([contract])
-    };
+  return getSpriteAdapter(contract.target.engine).generateSources(contract, frameSlices);
 }
 
 function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
-  if (outputPlan.engine === "godot") {
-    return outputPlan.loadPath.startsWith("res://") && outputPlan.loadPath.endsWith(".png");
-  }
+  return getSpriteAdapter(outputPlan.engine).verify(outputPlan);
+}
 
-  if (outputPlan.engine === "love2d") {
-    return !outputPlan.loadPath.startsWith("/") && !outputPlan.loadPath.includes("..") && outputPlan.loadPath.endsWith(".png");
-  }
+function getSpriteAdapter(target: TargetEngine): SpriteAdapter {
+  return SPRITE_ADAPTER_REGISTRY[target];
+}
 
-  if (outputPlan.engine === "phaser" || outputPlan.engine === "pixi" || outputPlan.engine === "canvas") {
-    return outputPlan.publicUrl.startsWith("/") && outputPlan.publicUrl.endsWith(".png");
+function assertSpriteCompileContract(contract: MediaContract): asserts contract is SpriteCompileContract {
+  if (contract.mediaType !== "visual.transparent_sprite" && contract.mediaType !== "visual.sprite_frame_set") {
+    throw new Error(`Sprite adapter registry only supports sprite contracts, got ${contract.mediaType}.`);
   }
-
-  return false;
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
@@ -2392,7 +2502,7 @@ Usage:
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender schema contract|output|report|install-plan|pack-manifest
+  openrender schema contract|output|report|install-plan|pack-manifest|media-p4
   openrender pack list|inspect [packId] [--json]
   openrender recipe list|inspect|validate [recipeId] [--json]
   openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--json]
@@ -2551,7 +2661,7 @@ interface RuntimeSmokeCommandResult {
 
 interface NotImplementedCommandResult {
   ok: false;
-  code: "not_implemented_in_0_3_1";
+  code: "future_surface";
   command: string;
   message: string;
   nextActions: string[];

@@ -130,9 +130,10 @@ node /path/to/openrender/packages/cli/dist/index.js schema output
 node /path/to/openrender/packages/cli/dist/index.js schema report
 node /path/to/openrender/packages/cli/dist/index.js schema install-plan
 node /path/to/openrender/packages/cli/dist/index.js schema pack-manifest
+node /path/to/openrender/packages/cli/dist/index.js schema media-p4
 ```
 
-Tracked schema files live in `schemas/`. Golden fixtures live in `fixtures/` and are exercised by the test suite.
+Tracked schema files live in `schemas/`, including `schemas/media-p4.schema.json` for audio, atlas/tileset, and UI metadata contracts. Golden fixtures live in `fixtures/` and are exercised by the test suite.
 
 Inspect the built-in local core pack and recipes:
 

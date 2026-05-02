@@ -3,7 +3,7 @@
 ## 0.6.0 Developer Kit
 
 - Local sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
-- Adapter registry surface through shared target types and adapter packages.
+- Adapter registry surface through shared target types, adapter packages, and CLI dispatch for describe, install-plan, helper generation, and load-path verification.
 - Built-in recipe metadata under `recipes/`.
 - Local MCP metadata package for JSON-only agent tool/resource/prompt surfaces.
 - Contributor support through adapter scaffolding and fixture capture.

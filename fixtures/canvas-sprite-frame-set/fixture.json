@@ -1,0 +1,11 @@
+{
+  "name": "canvas-sprite-frame-set",
+  "target": "canvas",
+  "inputPngBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "args": ["compile", "sprite", "--from", "input.png", "--target", "canvas", "--id", "fixture.hero.idle", "--frames", "1", "--frame-size", "1x1", "--dry-run", "--json"],
+  "expected": {
+    "mediaType": "visual.sprite_frame_set",
+    "assetPath": "public/assets/fixture-hero-idle.png",
+    "installKinds": ["compiled_asset", "manifest", "codegen"]
+  }
+}
