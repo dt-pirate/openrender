@@ -1,4 +1,4 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.1.0" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.2.0" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
 export type TargetEngine = "phaser" | "godot";

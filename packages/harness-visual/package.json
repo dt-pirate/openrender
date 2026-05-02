@@ -1,6 +1,6 @@
 {
   "name": "@openrender/harness-visual",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic visual processing boundary for openRender",
   "license": "Apache-2.0",
   "type": "module",

@@ -44,4 +44,4 @@ openrender report --run latest --json
 
 ## Scope check
 
-openRender Developer Kit 0.1.0 is local-first, image-only, and focused on Vite + Phaser plus Godot 4 asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.2.0 is local-first, image-only, and focused on Vite + Phaser plus Godot 4 asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

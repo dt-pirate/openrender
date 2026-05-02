@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.1.0");
+  assert.equal(stdout.trim(), "0.2.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,7 +27,7 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.1\.0/m);
+  assert.match(stdout, /^openRender 0\.2\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /openrender install --run latest \[--force\] \[--json\]/);

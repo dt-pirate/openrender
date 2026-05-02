@@ -4,17 +4,17 @@
 
 openRender is local infrastructure for AI agents turning generated media into engine-ready playable projects.
 
-Developer Kit 0.1.0 targets agent-safe image asset handoff for Phaser and Godot 4 projects. It helps an AI agent take an existing generated image, inspect a local game project, compile the image into an engine-ready asset, install generated files with snapshots, verify the result, produce a local report, and roll back the install if needed.
+Developer Kit 0.2.0 targets agent-safe image asset handoff for Phaser and Godot 4 projects. It helps an AI agent take an existing generated image, inspect a local game project, compile the image into an engine-ready asset, install generated files with snapshots, verify the result, produce a local report, and roll back the install if needed.
 
 ## Current Status
 
-The tracked implementation contains the 0.1.0 local CLI surface for Phaser and Godot 4 image asset workflows. It includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser TypeScript helpers, Godot GDScript helpers, install, verify, report, preview, and rollback.
+The tracked implementation contains the 0.2.0 local CLI surface for Phaser and Godot 4 image asset workflows. It includes the monorepo, package boundaries, schemas, runtime schema validation, project scanner, doctor checks, image processing, Phaser TypeScript helpers, Godot GDScript helpers, install, verify, report, preview, and rollback.
 
 The npm packages are prepared for local development but are not assumed to be published yet. Until the package set is published, run the CLI from this repository.
 
 ## Scope
 
-Developer Kit 0.1.0 is intended to prove this agent loop:
+Developer Kit 0.2.0 is intended to prove this agent loop:
 
 ```text
 agent receives or creates an image file
@@ -28,7 +28,7 @@ agent receives or creates an image file
 -> rollback remains available for the asset install
 ```
 
-Developer Kit 0.1.0 is intentionally narrow:
+Developer Kit 0.2.0 is intentionally narrow:
 
 - Local-first CLI workflow with no required account or hosted service.
 - Deterministic file operations that stay inside the target project.
