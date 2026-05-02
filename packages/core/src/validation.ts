@@ -108,7 +108,17 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
   if (!root) return invalid(issues);
 
   expectOneOf(root.schemaVersion, "$.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
-  expectOneOf(root.mediaType, "$.mediaType", ["visual.transparent_sprite", "visual.sprite_frame_set"], issues);
+  expectOneOf(root.mediaType, "$.mediaType", [
+    "visual.transparent_sprite",
+    "visual.sprite_frame_set",
+    "audio.sound_effect",
+    "audio.music_loop",
+    "visual.tileset",
+    "visual.atlas",
+    "visual.ui_button",
+    "visual.ui_panel",
+    "visual.icon_set"
+  ], issues);
   expectString(root.sourcePath, "$.sourcePath", issues);
   expectString(root.id, "$.id", issues);
 
@@ -116,7 +126,8 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
   validateInstallContract(root.install, "$.install", issues);
   validateVerifyContract(root.verify, "$.verify", issues);
 
-  const visual = expectRecord(root.visual, "$.visual", issues);
+  const needsVisual = typeof root.mediaType === "string" && root.mediaType.startsWith("visual.") && !["visual.ui_button", "visual.ui_panel", "visual.icon_set"].includes(root.mediaType);
+  const visual = root.visual === undefined && !needsVisual ? undefined : expectRecord(root.visual, "$.visual", issues);
   if (visual && root.mediaType === "visual.transparent_sprite") {
     expectPositiveNumber(visual.outputWidth, "$.visual.outputWidth", issues);
     expectPositiveNumber(visual.outputHeight, "$.visual.outputHeight", issues);
@@ -136,6 +147,27 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
     expectOneOf(visual.outputFormat, "$.visual.outputFormat", ["png"], issues);
   }
 
+  const audio = root.audio === undefined ? undefined : expectRecord(root.audio, "$.audio", issues);
+  if (audio && (root.mediaType === "audio.sound_effect" || root.mediaType === "audio.music_loop")) {
+    if (audio.durationMs !== undefined) expectPositiveNumber(audio.durationMs, "$.audio.durationMs", issues);
+    expectBoolean(audio.loop, "$.audio.loop", issues);
+    expectOneOf(audio.outputFormat, "$.audio.outputFormat", ["wav", "ogg", "mp3"], issues);
+  }
+
+  if (visual && (root.mediaType === "visual.tileset" || root.mediaType === "visual.atlas")) {
+    expectPositiveNumber(visual.tileWidth, "$.visual.tileWidth", issues);
+    expectPositiveNumber(visual.tileHeight, "$.visual.tileHeight", issues);
+    expectPositiveNumber(visual.columns, "$.visual.columns", issues);
+    expectPositiveNumber(visual.rows, "$.visual.rows", issues);
+    expectOneOf(visual.outputFormat, "$.visual.outputFormat", ["png"], issues);
+  }
+
+  const ui = root.ui === undefined ? undefined : expectRecord(root.ui, "$.ui", issues);
+  if (ui && (root.mediaType === "visual.ui_button" || root.mediaType === "visual.ui_panel" || root.mediaType === "visual.icon_set")) {
+    expectArrayOf(ui.states, "$.ui.states", issues, (value, path) => expectString(value, path, issues));
+    expectOneOf(ui.outputFormat, "$.ui.outputFormat", ["png"], issues);
+  }
+
   return issues.length === 0 ? valid(input as MediaContract) : invalid(issues);
 }
 
@@ -152,7 +184,17 @@ export function validateOpenRenderRun(input: unknown): SchemaValidationResult<Op
   const contract = expectRecord(root.contract, "$.contract", issues);
   if (contract) {
     expectOneOf(contract.schemaVersion, "$.contract.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
-    expectOneOf(contract.mediaType, "$.contract.mediaType", ["visual.transparent_sprite", "visual.sprite_frame_set"], issues);
+    expectOneOf(contract.mediaType, "$.contract.mediaType", [
+      "visual.transparent_sprite",
+      "visual.sprite_frame_set",
+      "audio.sound_effect",
+      "audio.music_loop",
+      "visual.tileset",
+      "visual.atlas",
+      "visual.ui_button",
+      "visual.ui_panel",
+      "visual.icon_set"
+    ], issues);
     expectString(contract.id, "$.contract.id", issues);
   }
 

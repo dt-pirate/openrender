@@ -6,7 +6,7 @@ openRender turns existing generated images into engine-ready game project assets
 
 It is built for AI coding agents working inside local game projects. The CLI scans the project, compiles a PNG asset, creates engine-specific helper files, installs with snapshots, verifies the result, writes a local report, and keeps rollback available.
 
-The 0.5.0 reference direction keeps local compile/install as the free core. Future paid value should come from recipe packs, agent packs, update access, support bundles, optional hosted workers, and OEM/platform licensing.
+The 0.6.0 Developer Kit keeps compile, install, verify, reporting, and rollback local by default. Future hosted sync, telemetry, login, billing, and cloud reports are not part of the local core.
 
 ## Status
 
@@ -15,24 +15,25 @@ The implemented Developer Kit core currently supports image asset handoff for:
 - Vite + Phaser
 - Godot 4
 - LOVE2D
+- PixiJS + Vite
+- Plain Canvas + Vite
 
-The current implementation includes project scanning, doctor checks, official JSON schemas, built-in core pack and recipe metadata, explicit plan/explain/diff commands, compact agent summaries, image normalization presets, alpha diagnostics, frame detection, sprite frame invariants, frame preview sheets, install plans, JSON output, local previews, reports, snapshots, verification, rollback, and golden fixtures.
+The current implementation includes project scanning, doctor checks, official JSON schemas, built-in core pack and recipe metadata, explicit plan/explain/diff commands, compact agent summaries, image normalization presets, alpha diagnostics, frame detection, sprite frame invariants, frame preview sheets, Pixi spritesheet JSON, Canvas draw helpers, install plans, JSON output, local previews, report export, local report gallery metadata, snapshots, verification, rollback, adapter scaffolding, fixture capture, MCP metadata helpers, P4 media metadata inspection, runtime smoke availability checks, and golden fixtures.
 
 Packages are prepared for local development. Until they are published, run the CLI from this repository.
 
-## 0.5.0 Reference Direction
+## Public Docs
 
-The active local reference document is `docs/openRender_v0.5.0.md`. The `docs/` folder is intentionally kept out of Git.
+GitHub-facing docs live at the repo root:
 
-0.5.0 adds product direction around agent token savings and pack boundaries without turning local compile into a hosted metered service:
+- `ROADMAP.md`
+- `AGENT_USAGE.md`
+- `ADAPTER_AUTHORING.md`
+- `RECIPES.md`
+- `MCP.md`
+- `FIXTURE_GUIDE.md`
 
-- Local compile and install remain free, local-first core behavior.
-- Agent and engine recipe packs can reduce repeated prompt, schema, helper, and repair work.
-- Future update access can distribute newer framework conventions and helper templates.
-- Support, studio bundles, hosted workers, and OEM/platform licensing are separate paid surfaces.
-- The server, if introduced later, should be license, pack, update, and OEM infrastructure, not a required compile server.
-
-This means openRender should be described as a local-first media-to-engine compiler plus a recipe/pack strategy for reducing agent waste, not as an image generator, credit wallet, marketplace, or hosted asset API.
+The local `docs/` folder is intentionally ignored and should not be staged.
 
 ## Quickstart
 
@@ -90,7 +91,7 @@ node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
-Use `--target phaser`, `--target godot`, or `--target love2d`.
+Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, or `--target canvas`.
 
 Rollback the latest openRender install:
 
@@ -139,6 +140,7 @@ Inspect the built-in local core pack and recipes:
 node /path/to/openrender/packages/cli/dist/index.js pack list --json
 node /path/to/openrender/packages/cli/dist/index.js pack inspect core --json
 node /path/to/openrender/packages/cli/dist/index.js recipe list --json
+node /path/to/openrender/packages/cli/dist/index.js recipe validate --json
 ```
 
 ## Engine Outputs
@@ -164,6 +166,21 @@ LOVE2D:
 - `openrender/animations/{asset}.lua`
 - helper exports for `love.graphics.newQuad`, module loading, anim8-compatible metadata, and `love.load` / `love.draw` snippets
 
+PixiJS:
+
+- `public/assets/{asset}.png`
+- optional `public/assets/{asset}.spritesheet.json`
+- `src/assets/openrender-manifest.ts`
+- `src/openrender/pixi/{asset}.ts`
+- helper exports for `Assets.load` and `AnimatedSprite`
+
+Plain Canvas:
+
+- `public/assets/{asset}.png`
+- `src/assets/openrender-manifest.ts`
+- `src/openrender/canvas/{asset}.ts`
+- helper exports for `loadImageAsset` and `drawFrame(ctx, image, frameIndex, x, y)`
+
 Each run also writes local state under `.openrender/`, including artifacts, previews, reports, run records, and rollback snapshots.
 
 ## Compatibility Matrix
@@ -173,8 +190,8 @@ Each run also writes local state under `.openrender/`, including artifacts, prev
 | Vite + Phaser | Supported | Supported | Supported | Static verification |
 | Godot 4 | Supported | Supported | Supported | Static verification |
 | LOVE2D | Supported | Supported | Supported | Static verification |
-| PixiJS | Planned | Planned | Planned | Not included |
-| Plain Canvas | Planned | Planned | Planned | Not included |
+| PixiJS | Supported | Supported | Supported | Static verification |
+| Plain Canvas | Supported | Supported | Supported | Static verification |
 | Unity | Future | Future | Future | Not included |
 
 ## Install And Manifest Behavior
@@ -210,10 +227,14 @@ packages/harness-visual    image metadata, normalization, crop, and frame checks
 packages/adapters/phaser   Phaser/Vite output helpers
 packages/adapters/godot    Godot 4 output helpers
 packages/adapters/love2d   LOVE2D output helpers
+packages/adapters/pixi     PixiJS/Vite output helpers
+packages/adapters/canvas   Plain Canvas/Vite output helpers
 packages/reporter          report and preview generation
 packages/doctor            environment diagnostics
+packages/mcp-server        local JSON-only MCP metadata and command bridge helpers
 schemas                    JSON schemas for contracts, run output, reports, install plans, pack manifests
 fixtures                   golden fixture corpus for adapter regression checks
+recipes                    local recipe metadata for supported targets
 ```
 
 ## Development

@@ -47,6 +47,8 @@ import {
   validateOpenRenderRun,
   type MediaContract,
   type ProjectScan,
+  type SpriteFrameSetContract,
+  type TransparentSpriteContract,
   type TargetEngine,
   type TargetFramework
 } from "@openrender/core";
@@ -73,7 +75,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.5.0";
+const CLI_VERSION = "0.6.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -88,6 +90,8 @@ type EngineInstallPlan =
   | ReturnType<typeof createLove2DInstallPlan>
   | ReturnType<typeof createPixiInstallPlan>
   | ReturnType<typeof createCanvasInstallPlan>;
+
+type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
 
 const CORE_PACK_ID = "core";
 const CORE_RECIPES = [
@@ -125,10 +129,22 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
     "$id": "https://openrender.dev/schemas/contract.schema.json",
     title: "openRender Media Contract",
     type: "object",
-    required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "visual", "install"],
+    required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
       schemaVersion: { const: OPENRENDER_DEVKIT_VERSION },
-      mediaType: { enum: ["visual.transparent_sprite", "visual.sprite_frame_set"] },
+      mediaType: {
+        enum: [
+          "visual.transparent_sprite",
+          "visual.sprite_frame_set",
+          "audio.sound_effect",
+          "audio.music_loop",
+          "visual.tileset",
+          "visual.atlas",
+          "visual.ui_button",
+          "visual.ui_panel",
+          "visual.icon_set"
+        ]
+      },
       sourcePath: { type: "string" },
       id: { type: "string", minLength: 1 },
       target: {
@@ -141,6 +157,8 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
         }
       },
       visual: { type: "object" },
+      audio: { type: "object" },
+      ui: { type: "object" },
       install: { "$ref": "#/$defs/install" },
       verify: { type: "object" }
     },
@@ -441,6 +459,18 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  if (command === "metadata" && (subcommand === "audio" || subcommand === "atlas" || subcommand === "ui")) {
+    const result = await inspectMediaMetadata(subcommand, parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
+  if (command === "smoke") {
+    const result = await runtimeSmoke(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return result.ok ? 0 : 2;
+  }
+
   if (command === "compile" && subcommand === "sprite") {
     const result = await compileSprite(parsed);
     if (parsed.flags.get("json") === true) {
@@ -695,6 +725,120 @@ async function normalizeCommand(parsed: ParsedFlags): Promise<NormalizeCommandRe
   };
 }
 
+async function inspectMediaMetadata(
+  kind: "audio" | "atlas" | "ui",
+  parsed: ParsedFlags
+): Promise<MediaMetadataCommandResult> {
+  const projectRoot = process.cwd();
+  const sourceArg = parsed.positionals[2] ?? parsed.flags.get("from") ?? parsed.flags.get("input");
+  if (typeof sourceArg !== "string" || sourceArg.length === 0) throw new Error(`Missing required path for metadata ${kind}.`);
+  const sourcePath = resolveInsideProject(projectRoot, sourceArg);
+  const target = readTargetFlag(parsed, "phaser");
+  const id = readStringFlag(parsed, "id", `asset.${kind}`);
+  const stat = await fs.stat(sourcePath);
+
+  if (kind === "audio") {
+    const outputFormat = readAudioFormat(sourcePath);
+    return {
+      ok: true,
+      kind,
+      id,
+      target,
+      localOnly: true,
+      metadata: {
+        sourcePath: path.relative(projectRoot, sourcePath),
+        bytes: stat.size,
+        outputFormat,
+        loop: parsed.flags.get("loop") === true || outputFormat === "ogg"
+      }
+    };
+  }
+
+  if (kind === "atlas") {
+    const tileSize = readOptionalSizeFlag(parsed, "tile-size") ?? { width: 16, height: 16 };
+    const metadata = await loadImageMetadata(sourcePath);
+    return {
+      ok: true,
+      kind,
+      id,
+      target,
+      localOnly: true,
+      metadata: {
+        sourcePath: path.relative(projectRoot, sourcePath),
+        width: metadata.width,
+        height: metadata.height,
+        tileWidth: tileSize.width,
+        tileHeight: tileSize.height,
+        columns: Math.floor(metadata.width / tileSize.width),
+        rows: Math.floor(metadata.height / tileSize.height),
+        outputFormat: "png"
+      }
+    };
+  }
+
+  const states = readStringFlag(parsed, "states", "default").split(",").map((state) => state.trim()).filter(Boolean);
+  return {
+    ok: true,
+    kind,
+    id,
+    target,
+    localOnly: true,
+    metadata: {
+      sourcePath: path.relative(projectRoot, sourcePath),
+      states,
+      outputFormat: "png"
+    }
+  };
+}
+
+async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandResult> {
+  const target = readTargetFlag(parsed, "canvas");
+  const runtime = runtimeBinaryForTarget(target);
+  if (!runtime) {
+    return {
+      ok: false,
+      target,
+      status: "not_available",
+      command: null,
+      message: `${target} runtime smoke is not available as a required local binary. Static verification remains the default boundary.`
+    };
+  }
+
+  const available = await commandAvailable(runtime);
+  return {
+    ok: available,
+    target,
+    status: available ? "available" : "not_available",
+    command: runtime,
+    message: available
+      ? `${target} runtime appears available. Run explicit runtime smoke in a target project.`
+      : `${runtime} was not found on PATH. Static verification remains the default boundary.`
+  };
+}
+
+function readAudioFormat(sourcePath: string): "wav" | "ogg" | "mp3" {
+  const ext = path.extname(sourcePath).toLowerCase();
+  if (ext === ".wav") return "wav";
+  if (ext === ".ogg") return "ogg";
+  if (ext === ".mp3") return "mp3";
+  throw new Error("Audio metadata supports .wav, .ogg, and .mp3 sources.");
+}
+
+function runtimeBinaryForTarget(target: TargetEngine): string | null {
+  if (target === "godot") return "godot";
+  if (target === "love2d") return "love";
+  if (target === "phaser" || target === "pixi" || target === "canvas") return null;
+  return null;
+}
+
+async function commandAvailable(command: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn(command, ["--version"], { stdio: "ignore" });
+    child.on("error", () => resolve(false));
+    child.on("exit", (code) => resolve(code === 0));
+  });
+}
+
 async function explainRun(parsed: ParsedFlags): Promise<ExplainCommandResult> {
   const record = await readCompileRecord(process.cwd(), readRunId(parsed));
   const nextActionText = createNextActionText(record);
@@ -881,7 +1025,7 @@ Use openRender as a local-only handoff layer for generated media.
 - Prefer JSON commands: scan, plan, compile, install, verify, report, explain, diff, rollback.
 - Use --dry-run before writing project files.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.5.0: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.6.0: phaser, godot, love2d, pixi, canvas.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
@@ -1159,7 +1303,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   const frames = readOptionalIntegerFlag(parsed, "frames");
   const outputSize = readOptionalSizeFlag(parsed, "output-size");
 
-  let contract: MediaContract;
+  let contract: SpriteCompileContract;
   let frameSlices: FrameSlice[] | undefined;
   let validation: FrameValidationResult | undefined;
   let invariants: SpriteInvariantDiagnostics | undefined;
@@ -1425,7 +1569,7 @@ function readOptionalSizeFlag(parsed: ParsedFlags, name: string): { width: numbe
   return size;
 }
 
-function createEngineAssetDescriptor(contract: MediaContract): EngineAssetDescriptor {
+function createEngineAssetDescriptor(contract: SpriteCompileContract): EngineAssetDescriptor {
   if (contract.target.engine === "godot") {
     return createGodotAssetDescriptor(contract);
   }
@@ -1446,7 +1590,7 @@ function createEngineAssetDescriptor(contract: MediaContract): EngineAssetDescri
 }
 
 function createEngineInstallPlan(input: {
-  contract: MediaContract;
+  contract: SpriteCompileContract;
   compiledAssetPath: string;
   frameSlices?: FrameSlice[];
 }): EngineInstallPlan {
@@ -1481,7 +1625,7 @@ function createEngineInstallPlan(input: {
 }
 
 function createGeneratedSources(
-  contract: MediaContract,
+  contract: SpriteCompileContract,
   frameSlices?: FrameSlice[]
 ): CompileSpriteResult["generatedSources"] {
   if (contract.target.engine === "godot") {
@@ -1921,7 +2065,7 @@ function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): Compi
 }
 
 function createCompileAgentSummary(input: {
-  contract: MediaContract;
+  contract: SpriteCompileContract;
   installPlan: EngineInstallPlan;
   dryRun: boolean;
   installedWrites: number;
@@ -2254,6 +2398,8 @@ Usage:
   openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
   openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--out <path>] [--json]
+  openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
+  openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--json]
@@ -2386,6 +2532,23 @@ interface ReportsServeCommandResult {
   htmlBytes: number;
 }
 
+interface MediaMetadataCommandResult {
+  ok: true;
+  kind: "audio" | "atlas" | "ui";
+  id: string;
+  target: TargetEngine;
+  localOnly: true;
+  metadata: Record<string, unknown>;
+}
+
+interface RuntimeSmokeCommandResult {
+  ok: boolean;
+  target: TargetEngine;
+  status: "available" | "not_available";
+  command: string | null;
+  message: string;
+}
+
 interface NotImplementedCommandResult {
   ok: false;
   code: "not_implemented_in_0_3_1";
@@ -2424,7 +2587,7 @@ interface CompileSpriteResult {
   projectRoot: string;
   input: ImageMetadata;
   alpha: AlphaDiagnostics;
-  contract: MediaContract;
+  contract: SpriteCompileContract;
   outputPlan: EngineAssetDescriptor;
   installPlan: EngineInstallPlan;
   artifact?: {

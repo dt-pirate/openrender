@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.5.0");
+  assert.equal(stdout.trim(), "0.6.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,7 +27,7 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.5\.0/m);
+  assert.match(stdout, /^openRender 0\.6\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
@@ -45,7 +45,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.5.0");
+  assert.equal(schema.properties.schemaVersion.const, "0.6.0");
 });
 
 test("pack and recipe commands expose built-in local core metadata", async () => {
@@ -146,6 +146,50 @@ test("normalize command writes preset output", async () => {
 
   assert.equal(result.ok, true);
   assert.equal(await fileExists(path.join(root, result.outputPath)), true);
+});
+
+test("metadata and smoke commands return local deterministic JSON", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-media-"));
+  await fs.writeFile(path.join(root, "sound.wav"), Buffer.from("RIFF0000WAVE", "ascii"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  const audio = await execFileAsync(process.execPath, [
+    cliPath,
+    "metadata",
+    "audio",
+    "sound.wav",
+    "--target",
+    "canvas",
+    "--json"
+  ], { cwd: root });
+  const audioResult = JSON.parse(audio.stdout) as { kind: string; localOnly: boolean; metadata: { outputFormat: string } };
+  assert.equal(audioResult.kind, "audio");
+  assert.equal(audioResult.localOnly, true);
+  assert.equal(audioResult.metadata.outputFormat, "wav");
+
+  const atlas = await execFileAsync(process.execPath, [
+    cliPath,
+    "metadata",
+    "atlas",
+    "sprite.png",
+    "--tile-size",
+    "1x1",
+    "--json"
+  ], { cwd: root });
+  const atlasResult = JSON.parse(atlas.stdout) as { metadata: { columns: number; rows: number } };
+  assert.equal(atlasResult.metadata.columns, 1);
+  assert.equal(atlasResult.metadata.rows, 1);
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [cliPath, "smoke", "--target", "canvas", "--json"], { cwd: root }),
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as { status: string; command: null };
+      assert.equal(result.status, "not_available");
+      assert.equal(result.command, null);
+      return true;
+    }
+  );
 });
 
 test("init emits JSON when requested", async () => {

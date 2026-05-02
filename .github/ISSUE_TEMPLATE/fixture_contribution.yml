@@ -1,0 +1,12 @@
+name: Fixture contribution
+description: Propose a sanitized golden fixture.
+title: "[Fixture]: "
+labels: ["fixture"]
+body:
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Fixture summary
+      description: Include target, command args, expected output summary, and privacy notes.
+    validations:
+      required: true

@@ -1,12 +1,12 @@
 # Contributing
 
-openRender Developer Kit 0.5.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit 0.6.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
 - Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
 - Keep the current targets focused on Vite + Phaser, Godot 4, and LOVE2D.
 - Keep the first media scope image-only.
-- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.5.0.
+- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.6.0.
 - Add tests for shared contracts, path safety, code generation, and CLI behavior.
 
 ## Setup

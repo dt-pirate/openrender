@@ -1,0 +1,18 @@
+name: Adapter request
+description: Request support for a game engine or framework adapter.
+title: "[Adapter]: "
+labels: ["adapter"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: Target engine/framework
+    validations:
+      required: true
+  - type: textarea
+    id: handoff
+    attributes:
+      label: Expected handoff output
+      description: Describe asset paths, manifest format, helper code, and verification expectations.
+    validations:
+      required: true

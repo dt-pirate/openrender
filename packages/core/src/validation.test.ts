@@ -194,6 +194,46 @@ test("validateMediaContract accepts Pixi and Canvas Vite targets", () => {
   }
 });
 
+test("validateMediaContract accepts P4 audio, atlas, and UI contracts", () => {
+  const base = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    sourcePath: "tmp/asset.bin",
+    target: {
+      engine: "canvas",
+      framework: "vite",
+      projectRoot: "/tmp/game"
+    },
+    install: {
+      enabled: true,
+      assetRoot: "public/assets",
+      writeManifest: true,
+      writeCodegen: true,
+      snapshotBeforeInstall: true
+    }
+  } as const;
+
+  assert.equal(validateMediaContract({
+    ...base,
+    mediaType: "audio.sound_effect",
+    id: "sfx.click",
+    audio: { durationMs: 250, loop: false, outputFormat: "wav" }
+  }).ok, true);
+
+  assert.equal(validateMediaContract({
+    ...base,
+    mediaType: "visual.tileset",
+    id: "tiles.dungeon",
+    visual: { tileWidth: 16, tileHeight: 16, columns: 8, rows: 8, outputFormat: "png" }
+  }).ok, true);
+
+  assert.equal(validateMediaContract({
+    ...base,
+    mediaType: "visual.ui_button",
+    id: "ui.button.primary",
+    ui: { states: ["default", "hover", "pressed"], outputFormat: "png" }
+  }).ok, true);
+});
+
 test("validateMediaContract rejects invalid target framework pairs", () => {
   const result = validateMediaContract({
     schemaVersion: OPENRENDER_DEVKIT_VERSION,

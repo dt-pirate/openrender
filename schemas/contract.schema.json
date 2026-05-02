@@ -3,10 +3,22 @@
   "$id": "https://openrender.dev/schemas/contract.schema.json",
   "title": "openRender Media Contract",
   "type": "object",
-  "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "visual", "install"],
+  "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
   "properties": {
-    "schemaVersion": { "const": "0.5.0" },
-    "mediaType": { "enum": ["visual.transparent_sprite", "visual.sprite_frame_set"] },
+    "schemaVersion": { "const": "0.6.0" },
+    "mediaType": {
+      "enum": [
+        "visual.transparent_sprite",
+        "visual.sprite_frame_set",
+        "audio.sound_effect",
+        "audio.music_loop",
+        "visual.tileset",
+        "visual.atlas",
+        "visual.ui_button",
+        "visual.ui_panel",
+        "visual.icon_set"
+      ]
+    },
     "sourcePath": { "type": "string" },
     "id": { "type": "string", "minLength": 1 },
     "target": {
@@ -19,6 +31,8 @@
       }
     },
     "visual": { "type": "object" },
+    "audio": { "type": "object" },
+    "ui": { "type": "object" },
     "install": { "$ref": "#/$defs/install" },
     "verify": { "type": "object" }
   },

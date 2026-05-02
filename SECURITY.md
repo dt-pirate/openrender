@@ -1,6 +1,6 @@
 # Security
 
-openRender Developer Kit 0.5.0 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
+openRender Developer Kit 0.6.0 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
 
 ## Developer Kit Safety Rules
 

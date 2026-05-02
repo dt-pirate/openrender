@@ -1,4 +1,4 @@
-import { OPENRENDER_DEVKIT_VERSION, type OpenRenderRun, type VisualMediaType } from "./types.js";
+import { OPENRENDER_DEVKIT_VERSION, type MediaType, type OpenRenderRun } from "./types.js";
 
 export function createRunId(date = new Date()): string {
   const stamp = date
@@ -10,7 +10,7 @@ export function createRunId(date = new Date()): string {
 
 export function createInitialRun(input: {
   id: string;
-  mediaType: VisualMediaType;
+  mediaType: MediaType;
   actor?: OpenRenderRun["actor"];
   date?: Date;
 }): OpenRenderRun {

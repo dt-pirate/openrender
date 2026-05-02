@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/media-p4.schema.json",
+  "title": "openRender 0.6.0 P4 Media Contracts",
+  "type": "object",
+  "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
+  "properties": {
+    "schemaVersion": { "const": "0.6.0" },
+    "mediaType": {
+      "enum": [
+        "audio.sound_effect",
+        "audio.music_loop",
+        "visual.tileset",
+        "visual.atlas",
+        "visual.ui_button",
+        "visual.ui_panel",
+        "visual.icon_set"
+      ]
+    },
+    "sourcePath": { "type": "string" },
+    "id": { "type": "string" },
+    "audio": { "type": "object" },
+    "visual": { "type": "object" },
+    "ui": { "type": "object" },
+    "target": { "type": "object" },
+    "install": { "type": "object" }
+  }
+}

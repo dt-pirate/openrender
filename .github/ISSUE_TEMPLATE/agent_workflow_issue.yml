@@ -1,0 +1,12 @@
+name: Agent workflow issue
+description: Report an AI-agent handoff problem.
+title: "[Agent]: "
+labels: ["agent-output"]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Agent workflow
+      description: Include scan, plan, compile, verify, report, explain, and diff outputs if safe.
+    validations:
+      required: true

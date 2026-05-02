@@ -1,9 +1,18 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.5.0" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.6.0" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
 export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas";
 export type TargetFramework = "vite" | "godot" | "love2d";
-export type VisualMediaType = "visual.transparent_sprite" | "visual.sprite_frame_set";
+export type VisualMediaType =
+  | "visual.transparent_sprite"
+  | "visual.sprite_frame_set"
+  | "visual.tileset"
+  | "visual.atlas"
+  | "visual.ui_button"
+  | "visual.ui_panel"
+  | "visual.icon_set";
+export type AudioMediaType = "audio.sound_effect" | "audio.music_loop";
+export type MediaType = VisualMediaType | AudioMediaType;
 export type OutputFormat = "png";
 export type SpriteLayout = "horizontal" | "horizontal_strip" | "grid";
 export type RunStatus =
@@ -114,7 +123,58 @@ export interface SpriteFrameSetContract {
   verify?: Partial<VerifyContract>;
 }
 
-export type MediaContract = TransparentSpriteContract | SpriteFrameSetContract;
+export interface AudioContract {
+  schemaVersion: OpenRenderDevkitVersion;
+  mediaType: AudioMediaType;
+  sourcePath: string;
+  target: TargetContract;
+  id: string;
+  audio: {
+    durationMs?: number;
+    loop: boolean;
+    outputFormat: "wav" | "ogg" | "mp3";
+  };
+  install: InstallContract;
+  verify?: Partial<VerifyContract>;
+}
+
+export interface AtlasContract {
+  schemaVersion: OpenRenderDevkitVersion;
+  mediaType: "visual.atlas" | "visual.tileset";
+  sourcePath: string;
+  target: TargetContract;
+  id: string;
+  visual: {
+    tileWidth: number;
+    tileHeight: number;
+    columns: number;
+    rows: number;
+    outputFormat: OutputFormat;
+  };
+  install: InstallContract;
+  verify?: Partial<VerifyContract>;
+}
+
+export interface UiAssetContract {
+  schemaVersion: OpenRenderDevkitVersion;
+  mediaType: "visual.ui_button" | "visual.ui_panel" | "visual.icon_set";
+  sourcePath: string;
+  target: TargetContract;
+  id: string;
+  ui: {
+    states: string[];
+    outputFormat: OutputFormat;
+  };
+  install: InstallContract;
+  verify?: Partial<VerifyContract>;
+}
+
+export type MediaContract =
+  | TransparentSpriteContract
+  | SpriteFrameSetContract
+  | AudioContract
+  | AtlasContract
+  | UiAssetContract;
 
 export interface OutputDescriptor {
   kind:

@@ -1,0 +1,12 @@
+name: Documentation issue
+description: Report unclear or outdated public docs.
+title: "[Docs]: "
+labels: ["docs"]
+body:
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation issue
+      description: Link the root doc or README section and describe the correction.
+    validations:
+      required: true
