@@ -34,6 +34,58 @@ export interface FrameSlice {
   height: number;
 }
 
+export interface AlphaDiagnostics {
+  hasAlpha: boolean;
+  transparentPixelRatio: number;
+  nonTransparentBounds: PixelBounds | null;
+  edgeAlphaBleedRisk: "none" | "low" | "medium" | "high";
+  emptyFrameDetected: boolean;
+  oversizedCanvasDetected: boolean;
+  subjectTooSmallRisk: boolean;
+}
+
+export interface FrameDetectionResult {
+  ok: true;
+  sourcePath: string;
+  suggested: {
+    layout: "horizontal_strip" | "grid";
+    frameWidth: number;
+    frameHeight: number;
+    frameCount: number;
+  };
+  confidence: number;
+  diagnostics: string[];
+}
+
+export interface SpriteInvariantCheck {
+  name:
+    | "frameCountMatch"
+    | "frameSizeMatch"
+    | "imageWidthDivisible"
+    | "imageHeightDivisible"
+    | "emptyFrame"
+    | "duplicateFrameApprox"
+    | "frameBoundsJitter"
+    | "alphaConsistency";
+  status: "passed" | "failed" | "skipped";
+  message?: string;
+}
+
+export interface SpriteInvariantDiagnostics {
+  ok: boolean;
+  checks: SpriteInvariantCheck[];
+}
+
+export interface FramePreviewSheetOutput extends NormalizedImageOutput {
+  frameCount: number;
+}
+
+export type NormalizePreset =
+  | "transparent-sprite"
+  | "ui-icon"
+  | "sprite-strip"
+  | "sprite-grid";
+
 export interface VisualHarnessPlan {
   contractId: string;
   mediaType: SpriteFrameSetContract["mediaType"] | TransparentSpriteContract["mediaType"];
@@ -215,6 +267,315 @@ export async function detectAlphaBounds(input: {
     y: minY,
     width: maxX - minX + 1,
     height: maxY - minY + 1
+  };
+}
+
+export async function analyzeAlphaDiagnostics(input: {
+  sourcePath: string;
+  alphaThreshold?: number;
+}): Promise<AlphaDiagnostics> {
+  const alphaThreshold = input.alphaThreshold ?? 0;
+  const metadata = await loadImageMetadata(input.sourcePath);
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  let transparentPixels = 0;
+  let nonTransparentPixels = 0;
+  let edgeAlphaPixels = 0;
+  let minX = info.width;
+  let minY = info.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const alpha = data[(y * info.width + x) * info.channels + 3] ?? 0;
+      if (alpha <= alphaThreshold) {
+        transparentPixels += 1;
+        continue;
+      }
+
+      nonTransparentPixels += 1;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+
+      if (x === 0 || y === 0 || x === info.width - 1 || y === info.height - 1) {
+        edgeAlphaPixels += 1;
+      }
+    }
+  }
+
+  const totalPixels = Math.max(info.width * info.height, 1);
+  const nonTransparentBounds = nonTransparentPixels === 0
+    ? null
+    : {
+        x: minX,
+        y: minY,
+        width: maxX - minX + 1,
+        height: maxY - minY + 1
+      };
+  const subjectAreaRatio = nonTransparentBounds
+    ? (nonTransparentBounds.width * nonTransparentBounds.height) / totalPixels
+    : 0;
+  const edgeRatio = edgeAlphaPixels / totalPixels;
+
+  return {
+    hasAlpha: metadata.hasAlpha,
+    transparentPixelRatio: roundRatio(transparentPixels / totalPixels),
+    nonTransparentBounds,
+    edgeAlphaBleedRisk: edgeRatio === 0
+      ? "none"
+      : edgeRatio < 0.01
+        ? "low"
+        : edgeRatio < 0.05
+          ? "medium"
+          : "high",
+    emptyFrameDetected: nonTransparentPixels === 0,
+    oversizedCanvasDetected: subjectAreaRatio > 0 && subjectAreaRatio < 0.25,
+    subjectTooSmallRisk: subjectAreaRatio > 0 && subjectAreaRatio < 0.08
+  };
+}
+
+export async function detectFrameGrid(input: {
+  sourcePath: string;
+  frames?: number;
+}): Promise<FrameDetectionResult> {
+  const metadata = await loadImageMetadata(input.sourcePath);
+  const diagnostics: string[] = [];
+
+  if (input.frames && input.frames > 0) {
+    const horizontalWidth = metadata.width / input.frames;
+    if (Number.isInteger(horizontalWidth) && horizontalWidth > 0) {
+      return {
+        ok: true,
+        sourcePath: input.sourcePath,
+        suggested: {
+          layout: "horizontal_strip",
+          frameWidth: horizontalWidth,
+          frameHeight: metadata.height,
+          frameCount: input.frames
+        },
+        confidence: 0.86,
+        diagnostics: ["frame count provided; horizontal strip divides evenly"]
+      };
+    }
+
+    const grid = detectGridWithFrameCount(metadata.width, metadata.height, input.frames);
+    if (grid) {
+      return {
+        ok: true,
+        sourcePath: input.sourcePath,
+        suggested: grid,
+        confidence: 0.74,
+        diagnostics: ["frame count provided; grid layout divides evenly"]
+      };
+    }
+
+    diagnostics.push("provided frame count does not divide image dimensions cleanly");
+  }
+
+  if (metadata.width > metadata.height && metadata.width % metadata.height === 0) {
+    return {
+      ok: true,
+      sourcePath: input.sourcePath,
+      suggested: {
+        layout: "horizontal_strip",
+        frameWidth: metadata.height,
+        frameHeight: metadata.height,
+        frameCount: metadata.width / metadata.height
+      },
+      confidence: 0.72,
+      diagnostics: ["wide image with square horizontal frame heuristic"]
+    };
+  }
+
+  return {
+    ok: true,
+    sourcePath: input.sourcePath,
+    suggested: {
+      layout: "horizontal_strip",
+      frameWidth: metadata.width,
+      frameHeight: metadata.height,
+      frameCount: 1
+    },
+    confidence: 0.35,
+    diagnostics: [...diagnostics, "low confidence; pass --frames or --frame-size for deterministic compile"]
+  };
+}
+
+export async function analyzeSpriteInvariants(input: {
+  sourcePath: string;
+  layout: "horizontal" | "horizontal_strip" | "grid";
+  frames: number;
+  frameWidth: number;
+  frameHeight: number;
+}): Promise<SpriteInvariantDiagnostics> {
+  const metadata = await loadImageMetadata(input.sourcePath);
+  const normalizedLayout = input.layout === "horizontal" ? "horizontal_strip" : input.layout;
+  const frameValidation = normalizedLayout === "grid"
+    ? validateGridFrameSet({
+        imageWidth: metadata.width,
+        imageHeight: metadata.height,
+        frames: input.frames,
+        frameWidth: input.frameWidth,
+        frameHeight: input.frameHeight
+      })
+    : validateHorizontalFrameSet({
+        imageWidth: metadata.width,
+        imageHeight: metadata.height,
+        frames: input.frames,
+        frameWidth: input.frameWidth,
+        frameHeight: input.frameHeight
+      });
+
+  const checks: SpriteInvariantCheck[] = [
+    {
+      name: "frameSizeMatch",
+      status: frameValidation.ok ? "passed" : "failed",
+      message: frameValidation.reason
+    },
+    {
+      name: "imageWidthDivisible",
+      status: metadata.width % input.frameWidth === 0 ? "passed" : "failed",
+      message: metadata.width % input.frameWidth === 0 ? undefined : `image width ${metadata.width} is not divisible by ${input.frameWidth}`
+    },
+    {
+      name: "imageHeightDivisible",
+      status: metadata.height % input.frameHeight === 0 ? "passed" : "failed",
+      message: metadata.height % input.frameHeight === 0 ? undefined : `image height ${metadata.height} is not divisible by ${input.frameHeight}`
+    },
+    {
+      name: "frameCountMatch",
+      status: frameValidation.ok ? "passed" : "failed",
+      message: frameValidation.reason
+    }
+  ];
+
+  if (!frameValidation.ok) {
+    checks.push(
+      { name: "emptyFrame", status: "skipped", message: "frame geometry is invalid" },
+      { name: "duplicateFrameApprox", status: "skipped", message: "frame geometry is invalid" },
+      { name: "frameBoundsJitter", status: "skipped", message: "frame geometry is invalid" },
+      { name: "alphaConsistency", status: "skipped", message: "frame geometry is invalid" }
+    );
+    return { ok: false, checks };
+  }
+
+  const frameSlices = planFrameSlices({
+    layout: normalizedLayout,
+    imageWidth: metadata.width,
+    frames: input.frames,
+    frameWidth: input.frameWidth,
+    frameHeight: input.frameHeight
+  });
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const frameStats = frameSlices.map((slice) => readFrameStats(data, info, slice));
+  const emptyFrames = frameStats.filter((stat) => stat.alphaPixels === 0).map((stat) => stat.index);
+  const duplicatePairs = findDuplicateFramePairs(frameStats);
+  const alphaRatios = frameStats.map((stat) => stat.alphaRatio);
+  const alphaRange = Math.max(...alphaRatios) - Math.min(...alphaRatios);
+  const xPositions = frameStats.filter((stat) => stat.bounds).map((stat) => stat.bounds?.x ?? 0);
+  const yPositions = frameStats.filter((stat) => stat.bounds).map((stat) => stat.bounds?.y ?? 0);
+  const jitter = Math.max(range(xPositions), range(yPositions));
+
+  checks.push(
+    {
+      name: "emptyFrame",
+      status: emptyFrames.length === 0 ? "passed" : "failed",
+      message: emptyFrames.length === 0 ? undefined : `empty frame indexes: ${emptyFrames.join(", ")}`
+    },
+    {
+      name: "duplicateFrameApprox",
+      status: duplicatePairs.length === 0 ? "passed" : "failed",
+      message: duplicatePairs.length === 0 ? undefined : `duplicate-like frame pairs: ${duplicatePairs.join(", ")}`
+    },
+    {
+      name: "frameBoundsJitter",
+      status: jitter <= Math.max(input.frameWidth, input.frameHeight) * 0.35 ? "passed" : "failed",
+      message: jitter <= Math.max(input.frameWidth, input.frameHeight) * 0.35 ? undefined : `frame bounds jitter ${jitter}px exceeds threshold`
+    },
+    {
+      name: "alphaConsistency",
+      status: alphaRange <= 0.45 ? "passed" : "failed",
+      message: alphaRange <= 0.45 ? undefined : `alpha coverage range ${roundRatio(alphaRange)} is high`
+    }
+  );
+
+  return {
+    ok: checks.every((check) => check.status !== "failed"),
+    checks
+  };
+}
+
+export async function normalizeWithPreset(input: {
+  sourcePath: string;
+  outputPath: string;
+  preset: NormalizePreset;
+  frameWidth?: number;
+  frameHeight?: number;
+}): Promise<NormalizedImageOutput | CroppedImageOutput> {
+  if (input.preset === "transparent-sprite") {
+    return cropAlphaBoundsToPng({
+      sourcePath: input.sourcePath,
+      outputPath: input.outputPath,
+      padding: 0,
+      alphaCleanupThreshold: 2
+    });
+  }
+
+  if (input.preset === "ui-icon") {
+    return cropAlphaBoundsToPng({
+      sourcePath: input.sourcePath,
+      outputPath: input.outputPath,
+      padding: 4,
+      alphaCleanupThreshold: 2,
+      outputSize: { width: 64, height: 64 }
+    });
+  }
+
+  return normalizeImageToPng({
+    sourcePath: input.sourcePath,
+    outputPath: input.outputPath
+  });
+}
+
+export async function createFramePreviewSheet(input: {
+  sourcePath: string;
+  outputPath: string;
+  frameSlices: FrameSlice[];
+  checkerSize?: number;
+}): Promise<FramePreviewSheetOutput> {
+  const metadata = await loadImageMetadata(input.sourcePath);
+  const frameSlices = input.frameSlices.length > 0
+    ? input.frameSlices
+    : [{ index: 0, x: 0, y: 0, width: metadata.width, height: metadata.height }];
+  const sourcePng = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .png()
+    .toBuffer();
+  const checkerboard = createCheckerboardSvg(metadata.width, metadata.height, input.checkerSize ?? 12);
+  const overlay = createFramePreviewOverlaySvg(metadata.width, metadata.height, frameSlices);
+
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp(Buffer.from(checkerboard))
+    .composite([
+      { input: sourcePng, left: 0, top: 0 },
+      { input: Buffer.from(overlay), left: 0, top: 0 }
+    ])
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath),
+    frameCount: frameSlices.length
   };
 }
 
@@ -444,4 +805,143 @@ function removeSolidBackground(data: Buffer, tolerance: number): Buffer {
   }
 
   return cleaned;
+}
+
+function detectGridWithFrameCount(
+  imageWidth: number,
+  imageHeight: number,
+  frames: number
+): FrameDetectionResult["suggested"] | null {
+  let best: FrameDetectionResult["suggested"] | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (let columns = 1; columns <= frames; columns += 1) {
+    const rows = Math.ceil(frames / columns);
+    if (imageWidth % columns !== 0 || imageHeight % rows !== 0) continue;
+    const frameWidth = imageWidth / columns;
+    const frameHeight = imageHeight / rows;
+    const score = Math.abs(frameWidth - frameHeight) + Math.abs(columns - rows) * 4;
+    if (score < bestScore) {
+      bestScore = score;
+      best = {
+        layout: "grid",
+        frameWidth,
+        frameHeight,
+        frameCount: frames
+      };
+    }
+  }
+
+  return best;
+}
+
+function readFrameStats(
+  data: Buffer,
+  info: { width: number; height: number; channels: number },
+  slice: FrameSlice
+): {
+  index: number;
+  alphaPixels: number;
+  alphaRatio: number;
+  hash: string;
+  bounds: PixelBounds | null;
+} {
+  let alphaPixels = 0;
+  let minX = slice.width;
+  let minY = slice.height;
+  let maxX = -1;
+  let maxY = -1;
+  const hash = createHash("sha256");
+
+  for (let localY = 0; localY < slice.height; localY += 1) {
+    for (let localX = 0; localX < slice.width; localX += 1) {
+      const x = slice.x + localX;
+      const y = slice.y + localY;
+      const index = (y * info.width + x) * info.channels;
+      const red = data[index] ?? 0;
+      const green = data[index + 1] ?? 0;
+      const blue = data[index + 2] ?? 0;
+      const alpha = data[index + 3] ?? 0;
+      hash.update(Buffer.from([red, green, blue, alpha]));
+      if (alpha === 0) continue;
+      alphaPixels += 1;
+      minX = Math.min(minX, localX);
+      minY = Math.min(minY, localY);
+      maxX = Math.max(maxX, localX);
+      maxY = Math.max(maxY, localY);
+    }
+  }
+
+  return {
+    index: slice.index,
+    alphaPixels,
+    alphaRatio: roundRatio(alphaPixels / Math.max(slice.width * slice.height, 1)),
+    hash: hash.digest("hex"),
+    bounds: alphaPixels === 0
+      ? null
+      : {
+          x: minX,
+          y: minY,
+          width: maxX - minX + 1,
+          height: maxY - minY + 1
+        }
+  };
+}
+
+function findDuplicateFramePairs(frames: Array<{ index: number; hash: string }>): string[] {
+  const seen = new Map<string, number>();
+  const pairs: string[] = [];
+  for (const frame of frames) {
+    const previous = seen.get(frame.hash);
+    if (previous !== undefined) {
+      pairs.push(`${previous}-${frame.index}`);
+    } else {
+      seen.set(frame.hash, frame.index);
+    }
+  }
+  return pairs;
+}
+
+function range(values: number[]): number {
+  if (values.length < 2) return 0;
+  return Math.max(...values) - Math.min(...values);
+}
+
+function roundRatio(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
+function createCheckerboardSvg(width: number, height: number, size: number): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <pattern id="checker" width="${size * 2}" height="${size * 2}" patternUnits="userSpaceOnUse">
+      <rect width="${size * 2}" height="${size * 2}" fill="#f7f7f7"/>
+      <rect width="${size}" height="${size}" fill="#d8d8d8"/>
+      <rect x="${size}" y="${size}" width="${size}" height="${size}" fill="#d8d8d8"/>
+    </pattern>
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#checker)"/>
+</svg>`;
+}
+
+function createFramePreviewOverlaySvg(width: number, height: number, frameSlices: FrameSlice[]): string {
+  const strokeWidth = Math.max(1, Math.round(Math.min(width, height) / 96));
+  const fontSize = Math.max(8, Math.round(Math.min(width, height) / 8));
+  const labelPadding = Math.max(2, Math.round(fontSize / 4));
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  ${frameSlices.map((slice) => {
+    const label = String(slice.index);
+    const labelWidth = Math.max(fontSize, label.length * Math.round(fontSize * 0.65)) + labelPadding * 2;
+    const labelHeight = fontSize + labelPadding * 2;
+    const labelX = Math.min(slice.x + strokeWidth, Math.max(0, width - labelWidth));
+    const labelY = Math.min(slice.y + strokeWidth, Math.max(0, height - labelHeight));
+
+    return `<g>
+    <rect x="${slice.x}" y="${slice.y}" width="${slice.width}" height="${slice.height}" fill="none" stroke="#00a6b2" stroke-width="${strokeWidth}"/>
+    <rect x="${labelX}" y="${labelY}" width="${labelWidth}" height="${labelHeight}" rx="${labelPadding}" fill="#101010" fill-opacity="0.86"/>
+    <text x="${labelX + labelPadding}" y="${labelY + labelPadding + fontSize * 0.82}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="700" fill="#ffffff">${label}</text>
+  </g>`;
+  }).join("\n  ")}
+</svg>`;
 }

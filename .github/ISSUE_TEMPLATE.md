@@ -16,6 +16,8 @@ What did you expect openRender to do?
 openrender --version
 openrender scan --json
 openrender doctor --json
+openrender plan sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --json
+openrender detect-frames tmp/slime_raw.png --frames 6 --json
 openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 ```
 
@@ -25,6 +27,8 @@ If the issue happened after install:
 openrender compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 openrender verify --run latest --json
 openrender report --run latest --json
+openrender explain --run latest --json
+openrender diff --run latest --json
 ```
 
 ## Environment
@@ -40,8 +44,9 @@ openrender report --run latest --json
 - Target project type: Vite + Phaser / Godot 4 / LOVE2D / other
 - Asset mode: transparent sprite / sprite frame set
 - Did the command use `--dry-run` before install? yes/no
+- Did the command use `plan sprite` before install? yes/no
 - Did the command use `--force`? yes/no
 
 ## Scope check
 
-openRender Developer Kit 0.3.0 is local-first, image-only, and focused on Vite + Phaser, Godot 4, and LOVE2D asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.3.1 is local-first, image-only, and focused on Vite + Phaser, Godot 4, and LOVE2D asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/pack-manifest.schema.json",
+  "title": "openRender Pack Manifest",
+  "type": "object",
+  "required": ["id", "name", "version", "license", "recipes"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "license": { "enum": ["free", "paid", "oem"] },
+    "builtIn": { "type": "boolean" },
+    "localOnly": { "type": "boolean" },
+    "recipes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "summary": { "type": "string" }
+  }
+}

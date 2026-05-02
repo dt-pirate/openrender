@@ -6,6 +6,7 @@ import { test } from "node:test";
 import sharp from "sharp";
 import {
   cleanupAlphaEdgesToPng,
+  createFramePreviewSheet,
   cropAlphaBoundsToPng,
   detectAlphaBounds,
   loadImageMetadata,
@@ -68,6 +69,66 @@ test("normalizeImageToPng writes png output metadata", async () => {
 
   assert.equal(output.path, outputPath);
   assert.equal(output.metadata.width, 5);
+  assert.equal(output.metadata.height, 2);
+  assert.equal(output.metadata.format, "png");
+});
+
+test("createFramePreviewSheet writes indexed frame overlay png", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-frame-preview-"));
+  const sourcePath = path.join(root, "strip.png");
+  const outputPath = path.join(root, "out", "preview_frames.png");
+
+  const redFrame = await sharp({
+    create: {
+      width: 2,
+      height: 2,
+      channels: 4,
+      background: { r: 255, g: 0, b: 0, alpha: 1 }
+    }
+  })
+    .png()
+    .toBuffer();
+  const greenFrame = await sharp({
+    create: {
+      width: 2,
+      height: 2,
+      channels: 4,
+      background: { r: 0, g: 255, b: 0, alpha: 1 }
+    }
+  })
+    .png()
+    .toBuffer();
+
+  await sharp({
+    create: {
+      width: 4,
+      height: 2,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      { input: redFrame, left: 0, top: 0 },
+      { input: greenFrame, left: 2, top: 0 }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const output = await createFramePreviewSheet({
+    sourcePath,
+    outputPath,
+    frameSlices: planFrameSlices({
+      layout: "horizontal_strip",
+      imageWidth: 4,
+      frames: 2,
+      frameWidth: 2,
+      frameHeight: 2
+    })
+  });
+
+  assert.equal(output.path, outputPath);
+  assert.equal(output.frameCount, 2);
+  assert.equal(output.metadata.width, 4);
   assert.equal(output.metadata.height, 2);
   assert.equal(output.metadata.format, "png");
 });

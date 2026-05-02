@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/report.schema.json",
+  "title": "openRender Report Result",
+  "type": "object",
+  "required": ["runId", "jsonPath", "htmlPath", "previewHtmlPath", "latestJsonPath", "latestHtmlPath"],
+  "properties": {
+    "runId": { "type": "string" },
+    "jsonPath": { "type": "string" },
+    "htmlPath": { "type": "string" },
+    "previewHtmlPath": { "type": "string" },
+    "framePreviewPath": { "type": "string" },
+    "latestJsonPath": { "type": "string" },
+    "latestHtmlPath": { "type": "string" },
+    "latestPreviewHtmlPath": { "type": "string" },
+    "opened": { "type": "boolean" }
+  }
+}

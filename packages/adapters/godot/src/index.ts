@@ -135,6 +135,9 @@ ${sliceSource}
 static func load_texture() -> Texture2D:
   return load(ASSET_PATH) as Texture2D
 
+static func validate_resource_path() -> bool:
+  return ASSET_PATH.begins_with("res://")
+
 static func create_sprite_frames(animation_name: String = "default") -> SpriteFrames:
   var sprite_frames := SpriteFrames.new()
   sprite_frames.add_animation(animation_name)
@@ -152,6 +155,9 @@ static func create_sprite_frames(animation_name: String = "default") -> SpriteFr
     sprite_frames.add_frame(animation_name, atlas)
 
   return sprite_frames
+
+static func animated_sprite2d_snippet(node_name: String = "AnimatedSprite2D") -> String:
+  return "var sprite := " + node_name + "\\n" + "sprite.sprite_frames = create_sprite_frames()\\n" + "sprite.play()"
 `;
 }
 

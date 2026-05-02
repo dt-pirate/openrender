@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/install-plan.schema.json",
+  "title": "openRender Install Plan",
+  "type": "object",
+  "required": ["id", "enabled", "files"],
+  "properties": {
+    "id": { "type": "string" },
+    "enabled": { "type": "boolean" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "action", "to"],
+        "properties": {
+          "kind": { "enum": ["compiled_asset", "manifest", "codegen"] },
+          "action": { "enum": ["copy", "write"] },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "contents": { "type": "string" }
+        }
+      }
+    }
+  }
+}

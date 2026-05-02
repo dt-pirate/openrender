@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/contract.schema.json",
+  "title": "openRender Media Contract",
+  "type": "object",
+  "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "visual", "install"],
+  "properties": {
+    "schemaVersion": { "const": "0.3.1" },
+    "mediaType": { "enum": ["visual.transparent_sprite", "visual.sprite_frame_set"] },
+    "sourcePath": { "type": "string" },
+    "id": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object",
+      "required": ["engine", "framework", "projectRoot"],
+      "properties": {
+        "engine": { "enum": ["phaser", "godot", "love2d"] },
+        "framework": { "enum": ["vite", "godot", "love2d"] },
+        "projectRoot": { "type": "string" }
+      }
+    },
+    "visual": { "type": "object" },
+    "install": { "$ref": "#/$defs/install" },
+    "verify": { "type": "object" }
+  },
+  "$defs": {
+    "install": {
+      "type": "object",
+      "required": ["enabled", "assetRoot", "writeManifest", "writeCodegen", "snapshotBeforeInstall"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "assetRoot": { "type": "string" },
+        "writeManifest": { "type": "boolean" },
+        "writeCodegen": { "type": "boolean" },
+        "snapshotBeforeInstall": { "type": "boolean" }
+      }
+    }
+  }
+}

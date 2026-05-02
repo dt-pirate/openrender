@@ -138,6 +138,20 @@ export function register${pascalName}(scene: Phaser.Scene) {
     repeat: -1
   });
 }
+
+export function create${pascalName}Sprite(scene: Phaser.Scene, x: number, y: number) {
+  register${pascalName}(scene);
+  return scene.add.sprite(x, y, ${assetConstName}.key, 0);
+}
+
+export function configure${pascalName}ArcadeBody(sprite: Phaser.Physics.Arcade.Sprite) {
+  sprite.body?.setSize(${assetConstName}.frameWidth, ${assetConstName}.frameHeight);
+  return sprite;
+}
+
+export const ${symbolName}SceneSnippet = ${JSON.stringify(`preload${pascalName}(this);
+register${pascalName}(this);
+const sprite = create${pascalName}Sprite(this, x, y);`)};
 `;
 }
 

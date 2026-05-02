@@ -16,7 +16,7 @@ The implemented Developer Kit core currently supports image asset handoff for:
 - Godot 4
 - LOVE2D
 
-The current implementation includes project scanning, doctor checks, image normalization, transparent crop/background cleanup, sprite frame validation, install plans, JSON output, local previews, reports, snapshots, verification, and rollback.
+The current implementation includes project scanning, doctor checks, official JSON schemas, built-in core pack and recipe metadata, explicit plan/explain/diff commands, compact agent summaries, image normalization presets, alpha diagnostics, frame detection, sprite frame invariants, frame preview sheets, install plans, JSON output, local previews, reports, snapshots, verification, rollback, and golden fixtures.
 
 Packages are prepared for local development. Until they are published, run the CLI from this repository.
 
@@ -54,6 +54,14 @@ node /path/to/openrender/packages/cli/dist/index.js doctor --json
 Dry-run before writing files:
 
 ```bash
+node /path/to/openrender/packages/cli/dist/index.js plan sprite \
+  --from tmp/slime_idle_strip.png \
+  --target phaser \
+  --id enemy.slime.idle \
+  --frames 6 \
+  --frame-size 64x64 \
+  --json
+
 node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --from tmp/slime_idle_strip.png \
   --target phaser \
@@ -78,6 +86,8 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
 
 node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js report --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
 Use `--target phaser`, `--target godot`, or `--target love2d`.
@@ -88,6 +98,49 @@ Rollback the latest openRender install:
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
+## Image Handoff Tools
+
+Inspect image and frame structure before committing to an install:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js detect-frames tmp/slime_idle_strip.png --frames 6 --json
+
+node /path/to/openrender/packages/cli/dist/index.js normalize tmp/slime_raw.png \
+  --preset transparent-sprite \
+  --json
+```
+
+Available normalize presets:
+
+- `transparent-sprite`
+- `ui-icon`
+- `sprite-strip`
+- `sprite-grid`
+
+Compiled sprite output includes `alpha` diagnostics, compact `agentSummary`, built-in core recipe metadata, `invariants` for sprite frame sets, and `.openrender/runs/{runId}/preview_frames.png` when frame slices are available.
+
+## Schemas And Fixtures
+
+Print official JSON schemas:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js schema contract
+node /path/to/openrender/packages/cli/dist/index.js schema output
+node /path/to/openrender/packages/cli/dist/index.js schema report
+node /path/to/openrender/packages/cli/dist/index.js schema install-plan
+node /path/to/openrender/packages/cli/dist/index.js schema pack-manifest
+```
+
+Tracked schema files live in `schemas/`. Golden fixtures live in `fixtures/` and are exercised by the test suite.
+
+Inspect the built-in local core pack and recipes:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js pack list --json
+node /path/to/openrender/packages/cli/dist/index.js pack inspect core --json
+node /path/to/openrender/packages/cli/dist/index.js recipe list --json
+```
+
 ## Engine Outputs
 
 Phaser:
@@ -95,20 +148,34 @@ Phaser:
 - `public/assets/{asset}.png`
 - `src/assets/openrender-manifest.ts`
 - `src/openrender/animations/{asset}.ts`
+- helper exports for preload, animation registration, scene creation, and Arcade Physics body sizing
 
 Godot:
 
 - `assets/openrender/{asset}.png`
 - `scripts/openrender/openrender_assets.gd`
 - `scripts/openrender/animations/{asset}.gd`
+- helper exports for `SpriteFrames`, `res://` path validation, and `AnimatedSprite2D` usage snippets
 
 LOVE2D:
 
 - `assets/openrender/{asset}.png`
 - `openrender/openrender_assets.lua`
 - `openrender/animations/{asset}.lua`
+- helper exports for `love.graphics.newQuad`, module loading, anim8-compatible metadata, and `love.load` / `love.draw` snippets
 
 Each run also writes local state under `.openrender/`, including artifacts, previews, reports, run records, and rollback snapshots.
+
+## Compatibility Matrix
+
+| Target | Transparent Sprite | Sprite Frame Set | Helper Code | Runtime Smoke |
+|---|---:|---:|---:|---:|
+| Vite + Phaser | Supported | Supported | Supported | Static verification |
+| Godot 4 | Supported | Supported | Supported | Static verification |
+| LOVE2D | Supported | Supported | Supported | Static verification |
+| PixiJS | Planned | Planned | Planned | Not included |
+| Plain Canvas | Planned | Planned | Planned | Not included |
+| Unity | Future | Future | Future | Not included |
 
 ## Install And Manifest Behavior
 
@@ -124,9 +191,12 @@ Use `rollback --run latest --json` to undo files written by a specific openRende
 
 - Run `scan --json` before assuming the project type.
 - Run `doctor --json` before writing into an unfamiliar project.
-- Prefer `compile sprite --dry-run --json` before `--install`.
+- Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
+- Use `detect-frames --json` when frame dimensions are unclear.
 - Do not pass `--force` unless the user accepts overwriting destination files.
 - After install, run `verify --run latest --json`.
+- Use `explain --run latest --json` for compact agent-facing next actions.
+- Use `diff --run latest --json` before deciding which files to inspect.
 - Use the generated `outputPlan` paths when editing game code.
 - Use `rollback --run latest --json` only for the openRender install. It does not revert separate game code edits.
 - Treat any future pack or recipe output as a way to reduce repeated agent context, not as a reason to skip dry-run, verification, or rollback boundaries.
@@ -142,6 +212,8 @@ packages/adapters/godot    Godot 4 output helpers
 packages/adapters/love2d   LOVE2D output helpers
 packages/reporter          report and preview generation
 packages/doctor            environment diagnostics
+schemas                    JSON schemas for contracts, run output, reports, install plans, pack manifests
+fixtures                   golden fixture corpus for adapter regression checks
 ```
 
 ## Development

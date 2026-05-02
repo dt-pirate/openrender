@@ -153,6 +153,30 @@ function M.load(image)
   }
 end
 
+function M.anim8_grid()
+  return {
+    frame_width = M.frame_width,
+    frame_height = M.frame_height,
+    path = M.path,
+    frames = M.frame_count,
+    fps = M.fps
+  }
+end
+
+M.usage_snippet = [[
+local asset = require("${descriptor.codegenPath?.replace(/\.lua$/, "").replaceAll("/", ".") ?? "openrender.animations.asset"}")
+local state
+
+function love.load()
+  state = asset.load()
+end
+
+function love.draw()
+  local frame = 1
+  love.graphics.draw(state.image, state.quads[frame], 0, 0)
+end
+]]
+
 return M
 `;
 }

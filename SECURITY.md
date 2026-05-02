@@ -1,6 +1,6 @@
 # Security
 
-openRender Developer Kit 0.3.0 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
+openRender Developer Kit 0.3.1 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
 
 ## Developer Kit Safety Rules
 
@@ -16,10 +16,11 @@ openRender Developer Kit 0.3.0 is local-first and agent-first. It should not upl
 
 AI agents using openRender should:
 
-- Prefer `--dry-run --json` before install.
+- Prefer `plan sprite --json` or `compile sprite --dry-run --json` before install.
 - Treat `installPlan.files` as the complete file write plan.
 - Avoid `--force` unless the human user explicitly accepts overwrite risk.
 - Run `verify --run latest --json` after install.
+- Use `explain --run latest --json` and `diff --run latest --json` to inspect the installed run without reading unrelated project files.
 - Use `rollback --run latest --json` when abandoning the openRender asset install.
 - Avoid attaching `.openrender/reports`, `.openrender/runs`, `.openrender/artifacts`, generated assets, or source images to public issues unless they are safe to share.
 

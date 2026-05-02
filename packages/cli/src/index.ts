@@ -39,19 +39,28 @@ import {
 } from "@openrender/core";
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
 import {
+  analyzeAlphaDiagnostics,
+  analyzeSpriteInvariants,
+  createFramePreviewSheet,
   cropAlphaBoundsToPng,
+  detectFrameGrid,
   loadImageMetadata,
   normalizeImageToPng,
+  normalizeWithPreset,
   planFrameSlices,
   validateGridFrameSet,
   validateHorizontalFrameSet,
+  type AlphaDiagnostics,
+  type FramePreviewSheetOutput,
   type FrameSlice,
   type FrameValidationResult,
-  type ImageMetadata
+  type ImageMetadata,
+  type NormalizePreset,
+  type SpriteInvariantDiagnostics
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.3.0";
+const CLI_VERSION = "0.3.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -62,6 +71,163 @@ type EngineInstallPlan =
   | ReturnType<typeof createPhaserInstallPlan>
   | ReturnType<typeof createGodotInstallPlan>
   | ReturnType<typeof createLove2DInstallPlan>;
+
+const CORE_PACK_ID = "core";
+const CORE_RECIPES = [
+  {
+    id: "core.transparent-sprite",
+    packId: CORE_PACK_ID,
+    mediaType: "visual.transparent_sprite",
+    targets: ["phaser", "godot", "love2d"],
+    summary: "Normalize one local PNG into an engine-ready transparent sprite asset."
+  },
+  {
+    id: "core.sprite-frame-set",
+    packId: CORE_PACK_ID,
+    mediaType: "visual.sprite_frame_set",
+    targets: ["phaser", "godot", "love2d"],
+    summary: "Compile a local sprite sheet into frame metadata, helper code, reports, and rollback-safe install plans."
+  }
+] as const;
+const CORE_PACKS = [
+  {
+    id: CORE_PACK_ID,
+    name: "openRender Core",
+    version: CLI_VERSION,
+    license: "free",
+    builtIn: true,
+    localOnly: true,
+    recipes: CORE_RECIPES.map((recipe) => recipe.id),
+    summary: "Built-in local compile, install, verify, report, explain, diff, and rollback recipes."
+  }
+] as const;
+
+const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
+  contract: {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/contract.schema.json",
+    title: "openRender Media Contract",
+    type: "object",
+    required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "visual", "install"],
+    properties: {
+      schemaVersion: { const: OPENRENDER_DEVKIT_VERSION },
+      mediaType: { enum: ["visual.transparent_sprite", "visual.sprite_frame_set"] },
+      sourcePath: { type: "string" },
+      id: { type: "string", minLength: 1 },
+      target: {
+        type: "object",
+        required: ["engine", "framework", "projectRoot"],
+        properties: {
+          engine: { enum: ["phaser", "godot", "love2d"] },
+          framework: { enum: ["vite", "godot", "love2d"] },
+          projectRoot: { type: "string" }
+        }
+      },
+      visual: { type: "object" },
+      install: { "$ref": "#/$defs/install" },
+      verify: { type: "object" }
+    },
+    "$defs": {
+      install: {
+        type: "object",
+        required: ["enabled", "assetRoot", "writeManifest", "writeCodegen", "snapshotBeforeInstall"],
+        properties: {
+          enabled: { type: "boolean" },
+          assetRoot: { type: "string" },
+          writeManifest: { type: "boolean" },
+          writeCodegen: { type: "boolean" },
+          snapshotBeforeInstall: { type: "boolean" }
+        }
+      }
+    }
+  },
+  output: {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/run-output.schema.json",
+    title: "openRender Compile Output",
+    type: "object",
+    required: ["dryRun", "projectRoot", "input", "alpha", "contract", "outputPlan", "installPlan", "agentSummary", "run"],
+    properties: {
+      dryRun: { type: "boolean" },
+      projectRoot: { type: "string" },
+      input: { type: "object" },
+      alpha: { type: "object" },
+      contract: { "$ref": "contract.schema.json" },
+      outputPlan: { type: "object" },
+      installPlan: { "$ref": "install-plan.schema.json" },
+      agentSummary: { type: "string" },
+      recipe: { type: "object" },
+      validation: { type: "object" },
+      invariants: { type: "object" },
+      frameSlices: { type: "array" },
+      framePreview: { type: "object" },
+      run: { type: "object" }
+    }
+  },
+  report: {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/report.schema.json",
+    title: "openRender Report Result",
+    type: "object",
+    required: ["runId", "jsonPath", "htmlPath", "previewHtmlPath", "latestJsonPath", "latestHtmlPath"],
+    properties: {
+      runId: { type: "string" },
+      jsonPath: { type: "string" },
+      htmlPath: { type: "string" },
+      previewHtmlPath: { type: "string" },
+      framePreviewPath: { type: "string" },
+      latestJsonPath: { type: "string" },
+      latestHtmlPath: { type: "string" },
+      latestPreviewHtmlPath: { type: "string" },
+      opened: { type: "boolean" }
+    }
+  },
+  "install-plan": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/install-plan.schema.json",
+    title: "openRender Install Plan",
+    type: "object",
+    required: ["id", "enabled", "files"],
+    properties: {
+      id: { type: "string" },
+      enabled: { type: "boolean" },
+      files: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["kind", "action", "to"],
+          properties: {
+            kind: { enum: ["compiled_asset", "manifest", "codegen"] },
+            action: { enum: ["copy", "write"] },
+            from: { type: "string" },
+            to: { type: "string" },
+            contents: { type: "string" }
+          }
+        }
+      }
+    }
+  },
+  "pack-manifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://openrender.dev/schemas/pack-manifest.schema.json",
+    title: "openRender Pack Manifest",
+    type: "object",
+    required: ["id", "name", "version", "license", "recipes"],
+    properties: {
+      id: { type: "string" },
+      name: { type: "string" },
+      version: { type: "string" },
+      license: { enum: ["free", "paid", "oem"] },
+      builtIn: { type: "boolean" },
+      localOnly: { type: "boolean" },
+      recipes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      summary: { type: "string" }
+    }
+  }
+};
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -136,6 +302,94 @@ async function main(argv: string[]): Promise<number> {
     return result.checks.some((check) => check.status === "failed") ? 1 : 0;
   }
 
+  if (command === "schema") {
+    const result = getSchemaResult(parsed.positionals[1]);
+    console.log(JSON.stringify(result.schema, null, 2));
+    return 0;
+  }
+
+  if (command === "pack") {
+    if (subcommand === "list") {
+      const result = listPacks();
+      if (parsed.flags.get("json") === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        printPackListResult(result);
+      }
+      return 0;
+    }
+
+    if (subcommand === "inspect") {
+      const result = inspectPack(parsed.positionals[2]);
+      if (parsed.flags.get("json") === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        printPackInspectResult(result);
+      }
+      return 0;
+    }
+
+    if (subcommand === "sync") {
+      const result = notImplementedIn031("pack sync");
+      if (parsed.flags.get("json") === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        printNotImplementedResult(result);
+      }
+      return 1;
+    }
+  }
+
+  if (command === "recipe" && subcommand === "list") {
+    const result = listRecipes();
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printRecipeListResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "login" || (command === "license" && subcommand === "refresh")) {
+    const result = notImplementedIn031(command === "login" ? "login" : "license refresh");
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printNotImplementedResult(result);
+    }
+    return 1;
+  }
+
+  if (command === "plan" && subcommand === "sprite") {
+    const result = await planSprite(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printPlanResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "detect-frames") {
+    const result = await detectFramesCommand(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printDetectFramesResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "normalize") {
+    const result = await normalizeCommand(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printNormalizeResult(result);
+    }
+    return 0;
+  }
+
   if (command === "compile" && subcommand === "sprite") {
     const result = await compileSprite(parsed);
     if (parsed.flags.get("json") === true) {
@@ -172,6 +426,26 @@ async function main(argv: string[]): Promise<number> {
       console.log(JSON.stringify(result, null, 2));
     } else {
       printReportResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "explain") {
+    const result = await explainRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printExplainResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "diff") {
+    const result = await diffRun(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printDiffResult(result);
     }
     return 0;
   }
@@ -253,6 +527,15 @@ function requireSourcePathFlag(parsed: ParsedFlags): string {
   return value;
 }
 
+function requirePathArgument(parsed: ParsedFlags, commandName: string): string {
+  const value = parsed.positionals[1] ?? parsed.flags.get("from") ?? parsed.flags.get("input");
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Missing required path for ${commandName}.`);
+  }
+
+  return value;
+}
+
 function readTargetFlag(parsed: ParsedFlags, fallback: TargetEngine): TargetEngine {
   const value = readStringFlag(parsed, "target", fallback);
   if (value === "phaser" || value === "godot" || value === "love2d") return value;
@@ -288,6 +571,172 @@ function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramew
   }
 }
 
+async function planSprite(parsed: ParsedFlags): Promise<PlanCommandResult> {
+  const forced = cloneParsedFlags(parsed);
+  forced.flags.set("dry-run", true);
+  forced.flags.set("install", true);
+  const compileResult = await compileSprite(forced);
+  const filesToWrite: string[] = [];
+  const filesToModify: string[] = [];
+
+  for (const file of compileResult.installPlan.files) {
+    const exists = await pathExists(resolveInsideProject(process.cwd(), file.to));
+    if (exists) {
+      filesToModify.push(file.to);
+    } else {
+      filesToWrite.push(file.to);
+    }
+  }
+
+  return {
+    ok: compileResult.validation?.ok !== false,
+    target: compileResult.contract.target.engine,
+    operation: "plan",
+    filesToWrite,
+    filesToModify,
+    rollbackWillBeCreated: compileResult.installPlan.files.length > 0,
+    agentSummary: `Ready to install ${compileResult.contract.target.engine} asset ${compileResult.contract.id}.`,
+    compile: compileResult
+  };
+}
+
+async function detectFramesCommand(parsed: ParsedFlags): Promise<DetectFramesCommandResult> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requirePathArgument(parsed, "detect-frames"));
+  const frames = readOptionalIntegerFlag(parsed, "frames");
+  return detectFrameGrid({ sourcePath, frames });
+}
+
+async function normalizeCommand(parsed: ParsedFlags): Promise<NormalizeCommandResult> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requirePathArgument(parsed, "normalize"));
+  const preset = readNormalizePreset(parsed);
+  const outputPath = resolveInsideProject(projectRoot, readStringFlag(
+    parsed,
+    "out",
+    path.posix.join(".openrender", "artifacts", "normalized", `${path.parse(sourcePath).name}-${preset}.png`)
+  ));
+  const output = await normalizeWithPreset({
+    sourcePath,
+    outputPath,
+    preset,
+    frameWidth: readOptionalIntegerFlag(parsed, "frame-width"),
+    frameHeight: readOptionalIntegerFlag(parsed, "frame-height")
+  });
+
+  return {
+    ok: true,
+    preset,
+    outputPath: path.relative(projectRoot, output.path),
+    output
+  };
+}
+
+async function explainRun(parsed: ParsedFlags): Promise<ExplainCommandResult> {
+  const record = await readCompileRecord(process.cwd(), readRunId(parsed));
+  const nextActionText = createNextActionText(record);
+  return {
+    ok: record.validation?.ok !== false && record.run.verification?.status !== "failed",
+    runId: record.run.runId,
+    agentSummary: createAgentSummary(record),
+    nextActions: nextActionText
+      ? nextActionText.split("\n").filter((line) => line.startsWith("- ")).map((line) => line.slice(2))
+      : createSuccessNextActions(record)
+  };
+}
+
+async function diffRun(parsed: ParsedFlags): Promise<DiffCommandResult> {
+  const projectRoot = process.cwd();
+  const record = await readCompileRecord(projectRoot, readRunId(parsed));
+  const installResult = record.installResult ?? await readInstallResultIfAvailable(projectRoot, record.run.runId);
+  const filesPlanned = record.installPlan.files.map((file) => file.to);
+  const filesCreated = installResult?.snapshots
+    .filter((snapshot) => !snapshot.existed)
+    .map((snapshot) => snapshot.relativePath) ?? [];
+  const filesModified = installResult?.snapshots
+    .filter((snapshot) => snapshot.existed)
+    .map((snapshot) => snapshot.relativePath) ?? [];
+  const helperCodeGenerated = record.installPlan.files
+    .filter((file) => file.kind === "codegen")
+    .map((file) => file.to);
+
+  return {
+    ok: true,
+    runId: record.run.runId,
+    filesPlanned,
+    filesCreated,
+    filesModified,
+    helperCodeGenerated,
+    snapshotPath: installResult?.snapshotRoot ?? null,
+    rollbackCommand: installResult ? `openrender rollback --run ${record.run.runId} --json` : null
+  };
+}
+
+function cloneParsedFlags(parsed: ParsedFlags): ParsedFlags {
+  return {
+    flags: new Map(parsed.flags),
+    positionals: [...parsed.positionals]
+  };
+}
+
+function readNormalizePreset(parsed: ParsedFlags): NormalizePreset {
+  const value = readStringFlag(parsed, "preset", "transparent-sprite");
+  if (value === "transparent-sprite" || value === "ui-icon" || value === "sprite-strip" || value === "sprite-grid") {
+    return value;
+  }
+  throw new Error(`Unsupported normalize preset: ${value}`);
+}
+
+function getSchemaResult(name: string | undefined): { name: string; schema: Record<string, unknown> } {
+  const normalized = name ?? "contract";
+  const schema = OPENRENDER_SCHEMAS[normalized];
+  if (!schema) {
+    throw new Error(`Unknown schema: ${normalized}. Use contract, output, report, install-plan, or pack-manifest.`);
+  }
+  return { name: normalized, schema };
+}
+
+function listPacks(): PackListCommandResult {
+  return {
+    ok: true,
+    packs: [...CORE_PACKS]
+  };
+}
+
+function inspectPack(packId: string | undefined): PackInspectCommandResult {
+  const id = packId ?? CORE_PACK_ID;
+  const pack = CORE_PACKS.find((candidate) => candidate.id === id);
+  if (!pack) {
+    throw new Error(`Unknown pack: ${id}. Available packs: ${CORE_PACKS.map((candidate) => candidate.id).join(", ")}.`);
+  }
+
+  return {
+    ok: true,
+    pack,
+    recipes: CORE_RECIPES.filter((recipe) => recipe.packId === pack.id)
+  };
+}
+
+function listRecipes(): RecipeListCommandResult {
+  return {
+    ok: true,
+    recipes: [...CORE_RECIPES]
+  };
+}
+
+function notImplementedIn031(commandName: string): NotImplementedCommandResult {
+  return {
+    ok: false,
+    code: "not_implemented_in_0_3_1",
+    command: commandName,
+    message: `${commandName} is planned for a later release. openRender core works locally without login, billing, telemetry, or remote sync.`,
+    nextActions: [
+      "Use the built-in core recipes with openrender recipe list --json.",
+      "Run local compile, verify, report, explain, diff, and rollback commands without an account."
+    ]
+  };
+}
+
 async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> {
   const projectRoot = process.cwd();
   const sourcePath = resolveInsideProject(projectRoot, requireSourcePathFlag(parsed));
@@ -304,6 +753,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     throw new Error(`Unsupported sprite layout: ${layout}`);
   }
   const metadata = await loadImageMetadata(sourcePath);
+  const alpha = await analyzeAlphaDiagnostics({ sourcePath });
   const frameSize = readOptionalSizeFlag(parsed, "frame-size");
   const frames = readOptionalIntegerFlag(parsed, "frames");
   const outputSize = readOptionalSizeFlag(parsed, "output-size");
@@ -311,6 +761,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   let contract: MediaContract;
   let frameSlices: FrameSlice[] | undefined;
   let validation: FrameValidationResult | undefined;
+  let invariants: SpriteInvariantDiagnostics | undefined;
 
   if (frames !== undefined || frameSize !== undefined) {
     if (frames === undefined) throw new Error("--frames is required when --frame-size is provided.");
@@ -377,6 +828,13 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
           frameHeight: contract.visual.frameHeight
         })
       : undefined;
+    invariants = await analyzeSpriteInvariants({
+      sourcePath,
+      layout: contract.visual.layout,
+      frames: contract.visual.frames,
+      frameWidth: contract.visual.frameWidth,
+      frameHeight: contract.visual.frameHeight
+    });
   } else {
     const size = outputSize ?? { width: metadata.width, height: metadata.height };
     contract = {
@@ -420,6 +878,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     frameSlices
   });
   let artifact: CompileSpriteResult["artifact"];
+  let framePreview: FramePreviewSheetOutput | undefined;
   run.status = dryRun ? "harness_ready" : "completed";
   run.outputs = [
     { kind: "compiled_asset", path: artifactPath },
@@ -428,13 +887,18 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   ];
   run.verification = validation
     ? {
-        status: validation.ok ? "passed" : "failed",
+        status: validation.ok && invariants?.ok !== false ? "passed" : "failed",
         checks: [
           {
             name: "frame_count_match",
             status: validation.ok ? "passed" : "failed",
             message: validation.reason
-          }
+          },
+          ...(invariants?.checks.map((check) => ({
+            name: check.name,
+            status: check.status,
+            message: check.message
+          })) ?? [])
         ]
       }
     : undefined;
@@ -457,19 +921,39 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       });
     }
 
+    if (contract.mediaType === "visual.sprite_frame_set" && frameSlices?.length) {
+      const framePreviewPath = path.posix.join(".openrender", "runs", run.runId, "preview_frames.png");
+      framePreview = await createFramePreviewSheet({
+        sourcePath: absoluteArtifactPath,
+        outputPath: resolveInsideProject(projectRoot, framePreviewPath),
+        frameSlices
+      });
+      run.outputs.push({ kind: "preview", path: framePreviewPath });
+    }
   }
 
   const result: CompileSpriteResult = {
     dryRun,
     projectRoot,
     input: metadata,
+    alpha,
     contract,
     outputPlan: descriptor,
     installPlan,
     artifact,
+    recipe: createCoreRecipeReference(contract.mediaType),
+    agentSummary: createCompileAgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: 0,
+      validationOk: validation?.ok !== false
+    }),
     generatedSources: createGeneratedSources(contract, frameSlices),
     validation,
+    invariants,
     frameSlices,
+    framePreview,
     run
   };
 
@@ -482,6 +966,13 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       projectRoot,
       record: result,
       force: parsed.flags.get("force") === true
+    });
+    result.agentSummary = createCompileAgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: result.installResult.writes.length,
+      validationOk: true
     });
     await writeCompileRecord(projectRoot, result, true);
   }
@@ -707,6 +1198,17 @@ async function readCompileRecord(projectRoot: string, runId: string): Promise<Co
   return record;
 }
 
+async function readInstallResultIfAvailable(projectRoot: string, runId: string): Promise<InstallCommandResult | null> {
+  const installResultPath = path.posix.join(".openrender", "runs", `${runId}.install.json`);
+  try {
+    return JSON.parse(
+      await fs.readFile(resolveInsideProject(projectRoot, installResultPath), "utf8")
+    ) as InstallCommandResult;
+  } catch {
+    return null;
+  }
+}
+
 async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   const projectRoot = process.cwd();
   const runId = readRunId(parsed);
@@ -775,6 +1277,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const json = `${JSON.stringify(record, null, 2)}\n`;
   const visualOverlayHtml = createVisualOverlayHtml(record);
   const nextAction = createNextActionText(record);
+  const framePreviewPath = record.run.outputs.find((output) => output.kind === "preview")?.path;
   const html = createReportHtml({
     title: `openRender report ${record.run.runId}`,
     run: record.run,
@@ -782,6 +1285,9 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Contract", body: JSON.stringify(record.contract, null, 2) },
       { heading: "Input", body: JSON.stringify(record.input, null, 2) },
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
+      { heading: "Agent Summary", body: record.agentSummary },
+      { heading: "Core Recipe", body: JSON.stringify(record.recipe, null, 2) },
+      ...(framePreviewPath ? [{ heading: "Frame Preview Sheet", body: framePreviewPath }] : []),
       ...(visualOverlayHtml ? [{ heading: "Visual Overlay", trustedHtml: visualOverlayHtml }] : []),
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) },
@@ -848,6 +1354,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     jsonPath: reportJsonPath,
     htmlPath: reportHtmlPath,
     previewHtmlPath,
+    framePreviewPath,
     latestJsonPath: ".openrender/reports/latest.json",
     latestHtmlPath: ".openrender/reports/latest.html",
     latestPreviewHtmlPath: ".openrender/previews/latest.html",
@@ -938,6 +1445,64 @@ function createNextActionText(record: CompileSpriteResult): string | null {
   }
 
   return null;
+}
+
+function createAgentSummary(record: CompileSpriteResult): string {
+  const target = record.contract.target.engine;
+  const asset = record.contract.id;
+  const installed = record.installResult
+    ? `Installed ${asset} for ${target} and wrote ${record.installResult.writes.length} file(s).`
+    : `Prepared ${asset} for ${target} with ${record.installPlan.files.length} planned file(s).`;
+  const report = record.run.outputs.find((output) => output.kind === "report")?.path ?? ".openrender/reports/latest.html";
+  return `${installed} Review ${report} before wiring game code.`;
+}
+
+function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): CompileSpriteResult["recipe"] {
+  const recipe = CORE_RECIPES.find((candidate) => candidate.mediaType === mediaType);
+  if (!recipe) throw new Error(`No built-in core recipe for ${mediaType}.`);
+
+  return {
+    packId: recipe.packId,
+    packVersion: CLI_VERSION,
+    recipeId: recipe.id,
+    localOnly: true
+  };
+}
+
+function createCompileAgentSummary(input: {
+  contract: MediaContract;
+  installPlan: EngineInstallPlan;
+  dryRun: boolean;
+  installedWrites: number;
+  validationOk: boolean;
+}): string {
+  if (!input.validationOk) {
+    return `Blocked ${input.contract.id} for ${input.contract.target.engine}; fix frame geometry before installing.`;
+  }
+
+  if (input.dryRun) {
+    return `Planned ${input.contract.id} for ${input.contract.target.engine}; review ${input.installPlan.files.length} file(s) before install.`;
+  }
+
+  if (input.installedWrites > 0) {
+    return `Installed ${input.contract.id} for ${input.contract.target.engine}; wrote ${input.installedWrites} file(s) with rollback available.`;
+  }
+
+  return `Compiled ${input.contract.id} for ${input.contract.target.engine}; install when the plan is acceptable.`;
+}
+
+function createSuccessNextActions(record: CompileSpriteResult): string[] {
+  const actions = [
+    `Use asset path ${record.outputPlan.assetPath}.`,
+    `Inspect ${record.run.runId} with openrender report --run ${record.run.runId} --json.`
+  ];
+  if (record.outputPlan.codegenPath) {
+    actions.unshift(`Import or require generated helper ${record.outputPlan.codegenPath}.`);
+  }
+  if (record.installResult) {
+    actions.push(`Rollback with openrender rollback --run ${record.run.runId} --json if needed.`);
+  }
+  return actions;
 }
 
 function createFrameValidationSuggestions(record: CompileSpriteResult): string[] {
@@ -1094,6 +1659,67 @@ function printCompileSprite(result: CompileSpriteResult): void {
   }
 }
 
+function printPlanResult(result: PlanCommandResult): void {
+  console.log("openRender plan sprite");
+  console.log("");
+  console.log(`Target: ${result.target}`);
+  console.log(`Status: ${result.ok ? "ready" : "blocked"}`);
+  console.log(result.agentSummary);
+  for (const file of result.filesToWrite) console.log(`Create: ${file}`);
+  for (const file of result.filesToModify) console.log(`Modify: ${file}`);
+}
+
+function printDetectFramesResult(result: DetectFramesCommandResult): void {
+  console.log("openRender detect-frames");
+  console.log("");
+  console.log(`Source: ${result.sourcePath}`);
+  console.log(`Layout: ${result.suggested.layout}`);
+  console.log(`Frame size: ${result.suggested.frameWidth}x${result.suggested.frameHeight}`);
+  console.log(`Frames: ${result.suggested.frameCount}`);
+  console.log(`Confidence: ${result.confidence}`);
+  for (const diagnostic of result.diagnostics) console.log(`Note: ${diagnostic}`);
+}
+
+function printNormalizeResult(result: NormalizeCommandResult): void {
+  console.log("openRender normalize");
+  console.log("");
+  console.log(`Preset: ${result.preset}`);
+  console.log(`Output: ${result.outputPath}`);
+}
+
+function printPackListResult(result: PackListCommandResult): void {
+  console.log("openRender pack list");
+  console.log("");
+  for (const pack of result.packs) {
+    console.log(`${pack.id} ${pack.version}: ${pack.summary}`);
+  }
+}
+
+function printPackInspectResult(result: PackInspectCommandResult): void {
+  console.log("openRender pack inspect");
+  console.log("");
+  console.log(`${result.pack.id} ${result.pack.version}`);
+  console.log(result.pack.summary);
+  for (const recipe of result.recipes) {
+    console.log(`Recipe: ${recipe.id}`);
+  }
+}
+
+function printRecipeListResult(result: RecipeListCommandResult): void {
+  console.log("openRender recipe list");
+  console.log("");
+  for (const recipe of result.recipes) {
+    console.log(`${recipe.id}: ${recipe.summary}`);
+  }
+}
+
+function printNotImplementedResult(result: NotImplementedCommandResult): void {
+  console.log(`openRender ${result.command}`);
+  console.log("");
+  console.log(result.message);
+  for (const action of result.nextActions) console.log(`Next: ${action}`);
+}
+
 function printInstallResult(result: InstallCommandResult): void {
   console.log("openRender install");
   console.log("");
@@ -1121,6 +1747,7 @@ function printReportResult(result: ReportCommandResult): void {
   console.log(`HTML: ${result.htmlPath}`);
   console.log(`JSON: ${result.jsonPath}`);
   console.log(`Preview: ${result.previewHtmlPath}`);
+  if (result.framePreviewPath) console.log(`Frame preview: ${result.framePreviewPath}`);
 }
 
 function printRollbackResult(result: RollbackCommandResult): void {
@@ -1132,6 +1759,25 @@ function printRollbackResult(result: RollbackCommandResult): void {
   }
 }
 
+function printExplainResult(result: ExplainCommandResult): void {
+  console.log("openRender explain");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  console.log(result.agentSummary);
+  for (const action of result.nextActions) console.log(`Next: ${action}`);
+}
+
+function printDiffResult(result: DiffCommandResult): void {
+  console.log("openRender diff");
+  console.log("");
+  console.log(`Run: ${result.runId}`);
+  for (const file of result.filesPlanned) console.log(`Planned: ${file}`);
+  for (const file of result.filesCreated) console.log(`Created: ${file}`);
+  for (const file of result.filesModified) console.log(`Modified: ${file}`);
+  if (result.snapshotPath) console.log(`Snapshot: ${result.snapshotPath}`);
+  if (result.rollbackCommand) console.log(`Rollback: ${result.rollbackCommand}`);
+}
+
 function printHelp(): void {
   console.log(`openRender ${CLI_VERSION}
 
@@ -1140,10 +1786,18 @@ Usage:
   openrender init [--target phaser|godot|love2d] [--framework vite|godot|love2d] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
+  openrender schema contract|output|report|install-plan|pack-manifest
+  openrender pack list|inspect [packId] [--json]
+  openrender recipe list [--json]
+  openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d] [--frames n --frame-size WxH] [--json]
+  openrender detect-frames <path> [--frames n] [--json]
+  openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--out <path>] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--json]
   openrender report [runId|--run latest] [--open] [--json]
+  openrender explain [runId|--run latest] [--json]
+  openrender diff [runId|--run latest] [--json]
   openrender rollback [runId|--run latest] [--json]
 `);
 }
@@ -1171,6 +1825,7 @@ interface ReportCommandResult {
   jsonPath: string;
   htmlPath: string;
   previewHtmlPath: string;
+  framePreviewPath?: string;
   latestJsonPath: string;
   latestHtmlPath: string;
   latestPreviewHtmlPath: string;
@@ -1185,10 +1840,76 @@ interface RollbackCommandResult {
   }>;
 }
 
+interface PlanCommandResult {
+  ok: boolean;
+  target: TargetEngine;
+  operation: "plan";
+  filesToWrite: string[];
+  filesToModify: string[];
+  rollbackWillBeCreated: boolean;
+  agentSummary: string;
+  compile: CompileSpriteResult;
+}
+
+type DetectFramesCommandResult = Awaited<ReturnType<typeof detectFrameGrid>>;
+
+type CorePack = (typeof CORE_PACKS)[number];
+type CoreRecipe = (typeof CORE_RECIPES)[number];
+
+interface PackListCommandResult {
+  ok: true;
+  packs: CorePack[];
+}
+
+interface PackInspectCommandResult {
+  ok: true;
+  pack: CorePack;
+  recipes: CoreRecipe[];
+}
+
+interface RecipeListCommandResult {
+  ok: true;
+  recipes: CoreRecipe[];
+}
+
+interface NotImplementedCommandResult {
+  ok: false;
+  code: "not_implemented_in_0_3_1";
+  command: string;
+  message: string;
+  nextActions: string[];
+}
+
+interface NormalizeCommandResult {
+  ok: true;
+  preset: NormalizePreset;
+  outputPath: string;
+  output: Awaited<ReturnType<typeof normalizeWithPreset>>;
+}
+
+interface ExplainCommandResult {
+  ok: boolean;
+  runId: string;
+  agentSummary: string;
+  nextActions: string[];
+}
+
+interface DiffCommandResult {
+  ok: true;
+  runId: string;
+  filesPlanned: string[];
+  filesCreated: string[];
+  filesModified: string[];
+  helperCodeGenerated: string[];
+  snapshotPath: string | null;
+  rollbackCommand: string | null;
+}
+
 interface CompileSpriteResult {
   dryRun: boolean;
   projectRoot: string;
   input: ImageMetadata;
+  alpha: AlphaDiagnostics;
   contract: MediaContract;
   outputPlan: EngineAssetDescriptor;
   installPlan: EngineInstallPlan;
@@ -1196,12 +1917,21 @@ interface CompileSpriteResult {
     path: string;
     metadata: ImageMetadata;
   };
+  recipe: {
+    packId: string;
+    packVersion: string;
+    recipeId: string;
+    localOnly: true;
+  };
+  agentSummary: string;
   generatedSources: {
     manifest: string;
     animationHelper?: string;
   };
   validation?: FrameValidationResult;
+  invariants?: SpriteInvariantDiagnostics;
   frameSlices?: FrameSlice[];
+  framePreview?: FramePreviewSheetOutput;
   run: ReturnType<typeof createInitialRun>;
   installResult?: InstallCommandResult;
 }

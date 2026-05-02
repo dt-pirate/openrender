@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrender.dev/schemas/run-output.schema.json",
+  "title": "openRender Compile Output",
+  "type": "object",
+  "required": ["dryRun", "projectRoot", "input", "alpha", "contract", "outputPlan", "installPlan", "agentSummary", "run"],
+  "properties": {
+    "dryRun": { "type": "boolean" },
+    "projectRoot": { "type": "string" },
+    "input": { "type": "object" },
+    "alpha": { "type": "object" },
+    "contract": { "$ref": "contract.schema.json" },
+    "outputPlan": { "type": "object" },
+    "installPlan": { "$ref": "install-plan.schema.json" },
+    "agentSummary": { "type": "string" },
+    "recipe": { "type": "object" },
+    "validation": { "type": "object" },
+    "invariants": { "type": "object" },
+    "frameSlices": { "type": "array" },
+    "framePreview": { "type": "object" },
+    "run": { "type": "object" }
+  }
+}

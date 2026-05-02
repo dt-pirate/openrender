@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.3.0");
+  assert.equal(stdout.trim(), "0.3.1");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,13 +27,125 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.3\.0/m);
+  assert.match(stdout, /^openRender 0\.3\.1/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /phaser\|godot\|love2d/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile sprite --from\|--input <path>/);
   assert.match(stdout, /openrender install \[runId\|--run latest\] \[--force\] \[--json\]/);
   assert.match(stdout, /openrender report \[runId\|--run latest\] \[--open\] \[--json\]/);
+});
+
+test("schema command emits official schemas", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "schema",
+    "contract"
+  ]);
+  const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
+
+  assert.equal(schema.title, "openRender Media Contract");
+  assert.equal(schema.properties.schemaVersion.const, "0.3.1");
+});
+
+test("pack and recipe commands expose built-in local core metadata", async () => {
+  const { stdout: packStdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "pack",
+    "list",
+    "--json"
+  ]);
+  const packResult = JSON.parse(packStdout) as { packs: Array<{ id: string; builtIn: boolean; recipes: string[] }> };
+
+  assert.equal(packResult.packs[0]?.id, "core");
+  assert.equal(packResult.packs[0]?.builtIn, true);
+  assert.ok(packResult.packs[0]?.recipes.includes("core.sprite-frame-set"));
+
+  const { stdout: recipeStdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "recipe",
+    "list",
+    "--json"
+  ]);
+  const recipeResult = JSON.parse(recipeStdout) as { recipes: Array<{ id: string; mediaType: string }> };
+
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.transparent-sprite"));
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.mediaType === "visual.sprite_frame_set"));
+});
+
+test("plan sprite emits a compact install plan", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-plan-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "plan",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "plan.hero",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    ok: boolean;
+    operation: string;
+    filesToWrite: string[];
+    agentSummary: string;
+  };
+
+  assert.equal(result.ok, true);
+  assert.equal(result.operation, "plan");
+  assert.ok(result.filesToWrite.includes("public/assets/plan-hero.png"));
+  assert.match(result.agentSummary, /Ready to install/);
+});
+
+test("detect-frames infers a simple horizontal strip", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-detect-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "detect-frames",
+    "sprite.png",
+    "--frames",
+    "1",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    suggested: { layout: string; frameWidth: number; frameHeight: number; frameCount: number };
+  };
+
+  assert.deepEqual(result.suggested, {
+    layout: "horizontal_strip",
+    frameWidth: 1,
+    frameHeight: 1,
+    frameCount: 1
+  });
+});
+
+test("normalize command writes preset output", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-normalize-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "normalize",
+    "sprite.png",
+    "--preset",
+    "transparent-sprite",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as { ok: boolean; outputPath: string };
+
+  assert.equal(result.ok, true);
+  assert.equal(await fileExists(path.join(root, result.outputPath)), true);
 });
 
 test("init emits JSON when requested", async () => {
@@ -137,6 +249,8 @@ test("compile sprite dry-run emits a transparent sprite plan as JSON", async () 
     contract: { mediaType: string; id: string };
     outputPlan: { assetPath: string; manifestPath: string };
     installPlan: { files: Array<{ kind: string }> };
+    recipe: { packId: string; recipeId: string };
+    agentSummary: string;
   };
 
   assert.equal(result.contract.mediaType, "visual.transparent_sprite");
@@ -144,6 +258,9 @@ test("compile sprite dry-run emits a transparent sprite plan as JSON", async () 
   assert.equal(result.outputPlan.assetPath, "public/assets/prop-dot.png");
   assert.equal(result.outputPlan.manifestPath, "src/assets/openrender-manifest.ts");
   assert.deepEqual(result.installPlan.files.map((file) => file.kind), ["compiled_asset", "manifest"]);
+  assert.equal(result.recipe.packId, "core");
+  assert.equal(result.recipe.recipeId, "core.transparent-sprite");
+  assert.match(result.agentSummary, /Planned prop\.dot/);
 });
 
 test("compile sprite dry-run validates a horizontal frame set", async () => {
@@ -717,6 +834,44 @@ test("report latest run writes html and json reports", async () => {
   const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
   assert.match(html, /openRender report/);
   assert.match(html, /visual-overlay/);
+});
+
+test("report includes frame preview sheet for sprite frame sets", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-frame-preview-report-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "enemy.dot.idle",
+    "--frames",
+    "1",
+    "--frame-size",
+    "1x1",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const { stdout } = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    htmlPath: string;
+    framePreviewPath?: string;
+  };
+
+  assert.equal(typeof result.framePreviewPath, "string");
+  assert.equal(await fileExists(path.join(root, result.framePreviewPath ?? "")), true);
+  const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
+  assert.match(html, /Frame Preview Sheet/);
+  assert.match(html, /Agent Summary/);
+  assert.match(html, /Core Recipe/);
 });
 
 test("report explains failed frame validation next actions", async () => {

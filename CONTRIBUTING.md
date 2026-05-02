@@ -1,12 +1,12 @@
 # Contributing
 
-openRender Developer Kit 0.3.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit 0.3.1 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
 - Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
 - Keep the current targets focused on Vite + Phaser, Godot 4, and LOVE2D.
 - Keep the first media scope image-only.
-- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.3.0.
+- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.3.1.
 - Add tests for shared contracts, path safety, code generation, and CLI behavior.
 
 ## Setup
@@ -40,7 +40,7 @@ When changing CLI behavior, preserve these agent contracts:
 - Install should snapshot destination files before writing.
 - Existing destination files should not be overwritten unless the caller explicitly passes `--force`.
 - Verification failures should return non-zero and include enough structured detail for an agent to choose the next command.
-- Reports should stay local and should explain likely next actions when validation or verification fails.
+- Reports should stay local and should include compact agent summaries, recipe metadata, and likely next actions when validation or verification fails.
 - Rollback should only operate on files recorded by the openRender install result.
 
 ## Expected Agent Workflow
@@ -50,10 +50,15 @@ Use this workflow as the baseline when reviewing changes:
 ```bash
 openrender scan --json
 openrender doctor --json
+openrender pack list --json
+openrender recipe list --json
+openrender plan sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --json
 openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --install --json
 openrender verify --run latest --json
 openrender report --run latest --json
+openrender explain --run latest --json
+openrender diff --run latest --json
 ```
 
 Godot workflows should use the same dry-run/install/verify/report loop:
