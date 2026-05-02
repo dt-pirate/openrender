@@ -15,6 +15,12 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/adapters/canvas:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/adapters/godot:
     dependencies:
       '@openrender/core':
@@ -33,8 +39,17 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/adapters/pixi:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/cli:
     dependencies:
+      '@openrender/adapter-canvas':
+        specifier: workspace:*
+        version: link:../adapters/canvas
       '@openrender/adapter-godot':
         specifier: workspace:*
         version: link:../adapters/godot
@@ -44,6 +59,9 @@ importers:
       '@openrender/adapter-phaser':
         specifier: workspace:*
         version: link:../adapters/phaser
+      '@openrender/adapter-pixi':
+        specifier: workspace:*
+        version: link:../adapters/pixi
       '@openrender/core':
         specifier: workspace:*
         version: link:../core
@@ -73,6 +91,12 @@ importers:
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
+
+  packages/mcp-server:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/reporter:
     dependencies:

@@ -6,8 +6,11 @@
     { "path": "./packages/adapters/phaser" },
     { "path": "./packages/adapters/godot" },
     { "path": "./packages/adapters/love2d" },
+    { "path": "./packages/adapters/pixi" },
+    { "path": "./packages/adapters/canvas" },
     { "path": "./packages/reporter" },
     { "path": "./packages/doctor" },
+    { "path": "./packages/mcp-server" },
     { "path": "./packages/cli" }
   ]
 }

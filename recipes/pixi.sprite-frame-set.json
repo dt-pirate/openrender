@@ -1,0 +1,7 @@
+{
+  "id": "core.pixi.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["pixi"],
+  "summary": "Compile a local sprite sheet into a PixiJS/Vite PNG, optional spritesheet JSON, and AnimatedSprite helper."
+}

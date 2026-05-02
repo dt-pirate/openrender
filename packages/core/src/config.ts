@@ -127,8 +127,8 @@ function getTargetDefaults(target: TargetEngine): Pick<OpenRenderConfig["target"
 }
 
 function validateTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
-  if (target === "phaser" && framework !== "vite") {
-    throw new Error("Phaser target requires the vite framework.");
+  if ((target === "phaser" || target === "pixi" || target === "canvas") && framework !== "vite") {
+    throw new Error(`${target} target requires the vite framework.`);
   }
 
   if (target === "godot" && framework !== "godot") {

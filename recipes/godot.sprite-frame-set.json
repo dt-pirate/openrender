@@ -1,0 +1,7 @@
+{
+  "id": "core.godot.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["godot"],
+  "summary": "Compile a local sprite sheet into a Godot PNG, GDScript manifest, and SpriteFrames helper."
+}

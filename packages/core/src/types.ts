@@ -1,7 +1,7 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.3.1" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.4.0" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
-export type TargetEngine = "phaser" | "godot" | "love2d";
+export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas";
 export type TargetFramework = "vite" | "godot" | "love2d";
 export type VisualMediaType = "visual.transparent_sprite" | "visual.sprite_frame_set";
 export type OutputFormat = "png";
@@ -178,4 +178,24 @@ export interface ProjectScan {
   stateExists: boolean;
   manifestPath: string;
   manifestExists: boolean;
+}
+
+export interface OpenRenderAdapter<TDescriptor = unknown, TInstallPlan = unknown> {
+  id: TargetEngine;
+  framework: TargetFramework;
+  detect(input: ProjectScan): boolean;
+  describe(contract: MediaContract): TDescriptor;
+  plan(input: {
+    contract: MediaContract;
+    compiledAssetPath: string;
+    frameSlices?: Array<{ index: number; x: number; y: number; width: number; height: number }>;
+  }): TInstallPlan;
+  generateSources(
+    contract: MediaContract,
+    frameSlices?: Array<{ index: number; x: number; y: number; width: number; height: number }>
+  ): {
+    manifest: string;
+    animationHelper?: string;
+  };
+  verify(descriptor: TDescriptor): boolean;
 }

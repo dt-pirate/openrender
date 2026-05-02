@@ -21,6 +21,18 @@ import {
   generateLove2DManifestSource
 } from "@openrender/adapter-love2d";
 import {
+  createPixiAssetDescriptor,
+  createPixiInstallPlan,
+  generatePixiAnimationHelperSource,
+  generatePixiManifestSource
+} from "@openrender/adapter-pixi";
+import {
+  createCanvasAssetDescriptor,
+  createCanvasInstallPlan,
+  generateCanvasAnimationHelperSource,
+  generateCanvasManifestSource
+} from "@openrender/adapter-canvas";
+import {
   createInitialRun,
   initializeOpenRenderProject,
   OPENRENDER_DEVKIT_VERSION,
@@ -60,17 +72,21 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.3.1";
+const CLI_VERSION = "0.4.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
   | ReturnType<typeof createGodotAssetDescriptor>
-  | ReturnType<typeof createLove2DAssetDescriptor>;
+  | ReturnType<typeof createLove2DAssetDescriptor>
+  | ReturnType<typeof createPixiAssetDescriptor>
+  | ReturnType<typeof createCanvasAssetDescriptor>;
 
 type EngineInstallPlan =
   | ReturnType<typeof createPhaserInstallPlan>
   | ReturnType<typeof createGodotInstallPlan>
-  | ReturnType<typeof createLove2DInstallPlan>;
+  | ReturnType<typeof createLove2DInstallPlan>
+  | ReturnType<typeof createPixiInstallPlan>
+  | ReturnType<typeof createCanvasInstallPlan>;
 
 const CORE_PACK_ID = "core";
 const CORE_RECIPES = [
@@ -78,14 +94,14 @@ const CORE_RECIPES = [
     id: "core.transparent-sprite",
     packId: CORE_PACK_ID,
     mediaType: "visual.transparent_sprite",
-    targets: ["phaser", "godot", "love2d"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
     summary: "Normalize one local PNG into an engine-ready transparent sprite asset."
   },
   {
     id: "core.sprite-frame-set",
     packId: CORE_PACK_ID,
     mediaType: "visual.sprite_frame_set",
-    targets: ["phaser", "godot", "love2d"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
     summary: "Compile a local sprite sheet into frame metadata, helper code, reports, and rollback-safe install plans."
   }
 ] as const;
@@ -118,7 +134,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
         type: "object",
         required: ["engine", "framework", "projectRoot"],
         properties: {
-          engine: { enum: ["phaser", "godot", "love2d"] },
+          engine: { enum: ["phaser", "godot", "love2d", "pixi", "canvas"] },
           framework: { enum: ["vite", "godot", "love2d"] },
           projectRoot: { type: "string" }
         }
@@ -282,6 +298,16 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  if (command === "agent" && subcommand === "init") {
+    const result = await initAgentConfig(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printAgentInitResult(result);
+    }
+    return 0;
+  }
+
   if (command === "scan") {
     const scan = await scanProject(process.cwd());
     if (parsed.flags.get("json") === true) {
@@ -348,6 +374,18 @@ async function main(argv: string[]): Promise<number> {
       printRecipeListResult(result);
     }
     return 0;
+  }
+
+  if (command === "recipe" && subcommand === "inspect") {
+    const result = inspectRecipe(parsed.positionals[2]);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
+  if (command === "recipe" && subcommand === "validate") {
+    const result = await validateRecipeFiles(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return result.ok ? 0 : 1;
   }
 
   if (command === "login" || (command === "license" && subcommand === "refresh")) {
@@ -538,7 +576,7 @@ function requirePathArgument(parsed: ParsedFlags, commandName: string): string {
 
 function readTargetFlag(parsed: ParsedFlags, fallback: TargetEngine): TargetEngine {
   const value = readStringFlag(parsed, "target", fallback);
-  if (value === "phaser" || value === "godot" || value === "love2d") return value;
+  if (value === "phaser" || value === "godot" || value === "love2d" || value === "pixi" || value === "canvas") return value;
   throw new Error(`Unsupported target for Developer Kit: ${value}`);
 }
 
@@ -558,8 +596,8 @@ function defaultAssetRootForTarget(target: TargetEngine): string {
 }
 
 function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
-  if (target === "phaser" && framework !== "vite") {
-    throw new Error("Phaser target requires the vite framework.");
+  if ((target === "phaser" || target === "pixi" || target === "canvas") && framework !== "vite") {
+    throw new Error(`${target} target requires the vite framework.`);
   }
 
   if (target === "godot" && framework !== "godot") {
@@ -722,6 +760,108 @@ function listRecipes(): RecipeListCommandResult {
     ok: true,
     recipes: [...CORE_RECIPES]
   };
+}
+
+function inspectRecipe(recipeId: string | undefined): { ok: true; recipe: CoreRecipe } {
+  if (!recipeId) throw new Error("Missing recipe id.");
+  const recipe = CORE_RECIPES.find((candidate) => candidate.id === recipeId);
+  if (!recipe) throw new Error(`Unknown recipe: ${recipeId}`);
+  return { ok: true, recipe };
+}
+
+async function validateRecipeFiles(parsed: ParsedFlags): Promise<RecipeValidateCommandResult> {
+  const projectRoot = process.cwd();
+  const recipeRoot = resolveInsideProject(projectRoot, readStringFlag(parsed, "dir", "recipes"));
+  const files = await listJsonFiles(recipeRoot);
+  const results = [];
+
+  for (const filePath of files) {
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsedRecipe = JSON.parse(raw) as Partial<CoreRecipe>;
+    const issues = [];
+    if (typeof parsedRecipe.id !== "string" || parsedRecipe.id.length === 0) issues.push("id must be a non-empty string");
+    if (parsedRecipe.packId !== CORE_PACK_ID) issues.push("packId must be core");
+    if (parsedRecipe.mediaType !== "visual.transparent_sprite" && parsedRecipe.mediaType !== "visual.sprite_frame_set") {
+      issues.push("mediaType must be visual.transparent_sprite or visual.sprite_frame_set");
+    }
+    const targets = parsedRecipe.targets as unknown;
+    if (!Array.isArray(targets) || targets.length === 0) issues.push("targets must be a non-empty array");
+    if (typeof parsedRecipe.summary !== "string" || parsedRecipe.summary.length === 0) issues.push("summary must be a non-empty string");
+
+    results.push({
+      path: path.relative(projectRoot, filePath),
+      ok: issues.length === 0,
+      issues
+    });
+  }
+
+  return {
+    ok: results.length > 0 && results.every((result) => result.ok),
+    files: results
+  };
+}
+
+async function listJsonFiles(root: string): Promise<string[]> {
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const entryPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await listJsonFiles(entryPath));
+    } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      files.push(entryPath);
+    }
+  }
+  return files.sort();
+}
+
+async function initAgentConfig(parsed: ParsedFlags): Promise<AgentInitCommandResult> {
+  const projectRoot = process.cwd();
+  const selected = [
+    parsed.flags.get("codex") === true ? "codex" : null,
+    parsed.flags.get("cursor") === true ? "cursor" : null,
+    parsed.flags.get("claude") === true ? "claude" : null
+  ].filter((value): value is AgentKind => value !== null);
+  if (selected.length !== 1) throw new Error("Choose exactly one agent target: --codex, --cursor, or --claude.");
+
+  const agent = selected[0]!;
+  const force = parsed.flags.get("force") === true;
+  const spec = createAgentConfigSpec(agent);
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: spec.relativePath,
+    contents: spec.contents,
+    allowOverwrite: force
+  });
+
+  return {
+    ok: true,
+    agent,
+    path: spec.relativePath,
+    overwrittenAllowed: force,
+    nextActions: [
+      "Run openrender scan --json to confirm the project target.",
+      "Use openrender plan sprite before install when an agent proposes asset changes."
+    ]
+  };
+}
+
+function createAgentConfigSpec(agent: AgentKind): { relativePath: string; contents: string } {
+  const body = `# openRender Agent Usage
+
+Use openRender as a local-only handoff layer for generated media.
+
+- Read README.md and AGENT_USAGE.md first.
+- Keep docs/ local-only; do not stage it.
+- Prefer JSON commands: scan, plan, compile, install, verify, report, explain, diff, rollback.
+- Use --dry-run before writing project files.
+- Never enable upload, telemetry, account, billing, or remote sync flows.
+- Supported targets in 0.4.0: phaser, godot, love2d, pixi, canvas.
+`;
+
+  if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
+  if (agent === "cursor") return { relativePath: ".cursor/rules/openrender.md", contents: body };
+  return { relativePath: ".claude/openrender.md", contents: body };
 }
 
 function notImplementedIn031(commandName: string): NotImplementedCommandResult {
@@ -1033,6 +1173,14 @@ function createEngineAssetDescriptor(contract: MediaContract): EngineAssetDescri
     return createLove2DAssetDescriptor(contract);
   }
 
+  if (contract.target.engine === "pixi") {
+    return createPixiAssetDescriptor(contract);
+  }
+
+  if (contract.target.engine === "canvas") {
+    return createCanvasAssetDescriptor(contract);
+  }
+
   return createPhaserAssetDescriptor(contract);
 }
 
@@ -1047,6 +1195,22 @@ function createEngineInstallPlan(input: {
 
   if (input.contract.target.engine === "love2d") {
     return createLove2DInstallPlan(input);
+  }
+
+  if (input.contract.target.engine === "pixi") {
+    return createPixiInstallPlan({
+      contract: input.contract,
+      compiledAssetPath: input.compiledAssetPath,
+      frameSlices: input.frameSlices
+    });
+  }
+
+  if (input.contract.target.engine === "canvas") {
+    return createCanvasInstallPlan({
+      contract: input.contract,
+      compiledAssetPath: input.compiledAssetPath,
+      frameSlices: input.frameSlices
+    });
   }
 
   return createPhaserInstallPlan({
@@ -1081,6 +1245,28 @@ function createGeneratedSources(
         };
   }
 
+  if (contract.target.engine === "pixi") {
+    return contract.mediaType === "visual.sprite_frame_set"
+      ? {
+          manifest: generatePixiManifestSource([contract]),
+          animationHelper: generatePixiAnimationHelperSource(contract, frameSlices)
+        }
+      : {
+          manifest: generatePixiManifestSource([contract])
+        };
+  }
+
+  if (contract.target.engine === "canvas") {
+    return contract.mediaType === "visual.sprite_frame_set"
+      ? {
+          manifest: generateCanvasManifestSource([contract]),
+          animationHelper: generateCanvasAnimationHelperSource(contract, frameSlices)
+        }
+      : {
+          manifest: generateCanvasManifestSource([contract])
+        };
+  }
+
   return contract.mediaType === "visual.sprite_frame_set"
     ? {
         manifest: generateManifestSource([contract]),
@@ -1100,7 +1286,11 @@ function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
     return !outputPlan.loadPath.startsWith("/") && !outputPlan.loadPath.includes("..") && outputPlan.loadPath.endsWith(".png");
   }
 
-  return outputPlan.publicUrl.startsWith("/") && outputPlan.publicUrl.endsWith(".png");
+  if (outputPlan.engine === "phaser" || outputPlan.engine === "pixi" || outputPlan.engine === "canvas") {
+    return outputPlan.publicUrl.startsWith("/") && outputPlan.publicUrl.endsWith(".png");
+  }
+
+  return false;
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
@@ -1778,21 +1968,30 @@ function printDiffResult(result: DiffCommandResult): void {
   if (result.rollbackCommand) console.log(`Rollback: ${result.rollbackCommand}`);
 }
 
+function printAgentInitResult(result: AgentInitCommandResult): void {
+  console.log("openRender agent init");
+  console.log("");
+  console.log(`Agent: ${result.agent}`);
+  console.log(`Config: ${result.path}`);
+  for (const action of result.nextActions) console.log(`Next: ${action}`);
+}
+
 function printHelp(): void {
   console.log(`openRender ${CLI_VERSION}
 
 Usage:
   openrender --version
-  openrender init [--target phaser|godot|love2d] [--framework vite|godot|love2d] [--force] [--json]
+  openrender init [--target phaser|godot|love2d|pixi|canvas] [--framework vite|godot|love2d] [--force] [--json]
+  openrender agent init --codex|--cursor|--claude [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest
   openrender pack list|inspect [packId] [--json]
-  openrender recipe list [--json]
-  openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d] [--frames n --frame-size WxH] [--json]
+  openrender recipe list|inspect|validate [recipeId] [--json]
+  openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
   openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--out <path>] [--json]
-  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--json]
   openrender report [runId|--run latest] [--open] [--json]
@@ -1870,6 +2069,25 @@ interface PackInspectCommandResult {
 interface RecipeListCommandResult {
   ok: true;
   recipes: CoreRecipe[];
+}
+
+interface RecipeValidateCommandResult {
+  ok: boolean;
+  files: Array<{
+    path: string;
+    ok: boolean;
+    issues: string[];
+  }>;
+}
+
+type AgentKind = "codex" | "cursor" | "claude";
+
+interface AgentInitCommandResult {
+  ok: true;
+  agent: AgentKind;
+  path: string;
+  overwrittenAllowed: boolean;
+  nextActions: string[];
 }
 
 interface NotImplementedCommandResult {

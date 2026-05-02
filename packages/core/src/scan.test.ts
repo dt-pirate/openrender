@@ -65,3 +65,44 @@ test("scanProject detects LOVE2D projects", async () => {
   assert.equal(scan.sourceRootExists, true);
   assert.equal(path.basename(scan.manifestPath), "openrender_assets.lua");
 });
+
+test("scanProject detects PixiJS Vite projects", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-pixi-"));
+  await fs.mkdir(path.join(root, "src"), { recursive: true });
+  await fs.mkdir(path.join(root, "public/assets"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "package.json"),
+    JSON.stringify({
+      name: "sample-pixi",
+      dependencies: { "pixi.js": "^8.0.0" },
+      devDependencies: { vite: "^6.0.0" }
+    }),
+    "utf8"
+  );
+
+  const scan = await scanProject(root);
+
+  assert.equal(scan.framework, "vite");
+  assert.equal(scan.engine, "pixi");
+  assert.equal(scan.assetRoot, "public/assets");
+  assert.equal(scan.sourceRoot, "src");
+});
+
+test("scanProject treats plain Vite as Canvas", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-canvas-"));
+  await fs.mkdir(path.join(root, "src"), { recursive: true });
+  await fs.mkdir(path.join(root, "public/assets"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "package.json"),
+    JSON.stringify({
+      name: "sample-canvas",
+      devDependencies: { vite: "^6.0.0" }
+    }),
+    "utf8"
+  );
+
+  const scan = await scanProject(root);
+
+  assert.equal(scan.framework, "vite");
+  assert.equal(scan.engine, "canvas");
+});

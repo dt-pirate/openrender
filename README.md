@@ -6,7 +6,7 @@ openRender turns existing generated images into engine-ready game project assets
 
 It is built for AI coding agents working inside local game projects. The CLI scans the project, compiles a PNG asset, creates engine-specific helper files, installs with snapshots, verifies the result, writes a local report, and keeps rollback available.
 
-The 0.3.1 reference direction keeps local compile/install as the free core. Future paid value should come from recipe packs, agent packs, update access, support bundles, optional hosted workers, and OEM/platform licensing.
+The 0.4.0 reference direction keeps local compile/install as the free core. Future paid value should come from recipe packs, agent packs, update access, support bundles, optional hosted workers, and OEM/platform licensing.
 
 ## Status
 
@@ -20,11 +20,11 @@ The current implementation includes project scanning, doctor checks, official JS
 
 Packages are prepared for local development. Until they are published, run the CLI from this repository.
 
-## 0.3.1 Reference Direction
+## 0.4.0 Reference Direction
 
-The active local reference document is `docs/openRender_v0.3.1.md`. The `docs/` folder is intentionally kept out of Git.
+The active local reference document is `docs/openRender_v0.4.0.md`. The `docs/` folder is intentionally kept out of Git.
 
-0.3.1 adds product direction around agent token savings and pack boundaries without turning local compile into a hosted metered service:
+0.4.0 adds product direction around agent token savings and pack boundaries without turning local compile into a hosted metered service:
 
 - Local compile and install remain free, local-first core behavior.
 - Agent and engine recipe packs can reduce repeated prompt, schema, helper, and repair work.

@@ -1,0 +1,11 @@
+{
+  "name": "canvas-basic-sprite",
+  "target": "canvas",
+  "inputPngBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "args": ["compile", "sprite", "--from", "input.png", "--target", "canvas", "--id", "fixture.hero", "--dry-run", "--json"],
+  "expected": {
+    "mediaType": "visual.transparent_sprite",
+    "assetPath": "public/assets/fixture-hero.png",
+    "installKinds": ["compiled_asset", "manifest"]
+  }
+}

@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.3.1");
+  assert.equal(stdout.trim(), "0.4.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,9 +27,9 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.3\.1/m);
+  assert.match(stdout, /^openRender 0\.4\.0/m);
   assert.match(stdout, /openrender --version/);
-  assert.match(stdout, /phaser\|godot\|love2d/);
+  assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile sprite --from\|--input <path>/);
   assert.match(stdout, /openrender install \[runId\|--run latest\] \[--force\] \[--json\]/);
@@ -45,7 +45,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.3.1");
+  assert.equal(schema.properties.schemaVersion.const, "0.4.0");
 });
 
 test("pack and recipe commands expose built-in local core metadata", async () => {
@@ -386,6 +386,80 @@ test("compile sprite dry-run emits a LOVE2D frame set plan as JSON", async () =>
   assert.deepEqual(result.installPlan.files.map((file) => file.kind), ["compiled_asset", "manifest", "codegen"]);
   assert.match(result.generatedSources.manifest, /return assets/);
   assert.match(result.generatedSources.animationHelper ?? "", /love\.graphics\.newQuad/);
+});
+
+test("compile sprite dry-run emits PixiJS and Canvas frame set plans as JSON", async () => {
+  for (const target of ["pixi", "canvas"]) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), `openrender-cli-${target}-frame-`));
+    await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      "compile",
+      "sprite",
+      "--from",
+      "sprite.png",
+      "--target",
+      target,
+      "--id",
+      "enemy.dot.idle",
+      "--frames",
+      "1",
+      "--frame-size",
+      "1x1",
+      "--dry-run",
+      "--json"
+    ], {
+      cwd: root
+    });
+
+    const result = JSON.parse(stdout) as {
+      contract: { target: { engine: string; framework: string } };
+      outputPlan: { engine: string; publicUrl: string; manifestPath: string; codegenPath: string };
+      installPlan: { files: Array<{ kind: string; to: string }> };
+      generatedSources: { manifest: string; animationHelper?: string };
+    };
+
+    assert.equal(result.contract.target.engine, target);
+    assert.equal(result.contract.target.framework, "vite");
+    assert.equal(result.outputPlan.engine, target);
+    assert.equal(result.outputPlan.publicUrl, "/assets/enemy-dot-idle.png");
+    assert.equal(result.outputPlan.manifestPath, "src/assets/openrender-manifest.ts");
+    assert.equal(result.outputPlan.codegenPath, `src/openrender/${target}/enemy-dot-idle.ts`);
+    assert.equal(result.installPlan.files.some((file) => file.to === "public/assets/enemy-dot-idle.png"), true);
+    assert.match(result.generatedSources.manifest, /openRenderAssets/);
+    assert.match(result.generatedSources.animationHelper ?? "", target === "pixi" ? /AnimatedSprite/ : /drawFrame/);
+  }
+});
+
+test("agent init writes only the requested config and refuses overwrites by default", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-agent-init-"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "agent",
+    "init",
+    "--cursor",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as { agent: string; path: string };
+
+  assert.equal(result.agent, "cursor");
+  assert.equal(result.path, ".cursor/rules/openrender.md");
+  assert.equal(await fileExists(path.join(root, ".cursor/rules/openrender.md")), true);
+  assert.equal(await fileExists(path.join(root, "AGENTS.md")), false);
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [cliPath, "agent", "init", "--cursor", "--json"], { cwd: root }),
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const errorJson = JSON.parse(stdout) as { message: string };
+      assert.match(errorJson.message, /Refusing to overwrite/);
+      return true;
+    }
+  );
 });
 
 test("compile sprite rejects output-size for frame sets", async () => {

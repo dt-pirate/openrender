@@ -162,6 +162,38 @@ test("validateMediaContract accepts a LOVE2D transparent sprite contract", () =>
   assert.equal(result.ok, true);
 });
 
+test("validateMediaContract accepts Pixi and Canvas Vite targets", () => {
+  for (const engine of ["pixi", "canvas"] as const) {
+    const contract: MediaContract = {
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
+      mediaType: "visual.transparent_sprite",
+      sourcePath: "tmp/tree.png",
+      target: {
+        engine,
+        framework: "vite",
+        projectRoot: "/tmp/game"
+      },
+      id: `prop.${engine}.tree`,
+      visual: {
+        outputWidth: 128,
+        outputHeight: 128,
+        padding: 0,
+        background: "transparent",
+        outputFormat: "png"
+      },
+      install: {
+        enabled: true,
+        assetRoot: "public/assets",
+        writeManifest: true,
+        writeCodegen: false,
+        snapshotBeforeInstall: true
+      }
+    };
+
+    assert.equal(validateMediaContract(contract).ok, true);
+  }
+});
+
 test("validateMediaContract rejects invalid target framework pairs", () => {
   const result = validateMediaContract({
     schemaVersion: OPENRENDER_DEVKIT_VERSION,

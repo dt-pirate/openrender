@@ -51,7 +51,7 @@ const outputKinds = [
   "snapshot"
 ] as const;
 
-const targetEngines = ["phaser", "godot", "love2d"] as const;
+const targetEngines = ["phaser", "godot", "love2d", "pixi", "canvas"] as const;
 const targetFrameworks = ["vite", "godot", "love2d"] as const;
 
 export function validateOpenRenderConfig(input: unknown): SchemaValidationResult<OpenRenderConfig> {
@@ -200,8 +200,8 @@ function validateTargetFrameworkPair(
 ): void {
   if (typeof engine !== "string" || typeof framework !== "string") return;
 
-  if (engine === "phaser" && framework !== "vite") {
-    issues.push({ path: `${path}.framework`, message: "phaser target requires vite framework" });
+  if ((engine === "phaser" || engine === "pixi" || engine === "canvas") && framework !== "vite") {
+    issues.push({ path: `${path}.framework`, message: `${engine} target requires vite framework` });
   }
 
   if (engine === "godot" && framework !== "godot") {

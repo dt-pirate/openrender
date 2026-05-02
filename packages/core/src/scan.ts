@@ -33,19 +33,26 @@ export async function scanProject(projectRootInput = process.cwd()): Promise<Pro
   const love2dConfigPath = path.join(projectRoot, "conf.lua");
   const hasGodotProject = await pathExists(godotProjectPath);
   const hasLove2DProject = (await pathExists(love2dMainPath)) || (await pathExists(love2dConfigPath));
+  const hasVite = dependencyNames.has("vite");
+  const hasPhaser = dependencyNames.has("phaser");
+  const hasPixi = dependencyNames.has("pixi.js");
   const framework = hasGodotProject
     ? "godot"
     : hasLove2DProject
       ? "love2d"
-    : dependencyNames.has("vite")
+    : hasVite
       ? "vite"
       : "unknown";
   const engine = hasGodotProject
     ? "godot"
     : hasLove2DProject
       ? "love2d"
-    : dependencyNames.has("phaser")
+    : hasPhaser
       ? "phaser"
+    : hasPixi
+      ? "pixi"
+    : hasVite
+      ? "canvas"
       : "unknown";
   const detectedAssetRoot = engine === "godot" ? godotAssetRoot : engine === "love2d" ? love2dAssetRoot : assetRoot;
   const detectedSourceRoot = engine === "godot" ? godotSourceRoot : engine === "love2d" ? love2dSourceRoot : sourceRoot;

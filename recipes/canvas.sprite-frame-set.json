@@ -1,0 +1,7 @@
+{
+  "id": "core.canvas.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["canvas"],
+  "summary": "Compile a local sprite sheet into a plain Canvas/Vite PNG and TypeScript load/draw helpers."
+}

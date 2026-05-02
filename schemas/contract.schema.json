@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "visual", "install"],
   "properties": {
-    "schemaVersion": { "const": "0.3.1" },
+    "schemaVersion": { "const": "0.4.0" },
     "mediaType": { "enum": ["visual.transparent_sprite", "visual.sprite_frame_set"] },
     "sourcePath": { "type": "string" },
     "id": { "type": "string", "minLength": 1 },
@@ -13,7 +13,7 @@
       "type": "object",
       "required": ["engine", "framework", "projectRoot"],
       "properties": {
-        "engine": { "enum": ["phaser", "godot", "love2d"] },
+        "engine": { "enum": ["phaser", "godot", "love2d", "pixi", "canvas"] },
         "framework": { "enum": ["vite", "godot", "love2d"] },
         "projectRoot": { "type": "string" }
       }

@@ -1,0 +1,7 @@
+{
+  "id": "core.phaser.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["phaser"],
+  "summary": "Compile a local sprite sheet into a Phaser/Vite PNG, manifest, and animation helper."
+}

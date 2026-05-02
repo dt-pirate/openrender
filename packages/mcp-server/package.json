@@ -1,24 +1,23 @@
 {
-  "name": "@openrender/adapter-phaser",
+  "name": "@openrender/mcp-server",
   "version": "0.4.0",
-  "description": "Phaser and Vite adapter helpers for openRender",
+  "description": "Local JSON-only MCP bridge metadata for openRender",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dt-pirate/openrender.git",
-    "directory": "packages/adapters/phaser"
+    "directory": "packages/mcp-server"
   },
   "bugs": {
     "url": "https://github.com/dt-pirate/openrender/issues"
   },
   "homepage": "https://github.com/dt-pirate/openrender#readme",
   "keywords": [
-    "game-dev",
-    "phaser",
-    "vite",
-    "assets",
-    "sprites"
+    "mcp",
+    "openrender",
+    "agents",
+    "local-first"
   ],
   "engines": {
     "node": ">=22"

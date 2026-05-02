@@ -1,0 +1,7 @@
+{
+  "id": "core.love2d.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["love2d"],
+  "summary": "Compile a local sprite sheet into a LOVE2D PNG, Lua manifest, and quad helper."
+}
