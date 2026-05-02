@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.4.0");
+  assert.equal(stdout.trim(), "0.5.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,7 +27,7 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.4\.0/m);
+  assert.match(stdout, /^openRender 0\.5\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
@@ -45,7 +45,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.4.0");
+  assert.equal(schema.properties.schemaVersion.const, "0.5.0");
 });
 
 test("pack and recipe commands expose built-in local core metadata", async () => {
@@ -460,6 +460,58 @@ test("agent init writes only the requested config and refuses overwrites by defa
       return true;
     }
   );
+});
+
+test("adapter create writes a bounded adapter scaffold", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-adapter-create-"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "adapter",
+    "create",
+    "--name",
+    "arcade2d",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as { adapter: string; files: string[] };
+
+  assert.equal(result.adapter, "arcade2d");
+  assert.equal(result.files.includes("packages/adapters/arcade2d/package.json"), true);
+  assert.equal(result.files.includes("fixtures/arcade2d-template/fixture.json"), true);
+  assert.equal(await fileExists(path.join(root, "packages/adapters/arcade2d/src/index.ts")), true);
+});
+
+test("fixture capture writes sanitized fixture metadata", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-fixture-capture-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "fixture",
+    "capture",
+    "--name",
+    "sample-dot",
+    "--from",
+    "sprite.png",
+    "--target",
+    "canvas",
+    "--id",
+    "fixture.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as { fixturePath: string };
+  const fixture = JSON.parse(await fs.readFile(path.join(root, result.fixturePath), "utf8")) as {
+    target: string;
+    capture: { sanitized: boolean; source: string };
+  };
+
+  assert.equal(fixture.target, "canvas");
+  assert.equal(fixture.capture.sanitized, true);
+  assert.equal(fixture.capture.source, "sprite.png");
 });
 
 test("compile sprite rejects output-size for frame sets", async () => {
@@ -908,6 +960,59 @@ test("report latest run writes html and json reports", async () => {
   const html = await fs.readFile(path.join(root, result.htmlPath), "utf8");
   assert.match(html, /openRender report/);
   assert.match(html, /visual-overlay/);
+});
+
+test("report export and reports serve expose local-only report output", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-report-export-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--json"
+  ], {
+    cwd: root
+  });
+  await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], { cwd: root });
+
+  const { stdout: exportStdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "report",
+    "export",
+    "latest",
+    "--format",
+    "json",
+    "--out",
+    "exported-report.json",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const exportResult = JSON.parse(exportStdout) as { outputPath: string; localOnly: boolean };
+
+  assert.equal(exportResult.outputPath, "exported-report.json");
+  assert.equal(exportResult.localOnly, true);
+  assert.equal(await fileExists(path.join(root, "exported-report.json")), true);
+
+  const { stdout: serveStdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "reports",
+    "serve",
+    "--once",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const serveResult = JSON.parse(serveStdout) as { url: string; htmlBytes: number; once: boolean };
+
+  assert.equal(serveResult.url, "http://localhost:3579");
+  assert.equal(serveResult.once, true);
+  assert.equal(serveResult.htmlBytes > 0, true);
 });
 
 test("report includes frame preview sheet for sprite frame sets", async () => {

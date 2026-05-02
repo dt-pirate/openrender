@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import path from "node:path";
 import {
   createPhaserInstallPlan,
@@ -72,7 +73,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.4.0";
+const CLI_VERSION = "0.5.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -308,6 +309,18 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  if (command === "adapter" && subcommand === "create") {
+    const result = await createAdapterScaffold(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
+  if (command === "fixture" && subcommand === "capture") {
+    const result = await captureFixture(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
   if (command === "scan") {
     const scan = await scanProject(process.cwd());
     if (parsed.flags.get("json") === true) {
@@ -456,6 +469,18 @@ async function main(argv: string[]): Promise<number> {
       printVerifyResult(result);
     }
     return result.status === "passed" ? 0 : 1;
+  }
+
+  if (command === "reports" && subcommand === "serve") {
+    const result = await serveReports(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+
+  if (command === "report" && subcommand === "export") {
+    const result = await exportReport(parsed);
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
   }
 
   if (command === "report") {
@@ -856,12 +881,248 @@ Use openRender as a local-only handoff layer for generated media.
 - Prefer JSON commands: scan, plan, compile, install, verify, report, explain, diff, rollback.
 - Use --dry-run before writing project files.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.4.0: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.5.0: phaser, godot, love2d, pixi, canvas.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
   if (agent === "cursor") return { relativePath: ".cursor/rules/openrender.md", contents: body };
   return { relativePath: ".claude/openrender.md", contents: body };
+}
+
+async function createAdapterScaffold(parsed: ParsedFlags): Promise<AdapterCreateCommandResult> {
+  const projectRoot = process.cwd();
+  const name = requireStringFlag(parsed, "name");
+  if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error("--name must use lowercase letters, numbers, and dashes.");
+  if (["phaser", "godot", "love2d", "pixi", "canvas"].includes(name)) {
+    throw new Error(`Adapter ${name} already exists.`);
+  }
+
+  const base = path.posix.join("packages", "adapters", name);
+  const packageName = `@openrender/adapter-${name}`;
+  const files = [
+    {
+      path: path.posix.join(base, "package.json"),
+      contents: `${JSON.stringify({
+        name: packageName,
+        version: CLI_VERSION,
+        description: `${name} adapter scaffold for openRender`,
+        license: "Apache-2.0",
+        type: "module",
+        main: "./dist/index.js",
+        types: "./dist/index.d.ts",
+        exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } },
+        scripts: { build: "tsc -b", typecheck: "tsc -b --pretty false" },
+        dependencies: { "@openrender/core": "workspace:*" }
+      }, null, 2)}\n`
+    },
+    {
+      path: path.posix.join(base, "tsconfig.json"),
+      contents: `{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../../core" }]
+}
+`
+    },
+    {
+      path: path.posix.join(base, "README.md"),
+      contents: `# ${packageName}
+
+Adapter scaffold. Implement descriptor, install-plan, helper generation, verification, and fixture acceptance tests before publishing.
+`
+    },
+    {
+      path: path.posix.join(base, "src", "index.ts"),
+      contents: `import type { MediaContract } from "@openrender/core";
+
+export function describe${assetIdToPascalCase(name)}Adapter(contract: MediaContract) {
+  return {
+    id: contract.id,
+    engine: ${JSON.stringify(name)}
+  };
+}
+`
+    },
+    {
+      path: path.posix.join(base, "src", "index.test.ts"),
+      contents: `import assert from "node:assert/strict";
+import { test } from "node:test";
+
+test("${name} adapter scaffold is ready for implementation", () => {
+  assert.equal(${JSON.stringify(name)}.length > 0, true);
+});
+`
+    },
+    {
+      path: path.posix.join("fixtures", `${name}-template`, "fixture.json"),
+      contents: `${JSON.stringify({
+        name: `${name}-template`,
+        target: name,
+        inputPngBase64: "<base64-png>",
+        args: ["compile", "sprite", "--from", "input.png", "--target", name, "--id", "fixture.asset", "--dry-run", "--json"],
+        expected: {
+          mediaType: "visual.transparent_sprite",
+          assetPath: "public/assets/fixture-asset.png",
+          installKinds: ["compiled_asset", "manifest"]
+        }
+      }, null, 2)}\n`
+    }
+  ];
+
+  const written = [];
+  for (const file of files) {
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: file.path,
+      contents: file.contents,
+      allowOverwrite: parsed.flags.get("force") === true
+    });
+    written.push(file.path);
+  }
+
+  return {
+    ok: true,
+    adapter: name,
+    files: written,
+    nextActions: [
+      "Wire the adapter into the internal registry after implementing descriptor and install-plan behavior.",
+      "Add two golden fixtures before publishing the adapter."
+    ]
+  };
+}
+
+async function captureFixture(parsed: ParsedFlags): Promise<FixtureCaptureCommandResult> {
+  const projectRoot = process.cwd();
+  const name = requireStringFlag(parsed, "name");
+  const source = resolveInsideProject(projectRoot, requireSourcePathFlag(parsed));
+  const target = readTargetFlag(parsed, "phaser");
+  const id = readStringFlag(parsed, "id", `fixture.${name}`);
+  const relativeSource = path.relative(projectRoot, source);
+  if (relativeSource.startsWith("..") || path.isAbsolute(relativeSource)) {
+    throw new Error("Fixture capture refuses source files outside the project root.");
+  }
+
+  const inputPngBase64 = (await fs.readFile(source)).toString("base64");
+  const fixture = {
+    name,
+    target,
+    inputPngBase64,
+    args: ["compile", "sprite", "--from", "input.png", "--target", target, "--id", id, "--dry-run", "--json"],
+    expected: {
+      mediaType: "visual.transparent_sprite",
+      assetPath: `${defaultAssetRootForTarget(target)}/${assetIdToKebabCaseLocal(id)}.png`,
+      installKinds: ["compiled_asset", "manifest"]
+    },
+    capture: {
+      source: relativeSource,
+      sanitized: true
+    }
+  };
+  const fixturePath = path.posix.join("fixtures", "captured", assetIdToKebabCaseLocal(name), "fixture.json");
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: fixturePath,
+    contents: `${JSON.stringify(fixture, null, 2)}\n`,
+    allowOverwrite: parsed.flags.get("force") === true
+  });
+
+  return {
+    ok: true,
+    fixturePath,
+    summary: `Captured ${name} for ${target} without referencing files outside the fixture.`
+  };
+}
+
+async function exportReport(parsed: ParsedFlags): Promise<ReportExportCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = parsed.positionals[2] ?? readRunId(parsed);
+  const format = readStringFlag(parsed, "format", "html");
+  if (format !== "html" && format !== "json") throw new Error("--format must be html or json.");
+  const sourcePath = path.posix.join(".openrender", "reports", `${runId === "latest" ? "latest" : runId}.${format}`);
+  const outputPath = readStringFlag(parsed, "out", path.posix.join(".openrender", "exports", `${runId}.${format}`));
+  const source = await fs.readFile(resolveInsideProject(projectRoot, sourcePath), "utf8");
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: outputPath,
+    contents: source,
+    allowOverwrite: parsed.flags.get("force") === true
+  });
+
+  return {
+    ok: true,
+    runId,
+    format,
+    sourcePath,
+    outputPath,
+    localOnly: true
+  };
+}
+
+async function serveReports(parsed: ParsedFlags): Promise<ReportsServeCommandResult> {
+  const projectRoot = process.cwd();
+  const port = readIntegerFlag(parsed, "port", 3579);
+  const once = parsed.flags.get("once") === true;
+  const html = await createReportsGalleryHtml(projectRoot);
+
+  if (once) {
+    return {
+      ok: true,
+      host: "localhost",
+      port,
+      url: `http://localhost:${port}`,
+      once: true,
+      htmlBytes: Buffer.byteLength(html)
+    };
+  }
+
+  const server = createServer((request, response) => {
+    response.setHeader("content-type", "text/html; charset=utf-8");
+    response.end(html);
+  });
+  await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+
+  return new Promise<ReportsServeCommandResult>((resolve) => {
+    process.on("SIGTERM", () => server.close());
+    process.on("SIGINT", () => server.close());
+    server.on("close", () => resolve({
+      ok: true,
+      host: "localhost",
+      port,
+      url: `http://localhost:${port}`,
+      once: false,
+      htmlBytes: Buffer.byteLength(html)
+    }));
+  });
+}
+
+async function createReportsGalleryHtml(projectRoot: string): Promise<string> {
+  const reportsDir = resolveInsideProject(projectRoot, ".openrender/reports");
+  const files = (await pathExists(reportsDir)) ? (await fs.readdir(reportsDir)).filter((file) => file.endsWith(".json")) : [];
+  const items = files.sort().map((file) => `<li><a href="./${escapeHtmlAttribute(file)}">${escapeHtmlText(file)}</a></li>`).join("");
+  return `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>openRender reports</title></head>
+<body>
+  <main>
+    <h1>openRender reports</h1>
+    <p>Local-only gallery. No upload, telemetry, or sync.</p>
+    <ul>${items}</ul>
+  </main>
+</body>
+</html>`;
+}
+
+function assetIdToKebabCaseLocal(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
+}
+
+function assetIdToPascalCase(value: string): string {
+  return assetIdToKebabCaseLocal(value).split("-").map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`).join("");
 }
 
 function notImplementedIn031(commandName: string): NotImplementedCommandResult {
@@ -1983,6 +2244,8 @@ Usage:
   openrender --version
   openrender init [--target phaser|godot|love2d|pixi|canvas] [--framework vite|godot|love2d] [--force] [--json]
   openrender agent init --codex|--cursor|--claude [--force] [--json]
+  openrender adapter create --name <id> [--force] [--json]
+  openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest
@@ -1995,6 +2258,8 @@ Usage:
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--json]
   openrender report [runId|--run latest] [--open] [--json]
+  openrender report export [runId|--run latest] --format html|json [--out <path>] [--force] [--json]
+  openrender reports serve [--port 3579] [--once] [--json]
   openrender explain [runId|--run latest] [--json]
   openrender diff [runId|--run latest] [--json]
   openrender rollback [runId|--run latest] [--json]
@@ -2088,6 +2353,37 @@ interface AgentInitCommandResult {
   path: string;
   overwrittenAllowed: boolean;
   nextActions: string[];
+}
+
+interface AdapterCreateCommandResult {
+  ok: true;
+  adapter: string;
+  files: string[];
+  nextActions: string[];
+}
+
+interface FixtureCaptureCommandResult {
+  ok: true;
+  fixturePath: string;
+  summary: string;
+}
+
+interface ReportExportCommandResult {
+  ok: true;
+  runId: string;
+  format: "html" | "json";
+  sourcePath: string;
+  outputPath: string;
+  localOnly: true;
+}
+
+interface ReportsServeCommandResult {
+  ok: true;
+  host: "localhost";
+  port: number;
+  url: string;
+  once: boolean;
+  htmlBytes: number;
 }
 
 interface NotImplementedCommandResult {

@@ -49,4 +49,4 @@ openrender diff --run latest --json
 
 ## Scope check
 
-openRender Developer Kit 0.4.0 is local-first, image-only, and focused on Vite + Phaser, Godot 4, and LOVE2D asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.5.0 is local-first, image-only, and focused on Vite + Phaser, Godot 4, and LOVE2D asset workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
