@@ -111,6 +111,14 @@ function getTargetDefaults(target: TargetEngine): Pick<OpenRenderConfig["target"
     };
   }
 
+  if (target === "love2d") {
+    return {
+      framework: "love2d",
+      assetRoot: "assets/openrender",
+      sourceRoot: "openrender"
+    };
+  }
+
   return {
     framework: "vite",
     assetRoot: "public/assets",
@@ -125,6 +133,10 @@ function validateTargetFrameworkPair(target: TargetEngine, framework: TargetFram
 
   if (target === "godot" && framework !== "godot") {
     throw new Error("Godot target requires the godot framework.");
+  }
+
+  if (target === "love2d" && framework !== "love2d") {
+    throw new Error("LOVE2D target requires the love2d framework.");
   }
 }
 

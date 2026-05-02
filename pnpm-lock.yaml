@@ -21,6 +21,12 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/adapters/love2d:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/adapters/phaser:
     dependencies:
       '@openrender/core':
@@ -32,6 +38,9 @@ importers:
       '@openrender/adapter-godot':
         specifier: workspace:*
         version: link:../adapters/godot
+      '@openrender/adapter-love2d':
+        specifier: workspace:*
+        version: link:../adapters/love2d
       '@openrender/adapter-phaser':
         specifier: workspace:*
         version: link:../adapters/phaser

@@ -48,3 +48,20 @@ test("scanProject detects Godot projects", async () => {
   assert.equal(scan.sourceRootExists, true);
   assert.equal(path.basename(scan.manifestPath), "openrender_assets.gd");
 });
+
+test("scanProject detects LOVE2D projects", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-love2d-"));
+  await fs.mkdir(path.join(root, "assets/openrender"), { recursive: true });
+  await fs.mkdir(path.join(root, "openrender"), { recursive: true });
+  await fs.writeFile(path.join(root, "main.lua"), "function love.draw() end\n", "utf8");
+
+  const scan = await scanProject(root);
+
+  assert.equal(scan.framework, "love2d");
+  assert.equal(scan.engine, "love2d");
+  assert.equal(scan.assetRoot, "assets/openrender");
+  assert.equal(scan.assetRootExists, true);
+  assert.equal(scan.sourceRoot, "openrender");
+  assert.equal(scan.sourceRootExists, true);
+  assert.equal(path.basename(scan.manifestPath), "openrender_assets.lua");
+});

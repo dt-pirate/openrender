@@ -1,6 +1,6 @@
 {
   "name": "@openrender/reporter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local report and preview generation helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",
@@ -17,6 +17,7 @@
     "game-dev",
     "phaser",
     "godot",
+    "love2d",
     "assets",
     "reports"
   ],

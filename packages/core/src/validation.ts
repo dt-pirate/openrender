@@ -51,8 +51,8 @@ const outputKinds = [
   "snapshot"
 ] as const;
 
-const targetEngines = ["phaser", "godot"] as const;
-const targetFrameworks = ["vite", "godot"] as const;
+const targetEngines = ["phaser", "godot", "love2d"] as const;
+const targetFrameworks = ["vite", "godot", "love2d"] as const;
 
 export function validateOpenRenderConfig(input: unknown): SchemaValidationResult<OpenRenderConfig> {
   const issues: SchemaValidationIssue[] = [];
@@ -206,6 +206,10 @@ function validateTargetFrameworkPair(
 
   if (engine === "godot" && framework !== "godot") {
     issues.push({ path: `${path}.framework`, message: "godot target requires godot framework" });
+  }
+
+  if (engine === "love2d" && framework !== "love2d") {
+    issues.push({ path: `${path}.framework`, message: "love2d target requires love2d framework" });
   }
 }
 

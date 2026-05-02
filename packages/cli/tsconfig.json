@@ -12,6 +12,7 @@
     { "path": "../harness-visual" },
     { "path": "../adapters/phaser" },
     { "path": "../adapters/godot" },
+    { "path": "../adapters/love2d" },
     { "path": "../reporter" }
   ]
 }

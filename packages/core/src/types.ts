@@ -1,8 +1,8 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.2.0" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.3.0" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
-export type TargetEngine = "phaser" | "godot";
-export type TargetFramework = "vite" | "godot";
+export type TargetEngine = "phaser" | "godot" | "love2d";
+export type TargetFramework = "vite" | "godot" | "love2d";
 export type VisualMediaType = "visual.transparent_sprite" | "visual.sprite_frame_set";
 export type OutputFormat = "png";
 export type SpriteLayout = "horizontal" | "horizontal_strip" | "grid";

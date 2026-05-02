@@ -130,6 +130,38 @@ test("validateMediaContract accepts a Godot transparent sprite contract", () => 
   assert.equal(result.ok, true);
 });
 
+test("validateMediaContract accepts a LOVE2D transparent sprite contract", () => {
+  const contract: MediaContract = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    mediaType: "visual.transparent_sprite",
+    sourcePath: "tmp/tree.png",
+    target: {
+      engine: "love2d",
+      framework: "love2d",
+      projectRoot: "/tmp/game"
+    },
+    id: "prop.tree",
+    visual: {
+      outputWidth: 128,
+      outputHeight: 128,
+      padding: 0,
+      background: "transparent",
+      outputFormat: "png"
+    },
+    install: {
+      enabled: true,
+      assetRoot: "assets/openrender",
+      writeManifest: true,
+      writeCodegen: false,
+      snapshotBeforeInstall: true
+    }
+  };
+
+  const result = validateMediaContract(contract);
+
+  assert.equal(result.ok, true);
+});
+
 test("validateMediaContract rejects invalid target framework pairs", () => {
   const result = validateMediaContract({
     schemaVersion: OPENRENDER_DEVKIT_VERSION,

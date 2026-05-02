@@ -32,6 +32,12 @@ export async function runDoctor(projectRoot = process.cwd()): Promise<DoctorResu
       status: "passed",
       message: "Godot project detected"
     });
+  } else if (scan.engine === "love2d") {
+    checks.push({
+      name: "love2d",
+      status: "passed",
+      message: "LOVE2D project detected"
+    });
   } else {
     checks.push({
       name: "vite",

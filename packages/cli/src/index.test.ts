@@ -18,7 +18,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.2.0");
+  assert.equal(stdout.trim(), "0.3.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -27,11 +27,13 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.2\.0/m);
+  assert.match(stdout, /^openRender 0\.3\.0/m);
   assert.match(stdout, /openrender --version/);
+  assert.match(stdout, /phaser\|godot\|love2d/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
-  assert.match(stdout, /openrender install --run latest \[--force\] \[--json\]/);
-  assert.match(stdout, /openrender report --run latest \[--open\] \[--json\]/);
+  assert.match(stdout, /compile sprite --from\|--input <path>/);
+  assert.match(stdout, /openrender install \[runId\|--run latest\] \[--force\] \[--json\]/);
+  assert.match(stdout, /openrender report \[runId\|--run latest\] \[--open\] \[--json\]/);
 });
 
 test("init emits JSON when requested", async () => {
@@ -81,6 +83,31 @@ test("init supports Godot defaults", async () => {
     framework: "godot",
     assetRoot: "assets/openrender",
     sourceRoot: "scripts/openrender"
+  });
+});
+
+test("init supports LOVE2D defaults", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-love2d-"));
+  await fs.writeFile(path.join(root, "main.lua"), "function love.draw() end\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "init",
+    "--target",
+    "love2d",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const config = JSON.parse(await fs.readFile(path.join(root, "openrender.config.json"), "utf8")) as {
+    target: { engine: string; framework: string; assetRoot: string; sourceRoot: string };
+  };
+
+  assert.deepEqual(config.target, {
+    engine: "love2d",
+    framework: "love2d",
+    assetRoot: "assets/openrender",
+    sourceRoot: "openrender"
   });
 });
 
@@ -200,6 +227,50 @@ test("compile sprite dry-run emits a Godot frame set plan as JSON", async () => 
   assert.match(result.generatedSources.animationHelper ?? "", /SpriteFrames/);
 });
 
+test("compile sprite dry-run emits a LOVE2D frame set plan as JSON", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-love2d-frame-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--input",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "enemy.dot.idle",
+    "--frames",
+    "1",
+    "--frame-size",
+    "1x1",
+    "--dry-run",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const result = JSON.parse(stdout) as {
+    contract: { target: { engine: string; framework: string } };
+    outputPlan: { engine: string; assetPath: string; loadPath: string; manifestPath: string; codegenPath: string };
+    installPlan: { files: Array<{ kind: string; to: string }> };
+    generatedSources: { manifest: string; animationHelper?: string };
+  };
+
+  assert.equal(result.contract.target.engine, "love2d");
+  assert.equal(result.contract.target.framework, "love2d");
+  assert.equal(result.outputPlan.engine, "love2d");
+  assert.equal(result.outputPlan.assetPath, "assets/openrender/enemy-dot-idle.png");
+  assert.equal(result.outputPlan.loadPath, "assets/openrender/enemy-dot-idle.png");
+  assert.equal(result.outputPlan.manifestPath, "openrender/openrender_assets.lua");
+  assert.equal(result.outputPlan.codegenPath, "openrender/animations/enemy-dot-idle.lua");
+  assert.deepEqual(result.installPlan.files.map((file) => file.kind), ["compiled_asset", "manifest", "codegen"]);
+  assert.match(result.generatedSources.manifest, /return assets/);
+  assert.match(result.generatedSources.animationHelper ?? "", /love\.graphics\.newQuad/);
+});
+
 test("compile sprite rejects output-size for frame sets", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-frame-output-size-"));
   const imagePath = path.join(root, "sprite.png");
@@ -224,7 +295,12 @@ test("compile sprite rejects output-size for frame sets", async () => {
     ], {
       cwd: root
     }),
-    /--output-size is only supported for transparent sprites/
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as { message: string };
+      assert.match(result.message, /--output-size is only supported for transparent sprites/);
+      return true;
+    }
   );
 });
 
@@ -250,7 +326,45 @@ test("compile sprite rejects invalid target framework pairs", async () => {
     ], {
       cwd: root
     }),
-    /Godot target requires the godot framework/
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as { message: string };
+      assert.match(result.message, /Godot target requires the godot framework/);
+      return true;
+    }
+  );
+});
+
+test("compile sprite returns structured JSON errors", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-json-error-"));
+
+  await assert.rejects(
+    async () => {
+      await execFileAsync(process.execPath, [
+        cliPath,
+        "compile",
+        "sprite",
+        "--id",
+        "prop.dot",
+        "--json"
+      ], {
+        cwd: root
+      });
+    },
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as {
+        ok: boolean;
+        code: string;
+        message: string;
+        nextActions: string[];
+      };
+      assert.equal(result.ok, false);
+      assert.equal(result.code, "OPENRENDER_ERROR");
+      assert.match(result.message, /Missing required option: --from/);
+      assert.equal(result.nextActions.length > 0, true);
+      return true;
+    }
   );
 });
 
@@ -433,6 +547,74 @@ test("compile sprite can install, verify, report, and rollback a Godot run", asy
   ]);
   assert.equal(await fileExists(path.join(root, "assets/openrender/prop-dot.png")), false);
   assert.equal(await fileExists(path.join(root, "scripts/openrender/openrender_assets.gd")), false);
+});
+
+test("compile sprite can install, verify, report, and rollback a LOVE2D run", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-love2d-install-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(root, "main.lua"), "function love.draw() end\n", "utf8");
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "prop.dot",
+    "--output-size",
+    "8x8",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const compileResult = JSON.parse(stdout) as {
+    run: { runId: string };
+    outputPlan: { loadPath: string; assetPath: string; manifestPath: string };
+    installResult: { writes: Array<{ relativePath: string }> };
+  };
+
+  assert.equal(compileResult.outputPlan.loadPath, "assets/openrender/prop-dot.png");
+  assert.deepEqual(compileResult.installResult.writes.map((write) => write.relativePath), [
+    "assets/openrender/prop-dot.png",
+    "openrender/openrender_assets.lua"
+  ]);
+  assert.equal(await fileExists(path.join(root, "assets/openrender/prop-dot.png")), true);
+  assert.equal(await fileExists(path.join(root, "openrender/openrender_assets.lua")), true);
+
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string; path?: string }>;
+  };
+  assert.equal(verifyResult.status, "passed");
+  assert.equal(verifyResult.checks.some((check) => check.name === "engine_load_path_shape" && check.status === "passed"), true);
+
+  const report = await execFileAsync(process.execPath, [cliPath, "report", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const reportResult = JSON.parse(report.stdout) as { htmlPath: string };
+  const reportHtml = await fs.readFile(path.join(root, reportResult.htmlPath), "utf8");
+  assert.match(reportHtml, /LOVE2D Load Note/);
+
+  const rollback = await execFileAsync(process.execPath, [cliPath, "rollback", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const rollbackResult = JSON.parse(rollback.stdout) as {
+    actions: Array<{ action: string; path: string }>;
+  };
+  assert.deepEqual(rollbackResult.actions.map((action) => action.path), [
+    "assets/openrender/prop-dot.png",
+    "openrender/openrender_assets.lua"
+  ]);
+  assert.equal(await fileExists(path.join(root, "assets/openrender/prop-dot.png")), false);
+  assert.equal(await fileExists(path.join(root, "openrender/openrender_assets.lua")), false);
 });
 
 test("install rejects malformed run records", async () => {

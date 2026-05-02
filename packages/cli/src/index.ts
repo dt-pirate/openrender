@@ -15,6 +15,12 @@ import {
   generateGodotManifestSource
 } from "@openrender/adapter-godot";
 import {
+  createLove2DAssetDescriptor,
+  createLove2DInstallPlan,
+  generateLove2DAnimationHelperSource,
+  generateLove2DManifestSource
+} from "@openrender/adapter-love2d";
+import {
   createInitialRun,
   initializeOpenRenderProject,
   OPENRENDER_DEVKIT_VERSION,
@@ -45,15 +51,17 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.2.0";
+const CLI_VERSION = "0.3.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
-  | ReturnType<typeof createGodotAssetDescriptor>;
+  | ReturnType<typeof createGodotAssetDescriptor>
+  | ReturnType<typeof createLove2DAssetDescriptor>;
 
 type EngineInstallPlan =
   | ReturnType<typeof createPhaserInstallPlan>
-  | ReturnType<typeof createGodotInstallPlan>;
+  | ReturnType<typeof createGodotInstallPlan>
+  | ReturnType<typeof createLove2DInstallPlan>;
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -221,6 +229,12 @@ function readStringFlag(parsed: ParsedFlags, name: string, fallback: string): st
   return typeof value === "string" ? value : fallback;
 }
 
+function readRunId(parsed: ParsedFlags, fallback = "latest"): string {
+  const value = parsed.flags.get("run");
+  if (typeof value === "string") return value;
+  return parsed.positionals[1] ?? fallback;
+}
+
 function requireStringFlag(parsed: ParsedFlags, name: string): string {
   const value = parsed.flags.get(name);
   if (typeof value !== "string" || value.length === 0) {
@@ -230,24 +244,34 @@ function requireStringFlag(parsed: ParsedFlags, name: string): string {
   return value;
 }
 
+function requireSourcePathFlag(parsed: ParsedFlags): string {
+  const value = parsed.flags.get("from") ?? parsed.flags.get("input");
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("Missing required option: --from");
+  }
+
+  return value;
+}
+
 function readTargetFlag(parsed: ParsedFlags, fallback: TargetEngine): TargetEngine {
   const value = readStringFlag(parsed, "target", fallback);
-  if (value === "phaser" || value === "godot") return value;
+  if (value === "phaser" || value === "godot" || value === "love2d") return value;
   throw new Error(`Unsupported target for Developer Kit: ${value}`);
 }
 
 function readFrameworkFlag(parsed: ParsedFlags, fallback: TargetFramework): TargetFramework {
   const value = readStringFlag(parsed, "framework", fallback);
-  if (value === "vite" || value === "godot") return value;
+  if (value === "vite" || value === "godot" || value === "love2d") return value;
   throw new Error(`Unsupported framework for Developer Kit: ${value}`);
 }
 
 function defaultFrameworkForTarget(target: TargetEngine): TargetFramework {
+  if (target === "love2d") return "love2d";
   return target === "godot" ? "godot" : "vite";
 }
 
 function defaultAssetRootForTarget(target: TargetEngine): string {
-  return target === "godot" ? "assets/openrender" : "public/assets";
+  return target === "godot" || target === "love2d" ? "assets/openrender" : "public/assets";
 }
 
 function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
@@ -258,11 +282,15 @@ function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramew
   if (target === "godot" && framework !== "godot") {
     throw new Error("Godot target requires the godot framework.");
   }
+
+  if (target === "love2d" && framework !== "love2d") {
+    throw new Error("LOVE2D target requires the love2d framework.");
+  }
 }
 
 async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> {
   const projectRoot = process.cwd();
-  const sourcePath = resolveInsideProject(projectRoot, requireStringFlag(parsed, "from"));
+  const sourcePath = resolveInsideProject(projectRoot, requireSourcePathFlag(parsed));
   const id = requireStringFlag(parsed, "id");
   const target = readTargetFlag(parsed, "phaser");
   const framework = readFrameworkFlag(parsed, defaultFrameworkForTarget(target));
@@ -510,6 +538,10 @@ function createEngineAssetDescriptor(contract: MediaContract): EngineAssetDescri
     return createGodotAssetDescriptor(contract);
   }
 
+  if (contract.target.engine === "love2d") {
+    return createLove2DAssetDescriptor(contract);
+  }
+
   return createPhaserAssetDescriptor(contract);
 }
 
@@ -520,6 +552,10 @@ function createEngineInstallPlan(input: {
 }): EngineInstallPlan {
   if (input.contract.target.engine === "godot") {
     return createGodotInstallPlan(input);
+  }
+
+  if (input.contract.target.engine === "love2d") {
+    return createLove2DInstallPlan(input);
   }
 
   return createPhaserInstallPlan({
@@ -543,6 +579,17 @@ function createGeneratedSources(
         };
   }
 
+  if (contract.target.engine === "love2d") {
+    return contract.mediaType === "visual.sprite_frame_set"
+      ? {
+          manifest: generateLove2DManifestSource([contract]),
+          animationHelper: generateLove2DAnimationHelperSource(contract, frameSlices)
+        }
+      : {
+          manifest: generateLove2DManifestSource([contract])
+        };
+  }
+
   return contract.mediaType === "visual.sprite_frame_set"
     ? {
         manifest: generateManifestSource([contract]),
@@ -558,12 +605,16 @@ function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
     return outputPlan.loadPath.startsWith("res://") && outputPlan.loadPath.endsWith(".png");
   }
 
+  if (outputPlan.engine === "love2d") {
+    return !outputPlan.loadPath.startsWith("/") && !outputPlan.loadPath.includes("..") && outputPlan.loadPath.endsWith(".png");
+  }
+
   return outputPlan.publicUrl.startsWith("/") && outputPlan.publicUrl.endsWith(".png");
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
   const projectRoot = process.cwd();
-  const runId = readStringFlag(parsed, "run", "latest");
+  const runId = readRunId(parsed);
   const force = parsed.flags.get("force") === true;
   const record = await readCompileRecord(projectRoot, runId);
   return installCompiledRecord({ projectRoot, record, force });
@@ -658,7 +709,7 @@ async function readCompileRecord(projectRoot: string, runId: string): Promise<Co
 
 async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   const projectRoot = process.cwd();
-  const runId = readStringFlag(parsed, "run", "latest");
+  const runId = readRunId(parsed);
   const record = await readCompileRecord(projectRoot, runId);
   const checks: VerifyCommandResult["checks"] = [];
   const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
@@ -716,7 +767,7 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
 
 async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const projectRoot = process.cwd();
-  const runId = readStringFlag(parsed, "run", "latest");
+  const runId = readRunId(parsed);
   const record = await readCompileRecord(projectRoot, runId);
   const reportJsonPath = path.posix.join(".openrender", "reports", `${record.run.runId}.json`);
   const reportHtmlPath = path.posix.join(".openrender", "reports", `${record.run.runId}.html`);
@@ -739,6 +790,12 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
         ? [{
             heading: "Godot Import Note",
             body: "openRender installs source PNG assets and GDScript helpers only. Godot owns .import metadata and .godot/ cache files; open the project or run Godot's import flow before assuming editor-side imported resources exist."
+          }]
+        : []),
+      ...(record.contract.target.engine === "love2d"
+        ? [{
+            heading: "LOVE2D Load Note",
+            body: "openRender installs source PNG assets and Lua helper modules only. Require the generated Lua module from openrender/ and load images through love.graphics.newImage at runtime."
           }]
         : []),
       ...(nextAction ? [{ heading: "Next Action", body: nextAction }] : [])
@@ -949,7 +1006,7 @@ function escapeHtmlText(value: string): string {
 
 async function rollbackRun(parsed: ParsedFlags): Promise<RollbackCommandResult> {
   const projectRoot = process.cwd();
-  const runIdFlag = readStringFlag(parsed, "run", "latest");
+  const runIdFlag = readRunId(parsed);
   const record = await readCompileRecord(projectRoot, runIdFlag);
   const installResultPath = path.posix.join(".openrender", "runs", `${record.run.runId}.install.json`);
   const installResult = JSON.parse(
@@ -1080,14 +1137,14 @@ function printHelp(): void {
 
 Usage:
   openrender --version
-  openrender init [--target phaser|godot] [--framework vite|godot] [--force] [--json]
+  openrender init [--target phaser|godot|love2d] [--framework vite|godot|love2d] [--force] [--json]
   openrender scan [--json]
   openrender doctor [--json]
-  openrender compile sprite --from <path> --id <asset.id> [--target phaser|godot] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
-  openrender install --run latest [--force] [--json]
-  openrender verify --run latest [--json]
-  openrender report --run latest [--open] [--json]
-  openrender rollback --run latest [--json]
+  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender install [runId|--run latest] [--force] [--json]
+  openrender verify [runId|--run latest] [--json]
+  openrender report [runId|--run latest] [--open] [--json]
+  openrender rollback [runId|--run latest] [--json]
 `);
 }
 
@@ -1149,12 +1206,40 @@ interface CompileSpriteResult {
   installResult?: InstallCommandResult;
 }
 
-main(process.argv.slice(2))
+const argv = process.argv.slice(2);
+
+main(argv)
   .then((code) => {
     process.exitCode = code;
   })
   .catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
+    const parsed = parseArgs(argv);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify({
+        ok: false,
+        code: "OPENRENDER_ERROR",
+        message,
+        nextActions: createErrorNextActions(message)
+      }, null, 2));
+    } else {
+      console.error(message);
+    }
     process.exitCode = 1;
   });
+
+function createErrorNextActions(message: string): string[] {
+  if (message.includes("Missing required option: --from")) {
+    return ["Pass --from <path> or --input <path> with a project-relative image path."];
+  }
+
+  if (message.includes("requires the")) {
+    return ["Check --target and --framework, then re-run the command with a supported pair."];
+  }
+
+  if (message.includes("without --force")) {
+    return ["Review the destination file, then re-run with --force only if overwriting is acceptable."];
+  }
+
+  return ["Review the command arguments and re-run with --json for structured output."];
+}

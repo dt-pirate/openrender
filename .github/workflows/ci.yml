@@ -43,6 +43,7 @@ jobs:
           pnpm --filter @openrender/core pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-phaser pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-godot pack --pack-destination "$pack_dir"
+          pnpm --filter @openrender/adapter-love2d pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/reporter pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/doctor pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/harness-visual pack --pack-destination "$pack_dir"
@@ -59,11 +60,12 @@ jobs:
           cd "$pack_dir/install"
           npm init -y
           npm install \
-            "$pack_dir"/openrender-core-0.2.0.tgz \
-            "$pack_dir"/openrender-adapter-phaser-0.2.0.tgz \
-            "$pack_dir"/openrender-adapter-godot-0.2.0.tgz \
-            "$pack_dir"/openrender-reporter-0.2.0.tgz \
-            "$pack_dir"/openrender-doctor-0.2.0.tgz \
-            "$pack_dir"/openrender-harness-visual-0.2.0.tgz \
-            "$pack_dir"/openrender-cli-0.2.0.tgz
-          ./node_modules/.bin/openrender --version | grep '^0\.2\.0$'
+            "$pack_dir"/openrender-core-0.3.0.tgz \
+            "$pack_dir"/openrender-adapter-phaser-0.3.0.tgz \
+            "$pack_dir"/openrender-adapter-godot-0.3.0.tgz \
+            "$pack_dir"/openrender-adapter-love2d-0.3.0.tgz \
+            "$pack_dir"/openrender-reporter-0.3.0.tgz \
+            "$pack_dir"/openrender-doctor-0.3.0.tgz \
+            "$pack_dir"/openrender-harness-visual-0.3.0.tgz \
+            "$pack_dir"/openrender-cli-0.3.0.tgz
+          ./node_modules/.bin/openrender --version | grep '^0\.3\.0$'

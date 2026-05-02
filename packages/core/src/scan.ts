@@ -26,24 +26,35 @@ export async function scanProject(projectRootInput = process.cwd()): Promise<Pro
   const sourceRoot = "src";
   const godotAssetRoot = "assets/openrender";
   const godotSourceRoot = "scripts/openrender";
+  const love2dAssetRoot = "assets/openrender";
+  const love2dSourceRoot = "openrender";
   const godotProjectPath = path.join(projectRoot, "project.godot");
+  const love2dMainPath = path.join(projectRoot, "main.lua");
+  const love2dConfigPath = path.join(projectRoot, "conf.lua");
   const hasGodotProject = await pathExists(godotProjectPath);
+  const hasLove2DProject = (await pathExists(love2dMainPath)) || (await pathExists(love2dConfigPath));
   const framework = hasGodotProject
     ? "godot"
+    : hasLove2DProject
+      ? "love2d"
     : dependencyNames.has("vite")
       ? "vite"
       : "unknown";
   const engine = hasGodotProject
     ? "godot"
+    : hasLove2DProject
+      ? "love2d"
     : dependencyNames.has("phaser")
       ? "phaser"
       : "unknown";
-  const detectedAssetRoot = engine === "godot" ? godotAssetRoot : assetRoot;
-  const detectedSourceRoot = engine === "godot" ? godotSourceRoot : sourceRoot;
+  const detectedAssetRoot = engine === "godot" ? godotAssetRoot : engine === "love2d" ? love2dAssetRoot : assetRoot;
+  const detectedSourceRoot = engine === "godot" ? godotSourceRoot : engine === "love2d" ? love2dSourceRoot : sourceRoot;
   const configPath = path.join(projectRoot, OPENRENDER_CONFIG_FILE);
   const statePath = path.join(projectRoot, OPENRENDER_STATE_DIR);
   const manifestPath = engine === "godot"
     ? path.join(projectRoot, detectedSourceRoot, "openrender_assets.gd")
+    : engine === "love2d"
+      ? path.join(projectRoot, detectedSourceRoot, "openrender_assets.lua")
     : path.join(projectRoot, detectedSourceRoot, "assets", "openrender-manifest.ts");
 
   return {

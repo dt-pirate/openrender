@@ -1,12 +1,12 @@
 # Contributing
 
-openRender Developer Kit 0.2.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit 0.3.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
 - Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
-- Keep the current targets focused on Vite + Phaser and Godot 4.
+- Keep the current targets focused on Vite + Phaser, Godot 4, and LOVE2D.
 - Keep the first media scope image-only.
-- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.2.0.
+- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.3.0.
 - Add tests for shared contracts, path safety, code generation, and CLI behavior.
 
 ## Setup
@@ -24,6 +24,7 @@ pnpm test
 - `@openrender/harness-visual` owns deterministic visual processing.
 - `@openrender/adapter-phaser` owns Phaser/Vite output generation.
 - `@openrender/adapter-godot` owns Godot 4 output generation.
+- `@openrender/adapter-love2d` owns LOVE2D Lua output generation.
 - `@openrender/reporter` owns local report and preview generation.
 - `@openrender/doctor` owns environment diagnostics.
 
@@ -60,6 +61,15 @@ Godot workflows should use the same dry-run/install/verify/report loop:
 ```bash
 openrender compile sprite --from tmp/slime.png --target godot --id enemy.slime --output-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime.png --target godot --id enemy.slime --output-size 64x64 --install --json
+openrender verify --run latest --json
+openrender report --run latest --json
+```
+
+LOVE2D workflows should use the same dry-run/install/verify/report loop:
+
+```bash
+openrender compile sprite --from tmp/slime.png --target love2d --id enemy.slime --output-size 64x64 --dry-run --json
+openrender compile sprite --from tmp/slime.png --target love2d --id enemy.slime --output-size 64x64 --install --json
 openrender verify --run latest --json
 openrender report --run latest --json
 ```
