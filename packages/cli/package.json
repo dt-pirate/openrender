@@ -45,6 +45,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "prepack": "pnpm build",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {

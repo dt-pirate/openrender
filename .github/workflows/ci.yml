@@ -37,6 +37,8 @@ jobs:
 
       - name: Verify package tarballs
         run: |
+          pnpm clean
+
           pack_dir="$(mktemp -d)"
           pnpm --filter @openrender/core pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-phaser pack --pack-destination "$pack_dir"

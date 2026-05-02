@@ -214,23 +214,24 @@ pnpm test
 Run the CLI from source:
 
 ```bash
-pnpm dev:cli scan --json
-pnpm dev:cli doctor
-pnpm dev:cli compile sprite --from tmp/slime_raw.png --id prop.slime --output-size 64x64 --dry-run --json
-pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
-pnpm dev:cli compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
+pnpm build
+node packages/cli/dist/index.js --version
 ```
 
-Build the CLI:
+When testing against a separate game project before packages are published, run the built CLI from that project's root:
 
 ```bash
-pnpm build
-node packages/cli/dist/index.js scan
+cd /path/to/game-project
+node /path/to/openrender/packages/cli/dist/index.js scan --json
+node /path/to/openrender/packages/cli/dist/index.js doctor --json
+node /path/to/openrender/packages/cli/dist/index.js compile sprite --from tmp/slime_raw.png --id prop.slime --output-size 64x64 --dry-run --json
+node /path/to/openrender/packages/cli/dist/index.js compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
+node /path/to/openrender/packages/cli/dist/index.js compile sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 ```
 
 ## Current CLI Workflow
 
-For human operators, the same CLI can be used directly. From a Vite + Phaser project directory, initialize local openRender state:
+For human operators, the same CLI can be used directly after the package is installed or published. From a Vite + Phaser project directory, initialize local openRender state:
 
 ```bash
 openrender init
