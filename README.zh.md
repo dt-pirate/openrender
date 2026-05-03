@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>AI 게임 개발을 위한 로컬 에셋 핸드오프 인프라</h3>
+  <h3>面向 AI 游戏开发的本地资源交接基础设施</h3>
   <p>
-    openRender는 이미 생성된 게임 이미지를 실행 가능한 프로젝트 파일로 바꾸고,
-    설치 계획, 헬퍼 코드, 리포트, 검증, 롤백 기록을 함께 남깁니다.
+    openRender 将已有的生成式游戏图片转换为可进入引擎项目的文件，
+    并留下安装计划、辅助代码、报告、验证结果和回滚记录。
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -30,24 +30,24 @@
 
 ---
 
-## openRender란?
+## 什么是 openRender？
 
-openRender는 AI 코딩 에이전트가 생성된 게임 이미지를 실제 게임 프로젝트에 안전하게 배치할 수 있도록 돕는 로컬 우선 Developer Kit입니다.
+openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生成式游戏美术安全地放入真实项目。
 
-이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
+图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-현재 `0.6.1` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Plain Canvas + Vite의 이미지 에셋 핸드오프를 지원합니다.
+当前 `0.6.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite 的图片资源交接。
 
-## 빠른 시작
+## 快速开始
 
-패키지는 로컬 개발용으로 준비되어 있습니다. 아직 배포 전이므로 이 저장소에서 빌드한 CLI를 실행합니다.
+包已准备好用于本地开发。在发布前，请从本仓库运行构建后的 CLI。
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-대상 게임 프로젝트에서:
+在目标游戏项目中：
 
 ```bash
 cd /path/to/game-project
@@ -57,14 +57,14 @@ node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
 
-AI 코딩 에이전트용 지침은 먼저 dry-run으로 확인한 뒤 설치합니다:
+为 AI 编码代理安装本地指令时，先执行 dry-run：
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
 node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
 ```
 
-파일을 쓰기 전에 계획과 dry-run을 확인합니다:
+写入文件前先查看计划和 dry-run：
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js plan sprite \
@@ -85,7 +85,7 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
-계획이 맞을 때만 설치합니다:
+确认计划正确后再安装：
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js compile sprite \
@@ -103,15 +103,15 @@ node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
-최근 openRender 설치를 되돌립니다:
+回滚最近一次 openRender 安装：
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-`--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`를 사용할 수 있습니다.
+可使用 `--target phaser`、`--target godot`、`--target love2d`、`--target pixi` 或 `--target canvas`。
 
-## 작동 방식
+## 工作流程
 
 ```text
 local image
@@ -125,39 +125,39 @@ local image
 -> rollback remains available
 ```
 
-openRender는 `.openrender/` 아래에 아티팩트, 미리보기, 리포트, 실행 기록, 롤백 스냅샷을 저장합니다.
+openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、previews、reports、run records 和 rollback snapshots。
 
-## 핵심 기능
+## 核心能力
 
-- 프로젝트 스캔과 doctor 체크.
-- sprite 계획, dry-run, 설치, 검증, 리포트, diff, explain, rollback.
-- alpha 진단, 프레임 감지, normalize preset, sprite invariant, 프레임 미리보기 시트.
-- Phaser, Godot, LOVE2D, PixiJS, Canvas 어댑터.
-- JSON 스키마, 짧은 agent summary, recipe, fixture capture, golden fixture.
-- 지원 타깃을 위한 로컬 JSON-only MCP 메타데이터 헬퍼.
+- 项目扫描和 doctor 检查。
+- sprite 计划、dry-run、安装、验证、报告、diff、explain 和 rollback。
+- alpha 诊断、帧检测、normalize presets、sprite invariants 和帧预览图。
+- Phaser、Godot、LOVE2D、PixiJS、Canvas 适配器。
+- JSON schemas、精简 agent summaries、recipes、fixture capture 和 golden fixtures。
+- 面向支持目标的本地 JSON-only MCP 元数据辅助能力。
 
-## 엔진 출력
+## 引擎输出
 
 | Target | Output Shape |
 |---|---|
-| Vite + Phaser | PNG 에셋, TypeScript 매니페스트, 애니메이션 헬퍼, preload snippet |
-| Godot 4 | PNG 에셋, GDScript 에셋 헬퍼, 애니메이션 헬퍼, `res://` 경로 |
-| LOVE2D | PNG 에셋, Lua 에셋 모듈, 애니메이션 메타데이터, load/draw snippet |
-| PixiJS + Vite | PNG 에셋, 선택적 spritesheet JSON, TypeScript Pixi 헬퍼 |
-| Canvas + Vite | PNG 에셋, TypeScript 매니페스트, 이미지 로딩 및 프레임 drawing 헬퍼 |
+| Vite + Phaser | PNG 资源、TypeScript manifest、动画辅助代码、preload snippets |
+| Godot 4 | PNG 资源、GDScript 资源辅助代码、动画辅助代码、`res://` 路径 |
+| LOVE2D | PNG 资源、Lua 资源模块、动画元数据、load/draw snippets |
+| PixiJS + Vite | PNG 资源、可选 spritesheet JSON、TypeScript Pixi 辅助代码 |
+| Canvas + Vite | PNG 资源、TypeScript manifest、图片加载和帧绘制辅助代码 |
 
-## 에이전트 규칙
+## 代理规则
 
-- 프로젝트 타입을 추측하거나 넓게 파일을 읽기 전에 `context --json`을 실행합니다.
-- 낯선 프로젝트에 파일을 쓰기 전에 `doctor --json`을 실행합니다.
-- `--install` 전에 `plan sprite --json` 또는 `compile sprite --dry-run --json`을 사용합니다.
-- 설치 전에 `installPlan.files`를 확인합니다.
-- 사용자가 덮어쓰기를 허용하지 않는 한 `--force`를 넘기지 않습니다.
-- 생성된 매니페스트는 이전 항목과 자동 병합되지 않고 현재 compile 결과로 다시 작성된다고 간주합니다.
-- 설치 후 `verify --run latest --json`을 실행합니다.
-- `rollback --run latest --json`은 openRender 설치 결과에만 사용합니다.
+- 在广泛读取文件或假设项目类型前运行 `context --json`。
+- 在陌生项目中写文件前运行 `doctor --json`。
+- 在 `--install` 前使用 `plan sprite --json` 或 `compile sprite --dry-run --json`。
+- 安装前检查 `installPlan.files`。
+- 除非用户接受覆盖目标文件，不要传入 `--force`。
+- 将生成的 manifest 视为当前 compile 结果的写入文件，而不是与旧 manifest 条目自动合并。
+- 安装后运行 `verify --run latest --json`。
+- `rollback --run latest --json` 只用于 openRender 安装结果。
 
-## 저장소 구조
+## 仓库结构
 
 ```text
 packages/core              shared config, contracts, paths, and run state
@@ -172,21 +172,21 @@ fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
 
-## 개발
+## 开发
 
-필수 조건:
+要求：
 
-- Node.js 22 이상
-- pnpm 10 이상
+- Node.js 22 或更高版本
+- pnpm 10 或更高版本
 
-검사 실행:
+运行检查：
 
 ```bash
 pnpm typecheck
 pnpm test
 ```
 
-소스에서 CLI 실행:
+从源码运行 CLI：
 
 ```bash
 pnpm build

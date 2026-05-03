@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>AI 게임 개발을 위한 로컬 에셋 핸드오프 인프라</h3>
+  <h3>Infraestructura local de handoff de assets para desarrollo de juegos con IA</h3>
   <p>
-    openRender는 이미 생성된 게임 이미지를 실행 가능한 프로젝트 파일로 바꾸고,
-    설치 계획, 헬퍼 코드, 리포트, 검증, 롤백 기록을 함께 남깁니다.
+    openRender convierte imagenes de juego ya generadas en archivos listos para el proyecto,
+    con planes de instalacion, codigo auxiliar, reportes, verificacion y registros de rollback.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -30,24 +30,24 @@
 
 ---
 
-## openRender란?
+## Que es openRender?
 
-openRender는 AI 코딩 에이전트가 생성된 게임 이미지를 실제 게임 프로젝트에 안전하게 배치할 수 있도록 돕는 로컬 우선 Developer Kit입니다.
+openRender es un Developer Kit local-first para agentes de codigo con IA que necesitan colocar arte de juego generado dentro de proyectos reales.
 
-이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
+Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-현재 `0.6.1` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Plain Canvas + Vite의 이미지 에셋 핸드오프를 지원합니다.
+El core actual `0.6.1` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
 
-## 빠른 시작
+## Inicio rapido
 
-패키지는 로컬 개발용으로 준비되어 있습니다. 아직 배포 전이므로 이 저장소에서 빌드한 CLI를 실행합니다.
+Los paquetes estan preparados para desarrollo local. Hasta que se publiquen, ejecuta la CLI desde este repositorio.
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-대상 게임 프로젝트에서:
+Desde un proyecto de juego objetivo:
 
 ```bash
 cd /path/to/game-project
@@ -57,14 +57,14 @@ node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
 
-AI 코딩 에이전트용 지침은 먼저 dry-run으로 확인한 뒤 설치합니다:
+Para instalar instrucciones locales para agentes de codigo, revisa primero el dry-run:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
 node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
 ```
 
-파일을 쓰기 전에 계획과 dry-run을 확인합니다:
+Planifica y ejecuta un dry-run antes de escribir archivos:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js plan sprite \
@@ -85,7 +85,7 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
-계획이 맞을 때만 설치합니다:
+Instala solo cuando el plan sea correcto:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js compile sprite \
@@ -103,15 +103,15 @@ node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
-최근 openRender 설치를 되돌립니다:
+Revierte la ultima instalacion de openRender:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-`--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`를 사용할 수 있습니다.
+Puedes usar `--target phaser`, `--target godot`, `--target love2d`, `--target pixi` o `--target canvas`.
 
-## 작동 방식
+## Como funciona
 
 ```text
 local image
@@ -125,39 +125,39 @@ local image
 -> rollback remains available
 ```
 
-openRender는 `.openrender/` 아래에 아티팩트, 미리보기, 리포트, 실행 기록, 롤백 스냅샷을 저장합니다.
+openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo artifacts, previews, reports, run records y rollback snapshots.
 
-## 핵심 기능
+## Capacidades principales
 
-- 프로젝트 스캔과 doctor 체크.
-- sprite 계획, dry-run, 설치, 검증, 리포트, diff, explain, rollback.
-- alpha 진단, 프레임 감지, normalize preset, sprite invariant, 프레임 미리보기 시트.
-- Phaser, Godot, LOVE2D, PixiJS, Canvas 어댑터.
-- JSON 스키마, 짧은 agent summary, recipe, fixture capture, golden fixture.
-- 지원 타깃을 위한 로컬 JSON-only MCP 메타데이터 헬퍼.
+- Escaneo de proyecto y checks de doctor.
+- Planes de sprite, dry-runs, instalaciones, verificacion, reportes, diffs, explicaciones y rollback.
+- Diagnostico alpha, deteccion de frames, presets de normalizacion, invariants de sprites y hojas de preview de frames.
+- Adaptadores para Phaser, Godot, LOVE2D, PixiJS y Canvas.
+- JSON schemas, resumenes compactos para agentes, recipes, fixture capture y golden fixtures.
+- Helpers locales JSON-only de metadata MCP para los targets soportados.
 
-## 엔진 출력
+## Salidas por engine
 
 | Target | Output Shape |
 |---|---|
-| Vite + Phaser | PNG 에셋, TypeScript 매니페스트, 애니메이션 헬퍼, preload snippet |
-| Godot 4 | PNG 에셋, GDScript 에셋 헬퍼, 애니메이션 헬퍼, `res://` 경로 |
-| LOVE2D | PNG 에셋, Lua 에셋 모듈, 애니메이션 메타데이터, load/draw snippet |
-| PixiJS + Vite | PNG 에셋, 선택적 spritesheet JSON, TypeScript Pixi 헬퍼 |
-| Canvas + Vite | PNG 에셋, TypeScript 매니페스트, 이미지 로딩 및 프레임 drawing 헬퍼 |
+| Vite + Phaser | Assets PNG, manifest TypeScript, helpers de animacion, snippets de preload |
+| Godot 4 | Assets PNG, helpers GDScript, helpers de animacion, rutas `res://` |
+| LOVE2D | Assets PNG, modulo Lua, metadata de animacion, snippets load/draw |
+| PixiJS + Vite | Assets PNG, spritesheet JSON opcional, helpers Pixi en TypeScript |
+| Canvas + Vite | Assets PNG, manifest TypeScript, helpers para cargar imagenes y dibujar frames |
 
-## 에이전트 규칙
+## Reglas para agentes
 
-- 프로젝트 타입을 추측하거나 넓게 파일을 읽기 전에 `context --json`을 실행합니다.
-- 낯선 프로젝트에 파일을 쓰기 전에 `doctor --json`을 실행합니다.
-- `--install` 전에 `plan sprite --json` 또는 `compile sprite --dry-run --json`을 사용합니다.
-- 설치 전에 `installPlan.files`를 확인합니다.
-- 사용자가 덮어쓰기를 허용하지 않는 한 `--force`를 넘기지 않습니다.
-- 생성된 매니페스트는 이전 항목과 자동 병합되지 않고 현재 compile 결과로 다시 작성된다고 간주합니다.
-- 설치 후 `verify --run latest --json`을 실행합니다.
-- `rollback --run latest --json`은 openRender 설치 결과에만 사용합니다.
+- Ejecuta `context --json` antes de leer ampliamente o asumir el tipo de proyecto.
+- Ejecuta `doctor --json` antes de escribir en un proyecto desconocido.
+- Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
+- Inspecciona `installPlan.files` antes de instalar.
+- No pases `--force` salvo que el usuario acepte sobrescribir archivos de destino.
+- Trata los manifests generados como archivos escritos desde el resultado actual de compile, no como merges automaticos con entradas anteriores.
+- Despues de instalar, ejecuta `verify --run latest --json`.
+- Usa `rollback --run latest --json` solo para la instalacion de openRender.
 
-## 저장소 구조
+## Estructura del repositorio
 
 ```text
 packages/core              shared config, contracts, paths, and run state
@@ -172,21 +172,21 @@ fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
 
-## 개발
+## Desarrollo
 
-필수 조건:
+Requisitos:
 
-- Node.js 22 이상
-- pnpm 10 이상
+- Node.js 22 o superior
+- pnpm 10 o superior
 
-검사 실행:
+Ejecutar checks:
 
 ```bash
 pnpm typecheck
 pnpm test
 ```
 
-소스에서 CLI 실행:
+Ejecutar la CLI desde el codigo fuente:
 
 ```bash
 pnpm build
