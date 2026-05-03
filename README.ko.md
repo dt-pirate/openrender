@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>Local asset handoff infrastructure for AI game development</h3>
+  <h3>AI 게임 개발을 위한 로컬 에셋 핸드오프 인프라</h3>
   <p>
-    openRender turns existing generated game images into engine-ready project files with plans,
-    helper code, reports, verification, and rollback records.
+    openRender는 이미 생성된 게임 이미지를 실행 가능한 프로젝트 파일로 바꾸고,
+    설치 계획, 헬퍼 코드, 리포트, 검증, 롤백 기록을 함께 남깁니다.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -28,24 +28,24 @@
 
 ---
 
-## What Is openRender?
+## openRender란?
 
-openRender is a local-first Developer Kit for AI coding agents that need to place generated game art into real projects.
+openRender는 AI 코딩 에이전트가 생성된 게임 이미지를 실제 게임 프로젝트에 안전하게 배치할 수 있도록 돕는 로컬 우선 Developer Kit입니다.
 
-Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
+이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
 
-The current `0.6.0` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+현재 `0.6.0` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Plain Canvas + Vite의 이미지 에셋 핸드오프를 지원합니다.
 
-## Quick Start
+## 빠른 시작
 
-Packages are prepared for local development. Until they are published, run the CLI from this repository.
+패키지는 로컬 개발용으로 준비되어 있습니다. 아직 배포 전이므로 이 저장소에서 빌드한 CLI를 실행합니다.
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-From a target game project:
+대상 게임 프로젝트에서:
 
 ```bash
 cd /path/to/game-project
@@ -54,7 +54,7 @@ node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
 
-Plan and dry-run before writing files:
+파일을 쓰기 전에 계획과 dry-run을 확인합니다:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js plan sprite \
@@ -75,7 +75,7 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
-Install only after the plan is correct:
+계획이 맞을 때만 설치합니다:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js compile sprite \
@@ -93,15 +93,15 @@ node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
-Rollback the latest openRender install:
+최근 openRender 설치를 되돌립니다:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, or `--target canvas`.
+`--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`를 사용할 수 있습니다.
 
-## How It Works
+## 작동 방식
 
 ```text
 local image
@@ -115,37 +115,37 @@ local image
 -> rollback remains available
 ```
 
-openRender keeps run state under `.openrender/`, including artifacts, previews, reports, run records, and rollback snapshots.
+openRender는 `.openrender/` 아래에 아티팩트, 미리보기, 리포트, 실행 기록, 롤백 스냅샷을 저장합니다.
 
-## Core Capabilities
+## 핵심 기능
 
-- Project scanning and doctor checks.
-- Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
-- Alpha diagnostics, frame detection, normalization presets, sprite invariants, and frame preview sheets.
-- Engine adapters for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
-- JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
-- Local JSON-only MCP metadata helpers for supported targets.
+- 프로젝트 스캔과 doctor 체크.
+- sprite 계획, dry-run, 설치, 검증, 리포트, diff, explain, rollback.
+- alpha 진단, 프레임 감지, normalize preset, sprite invariant, 프레임 미리보기 시트.
+- Phaser, Godot, LOVE2D, PixiJS, Canvas 어댑터.
+- JSON 스키마, 짧은 agent summary, recipe, fixture capture, golden fixture.
+- 지원 타깃을 위한 로컬 JSON-only MCP 메타데이터 헬퍼.
 
-## Engine Outputs
+## 엔진 출력
 
 | Target | Output Shape |
 |---|---|
-| Vite + Phaser | PNG assets, TypeScript manifest, animation helpers, preload snippets |
-| Godot 4 | PNG assets, GDScript asset helpers, animation helpers, `res://` paths |
-| LOVE2D | PNG assets, Lua asset module, animation metadata, draw/load snippets |
-| PixiJS + Vite | PNG assets, optional spritesheet JSON, TypeScript Pixi helpers |
-| Canvas + Vite | PNG assets, TypeScript manifest, image loading and frame drawing helpers |
+| Vite + Phaser | PNG 에셋, TypeScript 매니페스트, 애니메이션 헬퍼, preload snippet |
+| Godot 4 | PNG 에셋, GDScript 에셋 헬퍼, 애니메이션 헬퍼, `res://` 경로 |
+| LOVE2D | PNG 에셋, Lua 에셋 모듈, 애니메이션 메타데이터, load/draw snippet |
+| PixiJS + Vite | PNG 에셋, 선택적 spritesheet JSON, TypeScript Pixi 헬퍼 |
+| Canvas + Vite | PNG 에셋, TypeScript 매니페스트, 이미지 로딩 및 프레임 drawing 헬퍼 |
 
-## Agent Rules
+## 에이전트 규칙
 
-- Run `scan --json` before assuming the project type.
-- Run `doctor --json` before writing into an unfamiliar project.
-- Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
-- Do not pass `--force` unless the user accepts overwriting destination files.
-- After install, run `verify --run latest --json`.
-- Use `rollback --run latest --json` only for the openRender install.
+- 프로젝트 타입을 추측하기 전에 `scan --json`을 실행합니다.
+- 낯선 프로젝트에 파일을 쓰기 전에 `doctor --json`을 실행합니다.
+- `--install` 전에 `plan sprite --json` 또는 `compile sprite --dry-run --json`을 사용합니다.
+- 사용자가 덮어쓰기를 허용하지 않는 한 `--force`를 넘기지 않습니다.
+- 설치 후 `verify --run latest --json`을 실행합니다.
+- `rollback --run latest --json`은 openRender 설치 결과에만 사용합니다.
 
-## Repository Layout
+## 저장소 구조
 
 ```text
 packages/core              shared config, contracts, paths, and run state
@@ -160,21 +160,21 @@ fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
 
-## Development
+## 개발
 
-Prerequisites:
+필수 조건:
 
-- Node.js 22 or newer
-- pnpm 10 or newer
+- Node.js 22 이상
+- pnpm 10 이상
 
-Run checks:
+검사 실행:
 
 ```bash
 pnpm typecheck
 pnpm test
 ```
 
-Run the CLI from source:
+소스에서 CLI 실행:
 
 ```bash
 pnpm build

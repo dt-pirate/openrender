@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>Local asset handoff infrastructure for AI game development</h3>
+  <h3>Infraestructura local de handoff de assets para desarrollo de juegos con IA</h3>
   <p>
-    openRender turns existing generated game images into engine-ready project files with plans,
-    helper code, reports, verification, and rollback records.
+    openRender convierte imagenes de juego ya generadas en archivos listos para el proyecto,
+    con planes de instalacion, codigo auxiliar, reportes, verificacion y registros de rollback.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -28,24 +28,24 @@
 
 ---
 
-## What Is openRender?
+## Que es openRender?
 
-openRender is a local-first Developer Kit for AI coding agents that need to place generated game art into real projects.
+openRender es un Developer Kit local-first para agentes de codigo con IA que necesitan colocar arte de juego generado dentro de proyectos reales.
 
-Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
+Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-The current `0.6.0` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+El core actual `0.6.0` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
 
-## Quick Start
+## Inicio rapido
 
-Packages are prepared for local development. Until they are published, run the CLI from this repository.
+Los paquetes estan preparados para desarrollo local. Hasta que se publiquen, ejecuta la CLI desde este repositorio.
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-From a target game project:
+Desde un proyecto de juego objetivo:
 
 ```bash
 cd /path/to/game-project
@@ -54,7 +54,7 @@ node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
 
-Plan and dry-run before writing files:
+Planifica y ejecuta un dry-run antes de escribir archivos:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js plan sprite \
@@ -75,7 +75,7 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
-Install only after the plan is correct:
+Instala solo cuando el plan sea correcto:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js compile sprite \
@@ -93,15 +93,15 @@ node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
 ```
 
-Rollback the latest openRender install:
+Revierte la ultima instalacion de openRender:
 
 ```bash
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, or `--target canvas`.
+Puedes usar `--target phaser`, `--target godot`, `--target love2d`, `--target pixi` o `--target canvas`.
 
-## How It Works
+## Como funciona
 
 ```text
 local image
@@ -115,37 +115,37 @@ local image
 -> rollback remains available
 ```
 
-openRender keeps run state under `.openrender/`, including artifacts, previews, reports, run records, and rollback snapshots.
+openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo artifacts, previews, reports, run records y rollback snapshots.
 
-## Core Capabilities
+## Capacidades principales
 
-- Project scanning and doctor checks.
-- Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
-- Alpha diagnostics, frame detection, normalization presets, sprite invariants, and frame preview sheets.
-- Engine adapters for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
-- JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
-- Local JSON-only MCP metadata helpers for supported targets.
+- Escaneo de proyecto y checks de doctor.
+- Planes de sprite, dry-runs, instalaciones, verificacion, reportes, diffs, explicaciones y rollback.
+- Diagnostico alpha, deteccion de frames, presets de normalizacion, invariants de sprites y hojas de preview de frames.
+- Adaptadores para Phaser, Godot, LOVE2D, PixiJS y Canvas.
+- JSON schemas, resumenes compactos para agentes, recipes, fixture capture y golden fixtures.
+- Helpers locales JSON-only de metadata MCP para los targets soportados.
 
-## Engine Outputs
+## Salidas por engine
 
 | Target | Output Shape |
 |---|---|
-| Vite + Phaser | PNG assets, TypeScript manifest, animation helpers, preload snippets |
-| Godot 4 | PNG assets, GDScript asset helpers, animation helpers, `res://` paths |
-| LOVE2D | PNG assets, Lua asset module, animation metadata, draw/load snippets |
-| PixiJS + Vite | PNG assets, optional spritesheet JSON, TypeScript Pixi helpers |
-| Canvas + Vite | PNG assets, TypeScript manifest, image loading and frame drawing helpers |
+| Vite + Phaser | Assets PNG, manifest TypeScript, helpers de animacion, snippets de preload |
+| Godot 4 | Assets PNG, helpers GDScript, helpers de animacion, rutas `res://` |
+| LOVE2D | Assets PNG, modulo Lua, metadata de animacion, snippets load/draw |
+| PixiJS + Vite | Assets PNG, spritesheet JSON opcional, helpers Pixi en TypeScript |
+| Canvas + Vite | Assets PNG, manifest TypeScript, helpers para cargar imagenes y dibujar frames |
 
-## Agent Rules
+## Reglas para agentes
 
-- Run `scan --json` before assuming the project type.
-- Run `doctor --json` before writing into an unfamiliar project.
-- Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
-- Do not pass `--force` unless the user accepts overwriting destination files.
-- After install, run `verify --run latest --json`.
-- Use `rollback --run latest --json` only for the openRender install.
+- Ejecuta `scan --json` antes de asumir el tipo de proyecto.
+- Ejecuta `doctor --json` antes de escribir en un proyecto desconocido.
+- Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
+- No pases `--force` salvo que el usuario acepte sobrescribir archivos de destino.
+- Despues de instalar, ejecuta `verify --run latest --json`.
+- Usa `rollback --run latest --json` solo para la instalacion de openRender.
 
-## Repository Layout
+## Estructura del repositorio
 
 ```text
 packages/core              shared config, contracts, paths, and run state
@@ -160,21 +160,21 @@ fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
 
-## Development
+## Desarrollo
 
-Prerequisites:
+Requisitos:
 
-- Node.js 22 or newer
-- pnpm 10 or newer
+- Node.js 22 o superior
+- pnpm 10 o superior
 
-Run checks:
+Ejecutar checks:
 
 ```bash
 pnpm typecheck
 pnpm test
 ```
 
-Run the CLI from source:
+Ejecutar la CLI desde el codigo fuente:
 
 ```bash
 pnpm build
