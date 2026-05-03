@@ -44,7 +44,7 @@ openrender doctor --json
 openrender install-agent --platform all --dry-run --json
 openrender plan sprite --from tmp/asset.png --target phaser --id asset.id --json
 openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --dry-run --json
-openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --install --json
+openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --remove-background --background-mode edge-flood --manifest-strategy merge --install --json
 openrender verify --run latest --json --compact
 openrender report --run latest --json --compact
 openrender explain --run latest --json --compact
@@ -59,9 +59,11 @@ Rules:
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 - Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing local agent instructions.
 - Run a dry run before install and inspect `installPlan.files`.
+- Use `--remove-background --background-mode edge-flood` when a generated sprite has a flat opaque background that should become transparent.
+- Use default `--manifest-strategy merge` for cumulative manifests; use `replace` for one-entry manifests and `isolated` when no shared manifest should be written.
+- Use `--quality strict` or `verify --strict-visual` when likely visual transparency problems should fail the run.
 - Use `verify`, `report`, `explain`, and `diff` with `--compact` when you only need status, next actions, rollback information, and compact tables.
 - Avoid `--force` unless the user accepts overwriting generated destinations.
-- Treat generated manifests as current-result files; they are not automatically merged with older manifest entries.
 - Use `rollback --run latest --json` only for openRender install outputs.
 - Do not enable upload, telemetry, sync, login, billing, or cloud report assumptions.
 

@@ -278,12 +278,12 @@ function validateVerification(input: unknown, path: string, issues: SchemaValida
   if (input === undefined) return;
   const verification = expectRecord(input, path, issues);
   if (!verification) return;
-  expectOneOf(verification.status, `${path}.status`, ["passed", "failed", "skipped"], issues);
+  expectOneOf(verification.status, `${path}.status`, ["passed", "warning", "failed", "skipped"], issues);
   expectArrayOf(verification.checks, `${path}.checks`, issues, (value, itemPath) => {
     const check = expectRecord(value, itemPath, issues);
     if (!check) return;
     expectString(check.name, `${itemPath}.name`, issues);
-    expectOneOf(check.status, `${itemPath}.status`, ["passed", "failed", "skipped"], issues);
+    expectOneOf(check.status, `${itemPath}.status`, ["passed", "warning", "failed", "skipped"], issues);
     if (check.path !== undefined) expectString(check.path, `${itemPath}.path`, issues);
     if (check.message !== undefined) expectString(check.message, `${itemPath}.message`, issues);
   });

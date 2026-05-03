@@ -4,14 +4,14 @@ Last updated: 2026-05-03
 
 This page tracks the implemented openRender Developer Kit surface and the documented version milestones.
 
-Release dates are intentionally omitted until the repository starts publishing tagged GitHub releases. The documentation baseline can move ahead of the package metadata when source behavior has been implemented but package versions have not been bumped yet.
+Release dates are intentionally omitted until the repository starts publishing tagged GitHub releases.
 
 ## Current Version
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.7.0 Agent Token Saver` |
-| Package/CLI version | `0.6.1` |
+| Current docs baseline | `0.7.1 Agent Asset Readiness` |
+| Package/CLI version | `0.7.1` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
@@ -19,9 +19,38 @@ Release dates are intentionally omitted until the repository starts publishing t
 | Release channel | Local source build |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
+## 0.7.1 Agent Asset Readiness
+
+`0.7.1` is the current implemented package and CLI version.
+
+### Added
+
+- Visual quality warnings for likely opaque transparent sprites, surfaced in verify/report compact JSON.
+- `verify --strict-visual` and `--quality prototype|default|strict` quality gates.
+- `--remove-background`, `--background-mode edge-flood|top-left`, `--background-tolerance`, and `--feather` on normalize/compile sprite flows.
+- `--manifest-strategy merge|replace|isolated`, with merge as the default cumulative manifest behavior and same-id updates protected by snapshots.
+- Asset-aware `context --json --wire-map` snippets with latest asset path, load path, manifest module, and read-only example code.
+- Runtime smoke command semantics: missing runtime is `skipped`, crash is `failed`, launch is `passed`, and optional screenshots are local-only.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.7.1
+```
+
 ## 0.7.0 Agent Token Saver
 
-`0.7.0` is the current documentation baseline for the agent token-saving command surface implemented in source.
+`0.7.0` documented the first agent token-saving command surface.
 
 ### Added
 
@@ -37,7 +66,7 @@ Release dates are intentionally omitted until the repository starts publishing t
 
 ## 0.6.1 Developer Kit
 
-`0.6.1` is the local-first Developer Kit base used by the current source.
+`0.6.1` is the local-first Developer Kit base.
 
 ### Added
 
@@ -65,7 +94,7 @@ pnpm test
 node packages/cli/dist/index.js --version
 ```
 
-Expected CLI version:
+Expected CLI version for that milestone:
 
 ```text
 0.6.1

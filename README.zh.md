@@ -38,7 +38,7 @@ openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `0.6.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite 的图片资源交接。
+当前 `0.7.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite 的图片资源交接。
 
 ## 快速开始
 
@@ -180,7 +180,7 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 - 在 `--install` 前使用 `plan sprite --json` 或 `compile sprite --dry-run --json`。
 - 安装前检查 `installPlan.files`。
 - 除非用户接受覆盖目标文件，不要传入 `--force`。
-- 将生成的 manifest 视为当前 compile 结果的写入文件，而不是与旧 manifest 条目自动合并。
+- 生成的 manifest 默认使用 `merge` 累积条目；只有在需要单条目或不写共享 manifest 时才使用 `--manifest-strategy replace|isolated`。
 - 安装后运行 `verify --run latest --json`。
 - `rollback --run latest --json` 只用于 openRender 安装结果。
 

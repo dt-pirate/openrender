@@ -13,6 +13,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(currentDir, "index.js");
 const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 const transparentBorderPng = "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFUlEQVR4nGNgIAT+MzD8B2HiJdABAI7jB/l+kPXlAAAAAElFTkSuQmCC";
+const opaqueWhiteRedPng = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFUlEQVR4nGP4jwYYICQDBOMWQNICAGk9N8lGG0z3AAAAAElFTkSuQmCC";
 
 test("version prints the npm package version", async () => {
   const { stdout } = await execFileAsync(process.execPath, [
@@ -20,7 +21,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.6.1");
+  assert.equal(stdout.trim(), "0.7.1");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -29,16 +30,19 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.6\.1/m);
+  assert.match(stdout, /^openRender 0\.7\.1/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
+  assert.match(stdout, /--remove-background/);
+  assert.match(stdout, /--manifest-strategy merge\|replace\|isolated/);
+  assert.match(stdout, /--quality prototype\|default\|strict/);
   assert.match(stdout, /compile sprite --from\|--input <path>/);
   assert.match(stdout, /openrender install \[runId\|--run latest\] \[--force\] \[--json\]/);
   assert.match(stdout, /openrender report \[runId\|--run latest\] \[--open\] \[--json\] \[--compact\]/);
-  assert.match(stdout, /openrender verify \[runId\|--run latest\] \[--json\] \[--compact\]/);
+  assert.match(stdout, /openrender verify \[runId\|--run latest\].*\[--json\] \[--compact\]/);
 });
 
 test("schema command emits official schemas", async () => {
@@ -50,7 +54,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.6.1");
+  assert.equal(schema.properties.schemaVersion.const, "0.7.1");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -59,7 +63,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.6.1 P4 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.7.1 P4 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -163,6 +167,37 @@ test("normalize command writes preset output", async () => {
   assert.equal(await fileExists(path.join(root, result.outputPath)), true);
 });
 
+test("normalize can remove edge-connected solid backgrounds", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-normalize-bg-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "normalize",
+    "sprite.png",
+    "--preset",
+    "transparent-sprite",
+    "--remove-background",
+    "--background-mode",
+    "edge-flood",
+    "--background-tolerance",
+    "48",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    outputPath: string;
+    output: { metadata: { width: number; height: number }; removedSolidBackground: boolean; backgroundMode: string };
+  };
+
+  assert.equal(result.output.removedSolidBackground, true);
+  assert.equal(result.output.backgroundMode, "edge-flood");
+  assert.equal(result.output.metadata.width, 2);
+  assert.equal(result.output.metadata.height, 2);
+  assert.equal(await fileExists(path.join(root, result.outputPath)), true);
+});
+
 test("metadata and smoke commands return local deterministic JSON", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-media-"));
   await fs.writeFile(path.join(root, "sound.wav"), Buffer.from("RIFF0000WAVE", "ascii"));
@@ -195,16 +230,11 @@ test("metadata and smoke commands return local deterministic JSON", async () => 
   assert.equal(atlasResult.metadata.columns, 1);
   assert.equal(atlasResult.metadata.rows, 1);
 
-  await assert.rejects(
-    () => execFileAsync(process.execPath, [cliPath, "smoke", "--target", "canvas", "--json"], { cwd: root }),
-    (error: unknown) => {
-      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
-      const result = JSON.parse(stdout) as { status: string; command: null };
-      assert.equal(result.status, "not_available");
-      assert.equal(result.command, null);
-      return true;
-    }
-  );
+  const smoke = await execFileAsync(process.execPath, [cliPath, "smoke", "--target", "canvas", "--json"], { cwd: root });
+  const smokeResult = JSON.parse(smoke.stdout) as { ok: boolean; status: string; command: null };
+  assert.equal(smokeResult.ok, true);
+  assert.equal(smokeResult.status, "skipped");
+  assert.equal(smokeResult.command, null);
 });
 
 test("init emits JSON when requested", async () => {
@@ -581,7 +611,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.6.1");
+  assert.equal(result.version, "0.7.1");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -700,6 +730,50 @@ test("context wire-map finds read-only wiring candidates for supported targets",
     assert.equal(result.wireMap.candidates.some((candidate) => candidate.signals.includes(testCase.expectedSignal)), true, testCase.name);
     assert.deepEqual(result.wireMap.tables.candidates.columns, ["kind", "file", "signals", "suggestedAction"]);
   }
+});
+
+test("context wire-map includes latest asset handoff snippets", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-wire-latest-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+  await fs.writeFile(path.join(root, "main.lua"), "function love.load() end\nfunction love.draw() end\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "ui.start.button",
+    "--remove-background",
+    "--install",
+    "--json"
+  ], { cwd: root });
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "context",
+    "--json",
+    "--wire-map",
+    "--compact"
+  ], { cwd: root });
+  const result = JSON.parse(stdout) as {
+    wireMap: {
+      latestAsset: {
+        assetId: string;
+        loadPath: string;
+        manifestModule: string;
+        snippets: Array<{ language: string; code: string }>;
+      };
+    };
+  };
+
+  assert.equal(result.wireMap.latestAsset.assetId, "ui.start.button");
+  assert.equal(result.wireMap.latestAsset.loadPath, "assets/openrender/ui-start-button.png");
+  assert.equal(result.wireMap.latestAsset.manifestModule, "openrender.openrender_assets");
+  assert.equal(result.wireMap.latestAsset.snippets.some((snippet) => snippet.language === "lua" && snippet.code.includes("love.graphics.newImage")), true);
 });
 
 test("adapter create writes a bounded adapter scaffold", async () => {
@@ -891,6 +965,39 @@ test("compile sprite writes artifact and run JSON without install", async () => 
   assert.match(result.run.outputs[0]?.path ?? "", /^\.openrender\/artifacts\/run_/);
   assert.equal(await fileExists(path.join(root, result.run.outputs[0]?.path ?? "")), true);
   assert.equal(await fileExists(path.join(root, ".openrender/runs/latest.json")), true);
+});
+
+test("strict visual quality fails likely opaque transparent sprites", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-strict-visual-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [
+      cliPath,
+      "compile",
+      "sprite",
+      "--from",
+      "sprite.png",
+      "--id",
+      "prop.opaque",
+      "--quality",
+      "strict",
+      "--json"
+    ], {
+      cwd: root
+    }),
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as {
+        qualityGate: { status: string; failedReasons: string[] };
+        visualQuality: { status: string; checks: Array<{ name: string; status: string }> };
+      };
+      assert.equal(result.qualityGate.status, "failed");
+      assert.equal(result.visualQuality.status, "failed");
+      assert.equal(result.visualQuality.checks.some((check) => check.name === "opaque_canvas_warning" && check.status === "failed"), true);
+      return true;
+    }
+  );
 });
 
 test("install latest run writes planned files", async () => {
@@ -1100,6 +1207,83 @@ test("compile sprite can install, verify, report, and rollback a LOVE2D run", as
   assert.equal(await fileExists(path.join(root, "openrender/openrender_assets.lua")), false);
 });
 
+test("manifest merge keeps multiple entries and updates same asset id without force", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-manifest-merge-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+  await fs.writeFile(path.join(root, "main.lua"), "function love.load() end\nfunction love.draw() end\n", "utf8");
+
+  const first = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "ui.ladder.marker",
+    "--remove-background",
+    "--manifest-strategy",
+    "merge",
+    "--install",
+    "--json"
+  ], { cwd: root });
+  const firstResult = JSON.parse(first.stdout) as { manifest: { entryChange: string; previousCount: number; nextCount: number } };
+  assert.equal(firstResult.manifest.entryChange, "added");
+  assert.equal(firstResult.manifest.previousCount, 0);
+  assert.equal(firstResult.manifest.nextCount, 1);
+
+  const second = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "ui.start.button",
+    "--remove-background",
+    "--manifest-strategy",
+    "merge",
+    "--install",
+    "--json"
+  ], { cwd: root });
+  const secondResult = JSON.parse(second.stdout) as { manifest: { entryChange: string; previousCount: number; nextCount: number } };
+  assert.equal(secondResult.manifest.entryChange, "added");
+  assert.equal(secondResult.manifest.previousCount, 1);
+  assert.equal(secondResult.manifest.nextCount, 2);
+
+  let manifest = await fs.readFile(path.join(root, "openrender/openrender_assets.lua"), "utf8");
+  assert.match(manifest, /ui\.ladder\.marker/);
+  assert.match(manifest, /ui\.start\.button/);
+
+  const update = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "ui.start.button",
+    "--remove-background",
+    "--manifest-strategy",
+    "merge",
+    "--install",
+    "--json"
+  ], { cwd: root });
+  const updateResult = JSON.parse(update.stdout) as { manifest: { entryChange: string; previousCount: number; nextCount: number } };
+  assert.equal(updateResult.manifest.entryChange, "updated");
+  assert.equal(updateResult.manifest.previousCount, 2);
+  assert.equal(updateResult.manifest.nextCount, 2);
+
+  manifest = await fs.readFile(path.join(root, "openrender/openrender_assets.lua"), "utf8");
+  assert.equal((manifest.match(/ui\.start\.button/g) ?? []).length, 1);
+  assert.match(manifest, /ui\.ladder\.marker/);
+});
+
 test("compile sprite writes cropped transparent sprite dimensions into LOVE2D manifest", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-love2d-cropped-manifest-"));
   await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(transparentBorderPng, "base64"));
@@ -1213,6 +1397,53 @@ test("verify latest run passes after install", async () => {
   assert.equal(record.run.verification?.status, "passed");
 });
 
+test("verify --strict-visual fails opaque transparent sprite warnings", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-verify-strict-visual-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.opaque",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [
+      cliPath,
+      "verify",
+      "--run",
+      "latest",
+      "--strict-visual",
+      "--json",
+      "--compact"
+    ], {
+      cwd: root
+    }),
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as {
+        ok: boolean;
+        status: string;
+        summary: { failed: number; warnings: number };
+        tables: { checks: { rows: unknown[][] } };
+      };
+      assert.equal(result.ok, false);
+      assert.equal(result.status, "failed");
+      assert.equal(result.summary.failed > 0, true);
+      assert.equal(result.tables.checks.rows.some((row) => row[0] === "opaque_canvas_warning" && row[1] === "failed"), true);
+      return true;
+    }
+  );
+});
+
 test("compact verify report explain and diff return table-shaped agent output", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-compact-agent-"));
   await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
@@ -1301,11 +1532,12 @@ test("compact verify report explain and diff return table-shaped agent output", 
     cwd: root
   });
   const diffResult = JSON.parse(diff.stdout) as {
-    summary: { planned: number; created: number; rollbackAvailable: boolean };
+    summary: { planned: number; created: number; rollbackAvailable: boolean; manifestChange: string | null };
     tables: { files: { columns: string[]; rows: unknown[][] } };
   };
   assert.equal(diffResult.summary.planned, 2);
   assert.equal(diffResult.summary.created, 2);
+  assert.equal(diffResult.summary.manifestChange, "added");
   assert.equal(diffResult.summary.rollbackAvailable, true);
   assert.deepEqual(diffResult.tables.files.columns, ["category", "path"]);
   assert.equal(diffResult.tables.files.rows.some((row) => row[0] === "created"), true);

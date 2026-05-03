@@ -4,7 +4,7 @@ export function createRunId(date = new Date()): string {
   const stamp = date
     .toISOString()
     .replace(/[-:]/g, "")
-    .replace(/\.\d{3}Z$/, "Z");
+    .replace(/\.(\d{3})Z$/, "$1Z");
   return `run_${stamp}`;
 }
 

@@ -36,7 +36,10 @@ export interface FrameSlice {
 
 export interface AlphaDiagnostics {
   hasAlpha: boolean;
+  alphaMin: number;
+  alphaMax: number;
   transparentPixelRatio: number;
+  partialAlphaPixelRatio: number;
   nonTransparentBounds: PixelBounds | null;
   edgeAlphaBleedRisk: "none" | "low" | "medium" | "high";
   emptyFrameDetected: boolean;
@@ -86,6 +89,8 @@ export type NormalizePreset =
   | "sprite-strip"
   | "sprite-grid";
 
+export type BackgroundRemovalMode = "top-left" | "edge-flood";
+
 export interface VisualHarnessPlan {
   contractId: string;
   mediaType: SpriteFrameSetContract["mediaType"] | TransparentSpriteContract["mediaType"];
@@ -115,6 +120,9 @@ export interface CroppedImageOutput extends NormalizedImageOutput {
   padding: number;
   alphaCleanupThreshold: number;
   removedSolidBackground: boolean;
+  backgroundMode?: BackgroundRemovalMode;
+  backgroundTolerance?: number;
+  feather?: number;
   outputSize?: OutputSize;
 }
 
@@ -205,15 +213,23 @@ export async function removeSolidBackgroundToPng(input: {
   outputPath: string;
   tolerance?: number;
   alphaCleanupThreshold?: number;
+  backgroundMode?: BackgroundRemovalMode;
+  feather?: number;
 }): Promise<NormalizedImageOutput> {
   const tolerance = input.tolerance ?? 12;
   const alphaCleanupThreshold = input.alphaCleanupThreshold ?? 2;
+  const backgroundMode = input.backgroundMode ?? "top-left";
+  const feather = input.feather ?? 0;
   const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
   const cleaned = cleanupAlphaEdges(
-    removeSolidBackground(data, tolerance),
+    removeSolidBackground(data, {
+      width: info.width,
+      height: info.height,
+      channels: info.channels
+    }, tolerance, backgroundMode, feather),
     alphaCleanupThreshold
   );
 
@@ -283,7 +299,10 @@ export async function analyzeAlphaDiagnostics(input: {
 
   let transparentPixels = 0;
   let nonTransparentPixels = 0;
+  let partialAlphaPixels = 0;
   let edgeAlphaPixels = 0;
+  let alphaMin = 255;
+  let alphaMax = 0;
   let minX = info.width;
   let minY = info.height;
   let maxX = -1;
@@ -292,6 +311,11 @@ export async function analyzeAlphaDiagnostics(input: {
   for (let y = 0; y < info.height; y += 1) {
     for (let x = 0; x < info.width; x += 1) {
       const alpha = data[(y * info.width + x) * info.channels + 3] ?? 0;
+      alphaMin = Math.min(alphaMin, alpha);
+      alphaMax = Math.max(alphaMax, alpha);
+      if (alpha > alphaThreshold && alpha < 255) {
+        partialAlphaPixels += 1;
+      }
       if (alpha <= alphaThreshold) {
         transparentPixels += 1;
         continue;
@@ -325,7 +349,10 @@ export async function analyzeAlphaDiagnostics(input: {
 
   return {
     hasAlpha: metadata.hasAlpha,
+    alphaMin,
+    alphaMax,
     transparentPixelRatio: roundRatio(transparentPixels / totalPixels),
+    partialAlphaPixelRatio: roundRatio(partialAlphaPixels / totalPixels),
     nonTransparentBounds,
     edgeAlphaBleedRisk: edgeRatio === 0
       ? "none"
@@ -520,13 +547,21 @@ export async function normalizeWithPreset(input: {
   preset: NormalizePreset;
   frameWidth?: number;
   frameHeight?: number;
+  removeSolidBackground?: boolean;
+  backgroundMode?: BackgroundRemovalMode;
+  backgroundTolerance?: number;
+  feather?: number;
 }): Promise<NormalizedImageOutput | CroppedImageOutput> {
   if (input.preset === "transparent-sprite") {
     return cropAlphaBoundsToPng({
       sourcePath: input.sourcePath,
       outputPath: input.outputPath,
       padding: 0,
-      alphaCleanupThreshold: 2
+      alphaCleanupThreshold: 2,
+      removeSolidBackground: input.removeSolidBackground,
+      backgroundMode: input.backgroundMode,
+      backgroundTolerance: input.backgroundTolerance,
+      feather: input.feather
     });
   }
 
@@ -536,6 +571,10 @@ export async function normalizeWithPreset(input: {
       outputPath: input.outputPath,
       padding: 4,
       alphaCleanupThreshold: 2,
+      removeSolidBackground: input.removeSolidBackground,
+      backgroundMode: input.backgroundMode,
+      backgroundTolerance: input.backgroundTolerance,
+      feather: input.feather,
       outputSize: { width: 64, height: 64 }
     });
   }
@@ -586,7 +625,9 @@ export async function cropAlphaBoundsToPng(input: {
   alphaThreshold?: number;
   alphaCleanupThreshold?: number;
   removeSolidBackground?: boolean;
+  backgroundMode?: BackgroundRemovalMode;
   backgroundTolerance?: number;
+  feather?: number;
   outputSize?: OutputSize;
 }): Promise<CroppedImageOutput> {
   await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
@@ -603,7 +644,9 @@ export async function cropAlphaBoundsToPng(input: {
       sourcePath: input.sourcePath,
       outputPath: preparedSourcePath,
       tolerance: input.backgroundTolerance,
-      alphaCleanupThreshold: input.alphaCleanupThreshold
+      alphaCleanupThreshold: input.alphaCleanupThreshold,
+      backgroundMode: input.backgroundMode,
+      feather: input.feather
     });
   }
 
@@ -667,6 +710,9 @@ export async function cropAlphaBoundsToPng(input: {
     padding,
     alphaCleanupThreshold,
     removedSolidBackground: input.removeSolidBackground === true,
+    backgroundMode: input.removeSolidBackground ? input.backgroundMode ?? "top-left" : undefined,
+    backgroundTolerance: input.removeSolidBackground ? input.backgroundTolerance ?? 12 : undefined,
+    feather: input.removeSolidBackground ? input.feather ?? 0 : undefined,
     outputSize: input.outputSize
   };
 }
@@ -780,13 +826,23 @@ function cleanupAlphaEdges(data: Buffer, alphaThreshold: number): Buffer {
   return cleaned;
 }
 
-function removeSolidBackground(data: Buffer, tolerance: number): Buffer {
+function removeSolidBackground(
+  data: Buffer,
+  info: { width: number; height: number; channels: number },
+  tolerance: number,
+  mode: BackgroundRemovalMode,
+  feather: number
+): Buffer {
+  if (mode === "edge-flood") {
+    return removeEdgeConnectedBackground(data, info, tolerance, feather);
+  }
+
   const cleaned = Buffer.from(data);
   const backgroundRed = cleaned[0] ?? 0;
   const backgroundGreen = cleaned[1] ?? 0;
   const backgroundBlue = cleaned[2] ?? 0;
 
-  for (let index = 0; index < cleaned.length; index += 4) {
+  for (let index = 0; index < cleaned.length; index += info.channels) {
     const red = cleaned[index] ?? 0;
     const green = cleaned[index + 1] ?? 0;
     const blue = cleaned[index + 2] ?? 0;
@@ -805,6 +861,124 @@ function removeSolidBackground(data: Buffer, tolerance: number): Buffer {
   }
 
   return cleaned;
+}
+
+function removeEdgeConnectedBackground(
+  data: Buffer,
+  info: { width: number; height: number; channels: number },
+  tolerance: number,
+  feather: number
+): Buffer {
+  const cleaned = Buffer.from(data);
+  const totalPixels = info.width * info.height;
+  const removed = new Uint8Array(totalPixels);
+  const visited = new Uint8Array(totalPixels);
+  const queue: number[] = [];
+  const backgroundColor = readPixel(cleaned, 0, info.channels);
+
+  const enqueueIfBackground = (x: number, y: number): void => {
+    if (x < 0 || y < 0 || x >= info.width || y >= info.height) return;
+    const pixelIndex = y * info.width + x;
+    if (visited[pixelIndex]) return;
+    const byteIndex = pixelIndex * info.channels;
+    const alpha = cleaned[byteIndex + 3] ?? 0;
+    if (alpha === 0 || colorDistance(cleaned, byteIndex, backgroundColor) > tolerance) return;
+    visited[pixelIndex] = 1;
+    queue.push(pixelIndex);
+  };
+
+  for (let x = 0; x < info.width; x += 1) {
+    enqueueIfBackground(x, 0);
+    enqueueIfBackground(x, info.height - 1);
+  }
+  for (let y = 1; y < info.height - 1; y += 1) {
+    enqueueIfBackground(0, y);
+    enqueueIfBackground(info.width - 1, y);
+  }
+
+  while (queue.length > 0) {
+    const pixelIndex = queue.shift() ?? 0;
+    removed[pixelIndex] = 1;
+    const x = pixelIndex % info.width;
+    const y = Math.floor(pixelIndex / info.width);
+    enqueueIfBackground(x + 1, y);
+    enqueueIfBackground(x - 1, y);
+    enqueueIfBackground(x, y + 1);
+    enqueueIfBackground(x, y - 1);
+  }
+
+  for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex += 1) {
+    if (!removed[pixelIndex]) continue;
+    const byteIndex = pixelIndex * info.channels;
+    cleaned[byteIndex] = 0;
+    cleaned[byteIndex + 1] = 0;
+    cleaned[byteIndex + 2] = 0;
+    cleaned[byteIndex + 3] = 0;
+  }
+
+  if (feather > 0) {
+    featherRemovedEdge(cleaned, removed, info, feather);
+  }
+
+  return cleaned;
+}
+
+function readPixel(data: Buffer, pixelIndex: number, channels: number): { red: number; green: number; blue: number } {
+  const byteIndex = pixelIndex * channels;
+  return {
+    red: data[byteIndex] ?? 0,
+    green: data[byteIndex + 1] ?? 0,
+    blue: data[byteIndex + 2] ?? 0
+  };
+}
+
+function colorDistance(
+  data: Buffer,
+  byteIndex: number,
+  color: { red: number; green: number; blue: number }
+): number {
+  return Math.max(
+    Math.abs((data[byteIndex] ?? 0) - color.red),
+    Math.abs((data[byteIndex + 1] ?? 0) - color.green),
+    Math.abs((data[byteIndex + 2] ?? 0) - color.blue)
+  );
+}
+
+function featherRemovedEdge(
+  data: Buffer,
+  removed: Uint8Array,
+  info: { width: number; height: number; channels: number },
+  radius: number
+): void {
+  const maxRadius = Math.max(1, Math.min(radius, 8));
+  const originalAlpha = Buffer.alloc(info.width * info.height);
+
+  for (let pixelIndex = 0; pixelIndex < info.width * info.height; pixelIndex += 1) {
+    originalAlpha[pixelIndex] = data[pixelIndex * info.channels + 3] ?? 0;
+  }
+
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const pixelIndex = y * info.width + x;
+      if (removed[pixelIndex] || originalAlpha[pixelIndex] === 0) continue;
+
+      let nearestRemoved = Number.POSITIVE_INFINITY;
+      for (let dy = -maxRadius; dy <= maxRadius; dy += 1) {
+        for (let dx = -maxRadius; dx <= maxRadius; dx += 1) {
+          const distance = Math.abs(dx) + Math.abs(dy);
+          if (distance === 0 || distance > maxRadius || distance >= nearestRemoved) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= info.width || ny >= info.height) continue;
+          if (removed[ny * info.width + nx]) nearestRemoved = distance;
+        }
+      }
+
+      if (!Number.isFinite(nearestRemoved)) continue;
+      const alphaScale = Math.max(0.35, nearestRemoved / (maxRadius + 1));
+      data[pixelIndex * info.channels + 3] = Math.round((originalAlpha[pixelIndex] ?? 0) * alphaScale);
+    }
+  }
 }
 
 function detectGridWithFrameCount(

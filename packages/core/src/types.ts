@@ -1,4 +1,4 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.6.1" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.7.1" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
 export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas";
@@ -194,7 +194,7 @@ export interface OutputDescriptor {
 
 export interface VerificationCheck {
   name: string;
-  status: "passed" | "failed" | "skipped";
+  status: "passed" | "warning" | "failed" | "skipped";
   path?: string;
   message?: string;
 }
@@ -207,7 +207,7 @@ export interface OpenRenderRun {
   contract: Pick<MediaContract, "schemaVersion" | "mediaType" | "id">;
   outputs: OutputDescriptor[];
   verification?: {
-    status: "passed" | "failed" | "skipped";
+    status: "passed" | "warning" | "failed" | "skipped";
     checks: VerificationCheck[];
   };
   rollback?: {

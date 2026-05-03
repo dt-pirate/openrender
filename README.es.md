@@ -38,7 +38,7 @@ openRender es un Developer Kit local-first para agentes de codigo con IA que nec
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-El core actual `0.6.1` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
+El core actual `0.7.1` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
 
 ## Inicio rapido
 
@@ -180,7 +180,7 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 - Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
 - Inspecciona `installPlan.files` antes de instalar.
 - No pases `--force` salvo que el usuario acepte sobrescribir archivos de destino.
-- Trata los manifests generados como archivos escritos desde el resultado actual de compile, no como merges automaticos con entradas anteriores.
+- Los manifests generados usan `merge` por defecto para acumular entradas; usa `--manifest-strategy replace|isolated` solo si necesitas una sola entrada o no escribir un manifest compartido.
 - Despues de instalar, ejecuta `verify --run latest --json`.
 - Usa `rollback --run latest --json` solo para la instalacion de openRender.
 

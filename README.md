@@ -38,7 +38,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.6.1` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+The current `0.7.1` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
 
 ## Quick Start
 
@@ -115,10 +115,11 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --id enemy.slime.idle \
   --frames 6 \
   --frame-size 64x64 \
+  --manifest-strategy merge \
   --install \
   --json
 
-node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
@@ -155,8 +156,11 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Project scanning and doctor checks.
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
 - Compact agent output for context, verification, reports, explanations, and diffs.
-- Read-only wiring maps that point agents toward likely game-code connection locations.
-- Alpha diagnostics, frame detection, normalization presets, sprite invariants, and frame preview sheets.
+- Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
+- Alpha diagnostics, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
+- Quality gates with `--quality prototype|default|strict` and `verify --strict-visual` for likely visual problems.
+- Manifest strategies with default `merge`, explicit `replace`, and `isolated` mode for no shared manifest write.
+- Runtime smoke checks for Godot and LOVE2D when the local runtime is available.
 - Engine adapters for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
 - JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
 - Local JSON-only MCP metadata helpers for supported targets.
@@ -180,7 +184,9 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
 - Inspect `installPlan.files` before installing.
 - Do not pass `--force` unless the user accepts overwriting destination files.
-- Treat generated manifests as current-result files, not automatic merges with previous manifest entries.
+- Use default manifest merge for cumulative entries; choose `--manifest-strategy replace` or `--manifest-strategy isolated` when a one-entry or no-shared-manifest workflow is intended.
+- Use `--remove-background --background-mode edge-flood` for generated sprites with a flat opaque background.
+- Use `--quality strict` or `verify --strict-visual` when visual transparency mistakes should fail the run.
 - After install, run `verify --run latest --json`.
 - Use `report`, `explain`, and `diff` with `--compact` when the agent only needs status, next actions, and compact tables.
 - Use `rollback --run latest --json` only for the openRender install.

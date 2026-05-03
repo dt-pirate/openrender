@@ -68,6 +68,7 @@ import {
   validateGridFrameSet,
   validateHorizontalFrameSet,
   type AlphaDiagnostics,
+  type BackgroundRemovalMode,
   type FramePreviewSheetOutput,
   type FrameSlice,
   type FrameValidationResult,
@@ -77,7 +78,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.6.1";
+const CLI_VERSION = "0.7.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -92,10 +93,16 @@ type EngineInstallPlan =
   | ReturnType<typeof createLove2DInstallPlan>
   | ReturnType<typeof createPixiInstallPlan>
   | ReturnType<typeof createCanvasInstallPlan>;
+type EngineInstallPlanFile = EngineInstallPlan["files"][number];
 
 type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
 type SpriteAdapter = OpenRenderAdapter<EngineAssetDescriptor, EngineInstallPlan>;
 type CompactTableCell = string | number | boolean | null;
+type VerificationStatus = NonNullable<OpenRenderRun["verification"]>["status"];
+type VerificationCheckStatus = NonNullable<OpenRenderRun["verification"]>["checks"][number]["status"];
+type ManifestStrategy = "merge" | "replace" | "isolated";
+type QualityLevel = "prototype" | "default" | "strict";
+type ManifestEntryChange = "added" | "updated" | "replaced" | "isolated";
 
 interface CompactTable {
   columns: string[];
@@ -421,7 +428,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   "media-p4": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.6.1 P4 Media Contracts",
+    title: "openRender 0.7.1 P4 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -666,7 +673,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === "smoke") {
     const result = await runtimeSmoke(parsed);
     console.log(JSON.stringify(result, null, 2));
-    return result.ok ? 0 : 2;
+    return result.status === "failed" ? 2 : 0;
   }
 
   if (command === "compile" && subcommand === "sprite") {
@@ -676,7 +683,7 @@ async function main(argv: string[]): Promise<number> {
     } else {
       printCompileSprite(result);
     }
-    return result.validation?.ok === false ? 1 : 0;
+    return result.validation?.ok === false || result.qualityGate?.status === "failed" ? 1 : 0;
   }
 
   if (command === "install") {
@@ -696,7 +703,7 @@ async function main(argv: string[]): Promise<number> {
     } else {
       printVerifyResult(result);
     }
-    return result.status === "passed" ? 0 : 1;
+    return result.status === "failed" ? 1 : 0;
   }
 
   if (command === "reports" && subcommand === "serve") {
@@ -912,7 +919,11 @@ async function normalizeCommand(parsed: ParsedFlags): Promise<NormalizeCommandRe
     outputPath,
     preset,
     frameWidth: readOptionalIntegerFlag(parsed, "frame-width"),
-    frameHeight: readOptionalIntegerFlag(parsed, "frame-height")
+    frameHeight: readOptionalIntegerFlag(parsed, "frame-height"),
+    removeSolidBackground: parsed.flags.get("remove-background") === true,
+    backgroundMode: readBackgroundModeFlag(parsed),
+    backgroundTolerance: readIntegerFlag(parsed, "background-tolerance", 48),
+    feather: readNonNegativeIntegerFlag(parsed, "feather", 0)
   });
 
   return {
@@ -990,27 +1001,61 @@ async function inspectMediaMetadata(
 }
 
 async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandResult> {
-  const target = readTargetFlag(parsed, "canvas");
+  const projectRoot = process.cwd();
+  const runRequested = parsed.flags.get("run") !== undefined;
+  const record = runRequested ? await readCompileRecord(projectRoot, readRunId(parsed)) : null;
+  const target = parsed.flags.get("target") === undefined && record
+    ? record.contract.target.engine
+    : readTargetFlag(parsed, record?.contract.target.engine ?? "canvas");
   const runtime = runtimeBinaryForTarget(target);
   if (!runtime) {
     return {
-      ok: false,
+      ok: true,
       target,
-      status: "not_available",
+      status: "skipped",
       command: null,
-      message: `${target} runtime smoke is not available as a required local binary. Static verification remains the default boundary.`
+      runId: record?.run.runId ?? null,
+      screenshotPath: null,
+      message: `${target} runtime smoke has no required local binary. Static verification remains the default boundary.`
     };
   }
 
   const available = await commandAvailable(runtime);
-  return {
-    ok: available,
-    target,
-    status: available ? "available" : "not_available",
+  if (!available) {
+    return {
+      ok: true,
+      target,
+      status: "skipped",
+      command: runtime,
+      runId: record?.run.runId ?? null,
+      screenshotPath: null,
+      message: `${runtime} was not found on PATH. Static verification remains the default boundary.`
+    };
+  }
+
+  const timeoutMs = readIntegerFlag(parsed, "timeout", 3) * 1000;
+  const args = runtimeArgsForTarget(target);
+  const commandText = [runtime, ...args].join(" ");
+  const smoke = await runRuntimeProcess({
+    cwd: projectRoot,
     command: runtime,
-    message: available
-      ? `${target} runtime appears available. Run explicit runtime smoke in a target project.`
-      : `${runtime} was not found on PATH. Static verification remains the default boundary.`
+    args,
+    timeoutMs
+  });
+  const screenshotPath = parsed.flags.get("screenshot") === true
+    ? await captureSmokeScreenshot(projectRoot, record?.run.runId ?? `${target}-${Date.now()}`)
+    : null;
+
+  return {
+    ok: smoke.status === "passed",
+    target,
+    status: smoke.status,
+    command: commandText,
+    runId: record?.run.runId ?? null,
+    screenshotPath,
+    message: smoke.status === "passed"
+      ? `${target} runtime launched for ${Math.round(timeoutMs / 1000)}s.`
+      : `${target} runtime exited before timeout: ${smoke.message}`
   };
 }
 
@@ -1027,6 +1072,70 @@ function runtimeBinaryForTarget(target: TargetEngine): string | null {
   if (target === "love2d") return "love";
   if (target === "phaser" || target === "pixi" || target === "canvas") return null;
   return null;
+}
+
+function runtimeArgsForTarget(target: TargetEngine): string[] {
+  if (target === "love2d") return ["."];
+  if (target === "godot") return ["--headless", "--path", ".", "--quit-after", "1"];
+  return [];
+}
+
+async function runRuntimeProcess(input: {
+  cwd: string;
+  command: string;
+  args: string[];
+  timeoutMs: number;
+}): Promise<{ status: "passed" | "failed"; message: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(input.command, input.args, {
+      cwd: input.cwd,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const settle = (status: "passed" | "failed", message: string): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ status, message });
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      settle("passed", "process stayed alive until timeout");
+    }, input.timeoutMs);
+
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8").slice(0, 4096);
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8").slice(0, 4096);
+    });
+    child.on("error", (error) => settle("failed", error.message));
+    child.on("exit", (code, signal) => {
+      if (settled) return;
+      const details = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n").slice(0, 800);
+      if (code === 0) {
+        settle("passed", signal ? `exited with signal ${signal}` : "process exited successfully");
+      } else {
+        const exitLabel = signal ? `signal ${signal}` : `exit ${code ?? "unknown"}`;
+        settle("failed", `${exitLabel}${details ? `\n${details}` : ""}`);
+      }
+    });
+  });
+}
+
+async function captureSmokeScreenshot(projectRoot: string, runId: string): Promise<string | null> {
+  if (process.platform !== "darwin") return null;
+  const relativePath = path.posix.join(".openrender", "smoke", `${runId}.png`);
+  const outputPath = resolveInsideProject(projectRoot, relativePath);
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  return new Promise((resolve) => {
+    const child = spawn("screencapture", ["-x", outputPath], { stdio: "ignore" });
+    child.on("error", () => resolve(null));
+    child.on("exit", (code) => resolve(code === 0 ? relativePath : null));
+  });
 }
 
 async function commandAvailable(command: string): Promise<boolean> {
@@ -1072,6 +1181,7 @@ async function diffRun(parsed: ParsedFlags): Promise<DiffCommandResult> {
     filesCreated,
     filesModified,
     helperCodeGenerated,
+    manifest: record.manifest ?? null,
     snapshotPath: installResult?.snapshotRoot ?? null,
     rollbackCommand: installResult ? `openrender rollback --run ${record.run.runId} --json` : null
   };
@@ -1103,13 +1213,15 @@ function compactAgentContext(result: AgentContextCommandResult): CompactAgentCon
 
 function compactVerifyResult(result: VerifyCommandResult): CompactVerifyCommandResult {
   const failedChecks = result.checks.filter((check) => check.status === "failed");
+  const warningChecks = result.checks.filter((check) => check.status === "warning");
   return {
-    ok: result.status === "passed",
+    ok: result.status !== "failed",
     runId: result.runId,
     status: result.status,
     summary: {
       checks: result.checks.length,
-      failed: failedChecks.length
+      failed: failedChecks.length,
+      warnings: warningChecks.length
     },
     tables: {
       checks: createVerificationCheckTable(result.checks)
@@ -1121,6 +1233,10 @@ function compactVerifyResult(result: VerifyCommandResult): CompactVerifyCommandR
 }
 
 function compactReportResult(result: ReportCommandResult): CompactReportCommandResult {
+  const visualRows = result.visualQuality?.checks
+    .filter((check) => check.status !== "passed")
+    .map((check) => [check.name, check.status, check.path ?? null, check.message ?? null] as CompactTableCell[]) ?? [];
+
   return {
     ok: true,
     runId: result.runId,
@@ -1138,6 +1254,10 @@ function compactReportResult(result: ReportCommandResult): CompactReportCommandR
           ["preview", result.previewHtmlPath],
           ...(result.framePreviewPath ? [["framePreview", result.framePreviewPath] as CompactTableCell[]] : [])
         ]
+      },
+      visualQuality: {
+        columns: ["name", "status", "path", "message"],
+        rows: visualRows
       }
     },
     nextActions: result.nextActions
@@ -1163,7 +1283,10 @@ function compactDiffResult(result: DiffCommandResult): CompactDiffCommandResult 
     ...result.filesPlanned.map((file) => ["planned", file] as CompactTableCell[]),
     ...result.filesCreated.map((file) => ["created", file] as CompactTableCell[]),
     ...result.filesModified.map((file) => ["modified", file] as CompactTableCell[]),
-    ...result.helperCodeGenerated.map((file) => ["helper", file] as CompactTableCell[])
+    ...result.helperCodeGenerated.map((file) => ["helper", file] as CompactTableCell[]),
+    ...(result.manifest
+      ? [["manifest", `${result.manifest.entryChange}:${result.manifest.manifestPath}`] as CompactTableCell[]]
+      : [])
   ];
 
   return {
@@ -1174,6 +1297,7 @@ function compactDiffResult(result: DiffCommandResult): CompactDiffCommandResult 
       created: result.filesCreated.length,
       modified: result.filesModified.length,
       helperCodeGenerated: result.helperCodeGenerated.length,
+      manifestChange: result.manifest?.entryChange ?? null,
       rollbackAvailable: result.rollbackCommand !== null
     },
     tables: {
@@ -1212,6 +1336,33 @@ function readNormalizePreset(parsed: ParsedFlags): NormalizePreset {
     return value;
   }
   throw new Error(`Unsupported normalize preset: ${value}`);
+}
+
+function readBackgroundModeFlag(parsed: ParsedFlags): BackgroundRemovalMode {
+  const value = readStringFlag(parsed, "background-mode", "edge-flood");
+  if (value === "top-left" || value === "edge-flood") return value;
+  throw new Error(`Unsupported background mode: ${value}`);
+}
+
+function readManifestStrategyFlag(parsed: ParsedFlags): ManifestStrategy {
+  const value = readStringFlag(parsed, "manifest-strategy", "merge");
+  if (value === "merge" || value === "replace" || value === "isolated") return value;
+  throw new Error(`Unsupported manifest strategy: ${value}`);
+}
+
+function readQualityFlag(parsed: ParsedFlags): QualityLevel {
+  const value = readStringFlag(parsed, "quality", parsed.flags.get("strict-visual") === true ? "strict" : "default");
+  if (value === "prototype" || value === "default" || value === "strict") return value;
+  throw new Error(`Unsupported quality level: ${value}`);
+}
+
+function readNonNegativeIntegerFlag(parsed: ParsedFlags, name: string, fallback: number): number {
+  const value = parsed.flags.get(name);
+  if (value === undefined || value === false) return fallback;
+  if (typeof value !== "string") throw new Error(`--${name} requires a number.`);
+  const parsedValue = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) throw new Error(`--${name} must be a non-negative integer.`);
+  return parsedValue;
 }
 
 function getSchemaResult(name: string | undefined): { name: string; schema: Record<string, unknown> } {
@@ -1308,12 +1459,13 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
   const projectRoot = process.cwd();
   const scan = await scanProject(projectRoot);
   const latestRun = await readLatestRunSummary(projectRoot);
+  const latestRecord = options.includeWireMap ? await readLatestCompileRecordIfAvailable(projectRoot) : null;
   const overwriteRisks: AgentContextCommandResult["overwriteRisks"] = [];
   if (scan.manifestExists) {
     overwriteRisks.push({
       code: "manifest_exists",
       path: toProjectRelativePath(projectRoot, scan.manifestPath),
-      note: "Generated manifests are replaced from the current compile result, not merged with older entries."
+      note: "Generated manifests use --manifest-strategy merge by default; use replace or isolated when needed."
     });
   }
 
@@ -1323,7 +1475,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
   }
   recommendedNextActions.add("Run openrender compile sprite --dry-run --json and inspect installPlan.files before install.");
   if (scan.manifestExists) {
-    recommendedNextActions.add("Use --force only after confirming manifest or helper overwrites are acceptable.");
+    recommendedNextActions.add("Use --manifest-strategy merge for cumulative manifests, replace for one-entry manifests, or isolated for no shared manifest write.");
   }
   if (latestRun) {
     recommendedNextActions.add("Run openrender verify --run latest --json and openrender report --run latest --json after install.");
@@ -1367,8 +1519,17 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
       modelProviderCalls: false,
       telemetry: false
     },
-    ...(options.includeWireMap ? { wireMap: await createWireMap(scan) } : {})
+    ...(options.includeWireMap ? { wireMap: await createWireMap(scan, latestRecord) } : {})
   };
+}
+
+async function readLatestCompileRecordIfAvailable(projectRoot: string): Promise<CompileSpriteResult | null> {
+  try {
+    if (!await pathExists(resolveInsideProject(projectRoot, ".openrender/runs/latest.json"))) return null;
+    return await readCompileRecord(projectRoot, "latest");
+  } catch {
+    return null;
+  }
 }
 
 async function readLatestRunSummary(projectRoot: string): Promise<AgentContextCommandResult["latestRun"]> {
@@ -1390,10 +1551,11 @@ async function readLatestRunSummary(projectRoot: string): Promise<AgentContextCo
   }
 }
 
-async function createWireMap(scan: ProjectScan): Promise<WireMapResult> {
+async function createWireMap(scan: ProjectScan, latestRecord: CompileSpriteResult | null = null): Promise<WireMapResult> {
   const projectRoot = scan.projectRoot;
   const candidates: WireMapResult["candidates"] = [];
   const notes: string[] = ["Read-only scan; openRender does not patch game code."];
+  const latestAsset = latestRecord ? createWireMapLatestAsset(latestRecord) : undefined;
 
   if (scan.engine === "phaser") {
     const files = await listProjectTextFiles(projectRoot, ["src"], [".ts", ".tsx", ".js", ".jsx"]);
@@ -1500,6 +1662,7 @@ async function createWireMap(scan: ProjectScan): Promise<WireMapResult> {
   return {
     target: scan.engine,
     readOnly: true,
+    ...(latestAsset ? { latestAsset } : {}),
     candidates: candidates.slice(0, 20),
     tables: {
       candidates: createWireMapTable(candidates.slice(0, 20))
@@ -1580,6 +1743,124 @@ function createWireMapTable(candidates: WireMapResult["candidates"]): CompactTab
       candidate.suggestedAction
     ])
   };
+}
+
+function createWireMapLatestAsset(record: CompileSpriteResult): WireMapLatestAsset {
+  return {
+    assetId: record.contract.id,
+    mediaType: record.contract.mediaType,
+    engine: record.contract.target.engine,
+    assetPath: record.outputPlan.assetPath,
+    loadPath: record.outputPlan.loadPath,
+    manifestPath: record.outputPlan.manifestPath,
+    manifestModule: createManifestModuleName(record),
+    runId: record.run.runId,
+    snippets: createWireMapSnippets(record)
+  };
+}
+
+function createManifestModuleName(record: CompileSpriteResult): string {
+  const manifestPath = record.outputPlan.manifestPath;
+  if (record.contract.target.engine === "love2d") {
+    return manifestPath.replace(/\.lua$/, "").replace(/\//g, ".");
+  }
+  if (record.contract.target.engine === "godot") {
+    return `res://${manifestPath}`;
+  }
+  return manifestPath.replace(/^src\//, "@/").replace(/\.[tj]s$/, "");
+}
+
+function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset["snippets"] {
+  const assetId = record.contract.id;
+  const loadPath = record.outputPlan.loadPath;
+  const manifestModule = createManifestModuleName(record);
+  const codegenPath = record.outputPlan.codegenPath;
+
+  if (record.contract.target.engine === "love2d") {
+    return [
+      {
+        label: "LOVE2D manifest load example",
+        language: "lua",
+        code: [
+          `local openrender_assets = require(${JSON.stringify(manifestModule)})`,
+          `local asset = openrender_assets[${JSON.stringify(assetId)}]`,
+          "local image",
+          "",
+          "function love.load()",
+          "  image = love.graphics.newImage(asset.path)",
+          "end",
+          "",
+          "function love.draw()",
+          "  love.graphics.draw(image, x, y)",
+          "end"
+        ].join("\n")
+      },
+      ...(codegenPath
+        ? [{
+            label: "LOVE2D animation helper example",
+            language: "lua",
+            code: `local helper = require(${JSON.stringify(codegenPath.replace(/\.lua$/, "").replace(/\//g, "."))})`
+          }]
+        : [])
+    ];
+  }
+
+  if (record.contract.target.engine === "godot") {
+    return [
+      {
+        label: "Godot manifest preload example",
+        language: "gdscript",
+        code: [
+          `const OpenRenderAssets = preload(${JSON.stringify(manifestModule)})`,
+          `var asset := OpenRenderAssets.get_asset(${JSON.stringify(assetId)})`,
+          `var texture := load(asset.get("path", ${JSON.stringify(loadPath)}))`
+        ].join("\n")
+      }
+    ];
+  }
+
+  if (record.contract.target.engine === "phaser") {
+    return [
+      {
+        label: "Phaser scene example",
+        language: "ts",
+        code: [
+          `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
+          `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
+          "preload() {",
+          "  this.load.image(asset.key ?? asset.url, asset.url);",
+          "}"
+        ].join("\n")
+      }
+    ];
+  }
+
+  if (record.contract.target.engine === "pixi") {
+    return [
+      {
+        label: "Pixi asset load example",
+        language: "ts",
+        code: [
+          `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
+          `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
+          "await Assets.load(asset.url);"
+        ].join("\n")
+      }
+    ];
+  }
+
+  return [
+    {
+      label: "Canvas image load example",
+      language: "ts",
+      code: [
+        `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
+        `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
+        "const image = new Image();",
+        "image.src = asset.url;"
+      ].join("\n")
+    }
+  ];
 }
 
 function toProjectRelativePath(projectRoot: string, absoluteOrRelativePath: string): string {
@@ -1681,13 +1962,15 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use openrender context --json --wire-map to find read-only asset wiring candidates before editing game code.
 - Prefer JSON commands: context, scan, doctor, plan, compile, install, verify, report, explain, diff, rollback.
 - Before installing, run openrender compile sprite --dry-run --json and inspect installPlan.files.
-- By default, installs refuse to overwrite destination files. Use --force only after the user accepts manifest/helper overwrites.
+- Use --remove-background --background-mode edge-flood when a generated sprite has a flat opaque background that should become transparent.
+- Use --manifest-strategy merge for cumulative generated manifests; use replace or isolated only when that write policy is intended.
+- Use --quality strict or verify --strict-visual when likely visual transparency problems should fail the run.
+- By default, installs refuse unrelated destination overwrites. Use --force only after the user accepts helper or asset overwrite risk.
 - After install, run openrender verify --run latest --json --compact.
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
-- Generated manifests are written from the current compile result; they are not merged with older manifest entries.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.6.1: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.7.1: phaser, godot, love2d, pixi, canvas.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
@@ -1983,6 +2266,12 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   const assetRoot = readStringFlag(parsed, "asset-root", defaultAssetRootForTarget(target));
   const layout = readStringFlag(parsed, "layout", "horizontal");
   const padding = readIntegerFlag(parsed, "padding", 0);
+  const removeBackground = parsed.flags.get("remove-background") === true;
+  const backgroundMode = readBackgroundModeFlag(parsed);
+  const backgroundTolerance = readIntegerFlag(parsed, "background-tolerance", 48);
+  const feather = readNonNegativeIntegerFlag(parsed, "feather", 0);
+  const manifestStrategy = readManifestStrategyFlag(parsed);
+  const quality = readQualityFlag(parsed);
   const dryRun = parsed.flags.get("dry-run") === true;
 
   if (!["horizontal", "horizontal_strip", "grid"].includes(layout)) {
@@ -2021,7 +2310,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         frameHeight: frameSize.height,
         fps: readIntegerFlag(parsed, "fps", 8),
         padding,
-        background: metadata.hasAlpha ? "transparent" : "solid",
+        background: metadata.hasAlpha || removeBackground ? "transparent" : "solid",
         outputFormat: "png"
       },
       install: {
@@ -2087,7 +2376,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         outputWidth: size.width,
         outputHeight: size.height,
         padding,
-        background: metadata.hasAlpha ? "transparent" : "solid",
+        background: metadata.hasAlpha || removeBackground ? "transparent" : "solid",
         outputFormat: "png"
       },
       install: {
@@ -2115,6 +2404,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   });
   let artifact: CompileSpriteResult["artifact"];
   let framePreview: FramePreviewSheetOutput | undefined;
+  let visualQuality: VisualQualityResult | undefined;
   run.status = dryRun ? "harness_ready" : "completed";
   run.outputs = [
     { kind: "compiled_asset", path: artifactPath },
@@ -2153,6 +2443,10 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         sourcePath,
         outputPath: absoluteArtifactPath,
         padding,
+        removeSolidBackground: removeBackground,
+        backgroundMode,
+        backgroundTolerance,
+        feather,
         outputSize
       });
       contract = materializeTransparentSpriteArtifactDimensions(contract, artifact.metadata);
@@ -2173,7 +2467,48 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       });
       run.outputs.push({ kind: "preview", path: framePreviewPath });
     }
+
+    if (artifact) {
+      visualQuality = await createVisualQualityResult({
+        projectRoot,
+        contract,
+        input: metadata,
+        inputAlpha: alpha,
+        artifactPath,
+        sourcePath: absoluteArtifactPath,
+        removeBackground,
+        strict: quality === "strict"
+      });
+    }
   }
+
+  const manifestPlan = await applyManifestStrategy({
+    projectRoot,
+    contract,
+    descriptor,
+    installPlan,
+    frameSlices,
+    strategy: manifestStrategy,
+    runId: run.runId
+  });
+  installPlan = manifestPlan.installPlan;
+  const generatedSources = manifestPlan.generatedSources;
+  const manifest = manifestPlan.manifest;
+  const qualityGate = createQualityGateResult({
+    quality,
+    validation,
+    invariants,
+    visualQuality
+  });
+  if (!dryRun && qualityGate.status === "failed") {
+    run.status = "failed_verify";
+  }
+  run.outputs = [
+    { kind: "compiled_asset", path: artifactPath },
+    ...(manifest.strategy === "isolated" ? [] : [{ kind: "manifest" as const, path: descriptor.manifestPath }]),
+    ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : []),
+    ...(framePreview ? [{ kind: "preview" as const, path: path.posix.join(".openrender", "runs", run.runId, "preview_frames.png") }] : [])
+  ];
 
   const result: CompileSpriteResult = {
     dryRun,
@@ -2184,15 +2519,25 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     outputPlan: descriptor,
     installPlan,
     artifact,
+    processing: {
+      removeBackground,
+      backgroundMode,
+      backgroundTolerance,
+      feather,
+      quality
+    },
     recipe: createCoreRecipeReference(contract.mediaType),
     agentSummary: createCompileAgentSummary({
       contract,
       installPlan,
       dryRun,
       installedWrites: 0,
-      validationOk: validation?.ok !== false
+      validationOk: validation?.ok !== false && qualityGate.status !== "failed"
     }),
-    generatedSources: createGeneratedSources(contract, frameSlices),
+    generatedSources,
+    manifest,
+    visualQuality,
+    qualityGate,
     validation,
     invariants,
     frameSlices,
@@ -2204,7 +2549,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     await writeCompileRecord(projectRoot, result);
   }
 
-  if (!dryRun && parsed.flags.get("install") === true && result.validation?.ok !== false) {
+  if (!dryRun && parsed.flags.get("install") === true && result.validation?.ok !== false && result.qualityGate?.status !== "failed") {
     result.installResult = await installCompiledRecord({
       projectRoot,
       record: result,
@@ -2308,6 +2653,179 @@ function createGeneratedSources(
   return getSpriteAdapter(contract.target.engine).generateSources(contract, frameSlices);
 }
 
+async function applyManifestStrategy(input: {
+  projectRoot: string;
+  contract: SpriteCompileContract;
+  descriptor: EngineAssetDescriptor;
+  installPlan: EngineInstallPlan;
+  frameSlices?: FrameSlice[];
+  strategy: ManifestStrategy;
+  runId: string;
+}): Promise<{
+  installPlan: EngineInstallPlan;
+  generatedSources: CompileSpriteResult["generatedSources"];
+  manifest: ManifestStrategyResult;
+}> {
+  const generatedSources = createGeneratedSources(input.contract, input.frameSlices);
+  const state = await readManifestState(input.projectRoot, input.contract.target.engine, input.descriptor.manifestPath);
+  const previousEntries = state?.entries ?? {};
+  const previousEntry = previousEntries[input.contract.id];
+  const previousCount = Object.keys(previousEntries).length;
+  const manifestPath = input.descriptor.manifestPath;
+  const statePath = createManifestStateRelativePath(input.contract.target.engine, manifestPath);
+
+  if (input.strategy === "isolated") {
+    return {
+      installPlan: patchInstallPlanManifest(input.installPlan, manifestPath, {
+        strategy: "isolated"
+      }),
+      generatedSources,
+      manifest: {
+        strategy: input.strategy,
+        manifestPath,
+        statePath,
+        entryId: input.contract.id,
+        entryChange: "isolated",
+        previousCount,
+        nextCount: previousCount,
+        removedEntryIds: [],
+        isolated: true
+      }
+    };
+  }
+
+  const nextEntries = input.strategy === "merge"
+    ? {
+        ...previousEntries,
+        [input.contract.id]: createManifestStateEntry(input.contract, input.descriptor, input.runId)
+      }
+    : {
+        [input.contract.id]: createManifestStateEntry(input.contract, input.descriptor, input.runId)
+      };
+  const contracts = Object.values(nextEntries)
+    .map((entry) => entry.contract)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const manifestSource = generateManifestSourceForContracts(input.contract.target.engine, contracts);
+  const entryChange: ManifestEntryChange = input.strategy === "replace"
+    ? (previousEntry ? "replaced" : "added")
+    : (previousEntry ? "updated" : "added");
+  const removedEntryIds = input.strategy === "replace"
+    ? Object.keys(previousEntries).filter((entryId) => entryId !== input.contract.id)
+    : [];
+
+  return {
+    installPlan: patchInstallPlanManifest(input.installPlan, manifestPath, {
+      strategy: input.strategy,
+      contents: manifestSource
+    }),
+    generatedSources: {
+      ...generatedSources,
+      manifest: manifestSource
+    },
+    manifest: {
+      strategy: input.strategy,
+      manifestPath,
+      statePath,
+      entryId: input.contract.id,
+      entryChange,
+      previousCount,
+      nextCount: contracts.length,
+      removedEntryIds,
+      isolated: false
+    }
+  };
+}
+
+function patchInstallPlanManifest(
+  installPlan: EngineInstallPlan,
+  manifestPath: string,
+  input: { strategy: ManifestStrategy; contents?: string }
+): EngineInstallPlan {
+  const files = installPlan.files
+    .filter((file) => input.strategy !== "isolated" || file.to !== manifestPath)
+    .map((file) => {
+      if (file.kind !== "manifest" || file.to !== manifestPath || input.contents === undefined) return file;
+      return {
+        ...file,
+        contents: input.contents
+      };
+    }) as EngineInstallPlan["files"];
+
+  return {
+    ...installPlan,
+    files
+  } as EngineInstallPlan;
+}
+
+function generateManifestSourceForContracts(
+  target: TargetEngine,
+  contracts: SpriteCompileContract[]
+): string {
+  if (target === "phaser") return generateManifestSource(contracts);
+  if (target === "godot") return generateGodotManifestSource(contracts);
+  if (target === "love2d") return generateLove2DManifestSource(contracts);
+  if (target === "pixi") return generatePixiManifestSource(contracts);
+  if (target === "canvas") return generateCanvasManifestSource(contracts);
+  throw new Error(`Unsupported manifest target: ${target}`);
+}
+
+function createManifestStateEntry(
+  contract: SpriteCompileContract,
+  descriptor: EngineAssetDescriptor,
+  runId: string
+): ManifestStateEntry {
+  return {
+    contract,
+    runId,
+    assetPath: descriptor.assetPath,
+    loadPath: descriptor.loadPath,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function readManifestState(
+  projectRoot: string,
+  target: TargetEngine,
+  manifestPath: string
+): Promise<ManifestState | null> {
+  const statePath = resolveInsideProject(projectRoot, createManifestStateRelativePath(target, manifestPath));
+  try {
+    return JSON.parse(await fs.readFile(statePath, "utf8")) as ManifestState;
+  } catch {
+    return null;
+  }
+}
+
+async function writeManifestStateFromRecord(projectRoot: string, record: CompileSpriteResult): Promise<void> {
+  if (!record.manifest || record.manifest.strategy === "isolated") return;
+
+  const state = await readManifestState(projectRoot, record.contract.target.engine, record.manifest.manifestPath);
+  const entries = record.manifest.strategy === "merge"
+    ? { ...(state?.entries ?? {}) }
+    : {};
+  entries[record.contract.id] = createManifestStateEntry(record.contract, record.outputPlan, record.run.runId);
+
+  const nextState: ManifestState = {
+    version: CLI_VERSION,
+    target: record.contract.target.engine,
+    manifestPath: record.manifest.manifestPath,
+    updatedAt: new Date().toISOString(),
+    entries
+  };
+
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: record.manifest.statePath,
+    contents: `${JSON.stringify(nextState, null, 2)}\n`,
+    allowOverwrite: true
+  });
+}
+
+function createManifestStateRelativePath(target: TargetEngine, manifestPath: string): string {
+  const normalizedManifestPath = manifestPath.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "manifest";
+  return path.posix.join(".openrender", "manifest-state", `${target}-${normalizedManifestPath}.json`);
+}
+
 function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
   return getSpriteAdapter(outputPlan.engine).verify(outputPlan);
 }
@@ -2337,18 +2855,18 @@ async function installCompiledRecord(input: {
 }): Promise<InstallCommandResult> {
   const { projectRoot, record, force } = input;
   const snapshotRoot = path.posix.join(".openrender", "snapshots", record.run.runId);
-  const destinationPaths = record.installPlan.files.map((file) => file.to);
 
   if (!force) {
-    for (const destinationPath of destinationPaths) {
-      if (await pathExists(resolveInsideProject(projectRoot, destinationPath))) {
-        throw new Error(`Refusing to overwrite existing file without --force: ${destinationPath}`);
+    for (const file of record.installPlan.files) {
+      if (canOverwriteWithoutForce(record, file)) continue;
+      if (await pathExists(resolveInsideProject(projectRoot, file.to))) {
+        throw new Error(`Refusing to overwrite existing file without --force: ${file.to}`);
       }
     }
   }
 
   const snapshots = [];
-  for (const destinationPath of destinationPaths) {
+  for (const destinationPath of record.installPlan.files.map((file) => file.to)) {
     snapshots.push(await snapshotProjectFile({
       projectRoot,
       snapshotRoot,
@@ -2363,14 +2881,14 @@ async function installCompiledRecord(input: {
         projectRoot,
         fromRelativePath: file.from,
         toRelativePath: file.to,
-        allowOverwrite: force
+        allowOverwrite: force || canOverwriteWithoutForce(record, file)
       }));
     } else {
       writes.push(await safeWriteProjectFile({
         projectRoot,
         relativePath: file.to,
         contents: file.contents,
-        allowOverwrite: force
+        allowOverwrite: force || canOverwriteWithoutForce(record, file)
       }));
     }
   }
@@ -2388,8 +2906,16 @@ async function installCompiledRecord(input: {
     contents: `${JSON.stringify(result, null, 2)}\n`,
     allowOverwrite: true
   });
+  await writeManifestStateFromRecord(projectRoot, record);
 
   return result;
+}
+
+function canOverwriteWithoutForce(record: CompileSpriteResult, file: EngineInstallPlanFile): boolean {
+  if (!record.manifest || record.manifest.strategy !== "merge") return false;
+  if (file.kind === "manifest" && file.to === record.manifest.manifestPath) return true;
+  if (file.kind === "compiled_asset" && record.manifest.entryChange === "updated") return true;
+  return false;
 }
 
 async function readCompileRecord(projectRoot: string, runId: string): Promise<CompileSpriteResult> {
@@ -2428,9 +2954,137 @@ async function readInstallResultIfAvailable(projectRoot: string, runId: string):
   }
 }
 
+async function createVisualQualityResult(input: {
+  projectRoot: string;
+  contract: SpriteCompileContract;
+  input: ImageMetadata;
+  inputAlpha: AlphaDiagnostics;
+  artifactPath: string;
+  sourcePath: string;
+  removeBackground: boolean;
+  strict: boolean;
+}): Promise<VisualQualityResult> {
+  const diagnostics = await analyzeAlphaDiagnostics({ sourcePath: input.sourcePath });
+  const checks: VisualQualityResult["checks"] = [];
+  const metadata = await loadImageMetadata(input.sourcePath);
+  const inputPixels = Math.max(input.input.width * input.input.height, 1);
+  const likelyOpaqueGeneratedSprite = inputPixels >= 16 && input.inputAlpha.transparentPixelRatio === 0 && !input.removeBackground;
+  const assetPath = input.artifactPath;
+
+  if (input.contract.mediaType === "visual.transparent_sprite") {
+    checks.push(createVisualCheck({
+      name: "alpha_presence",
+      warning: likelyOpaqueGeneratedSprite && diagnostics.transparentPixelRatio === 0,
+      strict: input.strict,
+      path: assetPath,
+      message: diagnostics.transparentPixelRatio === 0
+        ? "transparent sprite output has no transparent pixels"
+        : `transparent pixels ${diagnostics.transparentPixelRatio}`,
+      metric: diagnostics.transparentPixelRatio
+    }));
+    checks.push(createVisualCheck({
+      name: "opaque_canvas_warning",
+      warning: likelyOpaqueGeneratedSprite && diagnostics.transparentPixelRatio === 0,
+      strict: input.strict,
+      path: assetPath,
+      message: "source had no alpha channel; use --remove-background for generated sprites on flat backgrounds",
+      metric: diagnostics.transparentPixelRatio
+    }));
+    checks.push(createVisualCheck({
+      name: "alpha_bounds_not_full_canvas",
+      warning:
+        likelyOpaqueGeneratedSprite &&
+        diagnostics.transparentPixelRatio < 0.01 &&
+        boundsCoversImage(diagnostics.nonTransparentBounds, metadata.width, metadata.height),
+      strict: input.strict,
+      path: assetPath,
+      message: diagnostics.nonTransparentBounds
+        ? `alpha bounds cover full ${metadata.width}x${metadata.height} canvas`
+        : "no visible alpha bounds detected",
+      metric: diagnostics.transparentPixelRatio
+    }));
+  }
+
+  checks.push(createVisualCheck({
+    name: "edge_alpha_bleed_risk",
+    warning: input.input.hasAlpha && diagnostics.transparentPixelRatio > 0 && diagnostics.edgeAlphaBleedRisk === "high",
+    strict: input.strict,
+    path: assetPath,
+    message: `edge alpha bleed risk ${diagnostics.edgeAlphaBleedRisk}`,
+    metric: diagnostics.transparentPixelRatio
+  }));
+
+  return {
+    status: checks.some((check) => check.status === "failed")
+      ? "failed"
+      : checks.some((check) => check.status === "warning")
+        ? "warning"
+        : "passed",
+    sourcePath: assetPath,
+    diagnostics,
+    checks
+  };
+}
+
+function createVisualCheck(input: {
+  name: string;
+  warning: boolean;
+  strict: boolean;
+  path: string;
+  message: string;
+  metric?: number;
+}): VisualQualityResult["checks"][number] {
+  return {
+    name: input.name,
+    status: input.warning ? (input.strict ? "failed" : "warning") : "passed",
+    path: input.path,
+    message: input.message,
+    metric: input.metric
+  };
+}
+
+function boundsCoversImage(bounds: AlphaDiagnostics["nonTransparentBounds"], width: number, height: number): boolean {
+  return bounds !== null && bounds.x === 0 && bounds.y === 0 && bounds.width === width && bounds.height === height;
+}
+
+function createQualityGateResult(input: {
+  quality: QualityLevel;
+  validation?: FrameValidationResult;
+  invariants?: SpriteInvariantDiagnostics;
+  visualQuality?: VisualQualityResult;
+}): QualityGateResult {
+  const failedReasons = [];
+  const warningReasons = [];
+
+  if (input.validation?.ok === false) failedReasons.push(input.validation.reason ?? "frame validation failed");
+  if (input.invariants?.ok === false) failedReasons.push("sprite invariant checks failed");
+
+  const visualWarnings = input.visualQuality?.checks.filter((check) => check.status === "warning") ?? [];
+  const visualFailures = input.visualQuality?.checks.filter((check) => check.status === "failed") ?? [];
+  if (visualWarnings.length > 0) warningReasons.push(...visualWarnings.map((check) => check.name));
+  if (visualFailures.length > 0) failedReasons.push(...visualFailures.map((check) => check.name));
+  if (input.quality === "strict" && visualWarnings.length > 0) {
+    failedReasons.push(...visualWarnings.map((check) => `strict:${check.name}`));
+  }
+
+  return {
+    quality: input.quality,
+    status: failedReasons.length > 0
+      ? "failed"
+      : warningReasons.length > 0
+        ? "warning"
+        : "passed",
+    warningsAllowed: input.quality !== "strict",
+    failedReasons,
+    warningReasons
+  };
+}
+
 async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   const projectRoot = process.cwd();
   const runId = readRunId(parsed);
+  const quality = readQualityFlag(parsed);
+  const strictVisual = parsed.flags.get("strict-visual") === true || quality === "strict";
   const record = await readCompileRecord(projectRoot, runId);
   const checks: VerifyCommandResult["checks"] = [];
   const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
@@ -2453,7 +3107,12 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   }
 
   const installedAsset = record.installPlan.files.find((file) => file.kind === "compiled_asset");
+  let visualSource: { relativePath: string; absolutePath: string } | null = null;
   if (installedAsset && await pathExists(resolveInsideProject(projectRoot, installedAsset.to))) {
+    visualSource = {
+      relativePath: installedAsset.to,
+      absolutePath: resolveInsideProject(projectRoot, installedAsset.to)
+    };
     const metadata = await loadImageMetadata(resolveInsideProject(projectRoot, installedAsset.to));
     checks.push({
       name: "installed_asset_dimensions",
@@ -2465,6 +3124,11 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
       path: installedAsset.to,
       message: `${metadata.width}x${metadata.height}`
     });
+  } else if (artifactPath && artifactExists) {
+    visualSource = {
+      relativePath: artifactPath,
+      absolutePath: resolveInsideProject(projectRoot, artifactPath)
+    };
   }
 
   checks.push({
@@ -2474,16 +3138,50 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
     message: record.outputPlan.engine
   });
 
+  let visualQuality: VisualQualityResult | undefined;
+  if (visualSource) {
+    visualQuality = await createVisualQualityResult({
+      projectRoot,
+      contract: record.contract,
+      input: record.input,
+      inputAlpha: record.alpha,
+      artifactPath: visualSource.relativePath,
+      sourcePath: visualSource.absolutePath,
+      removeBackground: record.processing?.removeBackground === true,
+      strict: strictVisual
+    });
+    checks.push(...visualQuality.checks.map((check) => ({
+      name: check.name,
+      status: check.status,
+      path: check.path,
+      message: check.message
+    })));
+  }
+
   const result: VerifyCommandResult = {
     runId: record.run.runId,
-    status: checks.every((check) => check.status === "passed") ? "passed" : "failed",
-    checks
+    status: createVerificationStatus(checks),
+    checks,
+    visualQuality
   };
-  record.run.status = result.status === "passed" ? "verified" : "failed_verify";
+  record.run.status = result.status === "failed" ? "failed_verify" : "verified";
   record.run.verification = result;
+  record.visualQuality = visualQuality ?? record.visualQuality;
+  record.qualityGate = createQualityGateResult({
+    quality,
+    validation: record.validation,
+    invariants: record.invariants,
+    visualQuality: record.visualQuality
+  });
   await writeCompileRecord(projectRoot, record, true);
 
   return result;
+}
+
+function createVerificationStatus(checks: VerifyCommandResult["checks"]): VerificationStatus {
+  if (checks.some((check) => check.status === "failed")) return "failed";
+  if (checks.some((check) => check.status === "warning")) return "warning";
+  return "passed";
 }
 
 async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
@@ -2512,7 +3210,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Core Recipe", body: JSON.stringify(record.recipe, null, 2) },
       ...(framePreviewPath ? [{ heading: "Frame Preview Sheet", body: framePreviewPath }] : []),
       ...(visualOverlayHtml ? [{ heading: "Visual Overlay", trustedHtml: visualOverlayHtml }] : []),
+      ...(record.visualQuality ? [{ heading: "Visual Quality", body: JSON.stringify(record.visualQuality, null, 2) }] : []),
+      ...(record.qualityGate ? [{ heading: "Quality Gate", body: JSON.stringify(record.qualityGate, null, 2) }] : []),
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
+      ...(record.manifest ? [{ heading: "Manifest Strategy", body: JSON.stringify(record.manifest, null, 2) }] : []),
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) },
       { heading: "Run Verification", body: JSON.stringify(record.run.verification ?? null, null, 2) },
       ...(record.contract.target.engine === "godot"
@@ -2585,7 +3286,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     latestJsonPath: ".openrender/reports/latest.json",
     latestHtmlPath: ".openrender/reports/latest.html",
     latestPreviewHtmlPath: ".openrender/previews/latest.html",
-    opened: false
+    opened: false,
+    visualQuality: record.visualQuality,
+    qualityGate: record.qualityGate,
+    manifest: record.manifest
   };
 
   if (parsed.flags.get("open") === true) {
@@ -2668,6 +3372,20 @@ function createNextActionText(record: CompileSpriteResult): string | null {
       "",
       "Suggested next action:",
       ...createVerifySuggestions(record, failedChecks).map((suggestion) => `- ${suggestion}`)
+    ].join("\n");
+  }
+
+  if (record.qualityGate?.status === "warning" || record.run.verification?.status === "warning") {
+    const warningChecks = record.visualQuality?.checks.filter((check) => check.status === "warning") ?? [];
+    return [
+      "Warning: visual quality checks need review",
+      "",
+      "Warnings:",
+      ...warningChecks.map((check) => `- ${check.name}${check.path ? `: ${check.path}` : ""}`),
+      "",
+      "Suggested next action:",
+      "- inspect the preview and installed asset before wiring game code",
+      "- re-run with --remove-background or --quality strict if the asset should have transparency"
     ].join("\n");
   }
 
@@ -2885,8 +3603,10 @@ function printCompileSprite(result: CompileSpriteResult): void {
   console.log(`Load path: ${result.outputPlan.loadPath}`);
   if (result.artifact) console.log(`Compiled artifact: ${result.run.outputs[0]?.path ?? result.artifact.path}`);
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
+  if (result.manifest) console.log(`Manifest strategy: ${result.manifest.strategy} (${result.manifest.entryChange})`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
   console.log(`Install plan files: ${result.installPlan.files.length}`);
+  if (result.qualityGate) console.log(`Quality: ${result.qualityGate.quality} ${result.qualityGate.status}`);
   if (result.installResult) {
     console.log(`Installed files: ${result.installResult.writes.length}`);
     console.log(`Snapshot: ${result.installResult.snapshotRoot}`);
@@ -2975,7 +3695,8 @@ function printVerifyResult(result: VerifyCommandResult): void {
   console.log("");
   console.log(`Run: ${result.runId}`);
   for (const check of result.checks) {
-    console.log(`${check.status === "passed" ? "ok" : "fail"} ${check.name}${check.path ? `: ${check.path}` : ""}`);
+    const marker = check.status === "passed" ? "ok" : check.status === "warning" ? "warn" : check.status === "skipped" ? "skip" : "fail";
+    console.log(`${marker} ${check.name}${check.path ? `: ${check.path}` : ""}`);
   }
   console.log(`Status: ${result.status}`);
 }
@@ -3045,12 +3766,12 @@ Usage:
   openrender recipe list|inspect|validate [recipeId] [--json]
   openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
-  openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--out <path>] [--json]
+  openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
-  openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--json]
-  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
+  openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--run latest] [--timeout seconds] [--screenshot] [--json]
+  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
-  openrender verify [runId|--run latest] [--json] [--compact]
+  openrender verify [runId|--run latest] [--strict-visual] [--quality prototype|default|strict] [--json] [--compact]
   openrender report [runId|--run latest] [--open] [--json] [--compact]
   openrender report export [runId|--run latest] --format html|json [--out <path>] [--force] [--json]
   openrender reports serve [--port 3579] [--once] [--json]
@@ -3070,6 +3791,7 @@ interface InstallCommandResult {
 interface WireMapResult {
   target: ProjectScan["engine"];
   readOnly: true;
+  latestAsset?: WireMapLatestAsset;
   candidates: Array<{
     file: string;
     kind: "entry" | "scene" | "script" | "config";
@@ -3084,13 +3806,14 @@ interface WireMapResult {
 
 interface VerifyCommandResult {
   runId: string;
-  status: "passed" | "failed";
+  status: VerificationStatus;
   checks: Array<{
     name: string;
-    status: "passed" | "failed";
+    status: VerificationCheckStatus;
     path?: string;
     message?: string;
   }>;
+  visualQuality?: VisualQualityResult;
 }
 
 interface ReportCommandResult {
@@ -3107,6 +3830,9 @@ interface ReportCommandResult {
   latestHtmlPath: string;
   latestPreviewHtmlPath: string;
   opened: boolean;
+  visualQuality?: VisualQualityResult;
+  qualityGate?: QualityGateResult;
+  manifest?: ManifestStrategyResult;
 }
 
 interface RollbackCommandResult {
@@ -3233,6 +3959,7 @@ interface CompactVerifyCommandResult {
   summary: {
     checks: number;
     failed: number;
+    warnings: number;
   };
   tables: {
     checks: CompactTable;
@@ -3250,6 +3977,7 @@ interface CompactReportCommandResult {
   rollbackCommand: string | null;
   tables: {
     outputs: CompactTable;
+    visualQuality: CompactTable;
   };
   nextActions: string[];
 }
@@ -3271,6 +3999,7 @@ interface CompactDiffCommandResult {
     created: number;
     modified: number;
     helperCodeGenerated: number;
+    manifestChange: ManifestEntryChange | null;
     rollbackAvailable: boolean;
   };
   tables: {
@@ -3340,8 +4069,10 @@ interface MediaMetadataCommandResult {
 interface RuntimeSmokeCommandResult {
   ok: boolean;
   target: TargetEngine;
-  status: "available" | "not_available";
+  status: "passed" | "failed" | "skipped";
   command: string | null;
+  runId?: string | null;
+  screenshotPath?: string | null;
   message: string;
 }
 
@@ -3374,8 +4105,74 @@ interface DiffCommandResult {
   filesCreated: string[];
   filesModified: string[];
   helperCodeGenerated: string[];
+  manifest: ManifestStrategyResult | null;
   snapshotPath: string | null;
   rollbackCommand: string | null;
+}
+
+interface ManifestStateEntry {
+  contract: SpriteCompileContract;
+  runId: string;
+  assetPath: string;
+  loadPath: string;
+  updatedAt: string;
+}
+
+interface ManifestState {
+  version: string;
+  target: TargetEngine;
+  manifestPath: string;
+  updatedAt: string;
+  entries: Record<string, ManifestStateEntry>;
+}
+
+interface ManifestStrategyResult {
+  strategy: ManifestStrategy;
+  manifestPath: string;
+  statePath: string;
+  entryId: string;
+  entryChange: ManifestEntryChange;
+  previousCount: number;
+  nextCount: number;
+  removedEntryIds: string[];
+  isolated: boolean;
+}
+
+interface VisualQualityResult {
+  status: "passed" | "warning" | "failed";
+  sourcePath: string;
+  diagnostics: AlphaDiagnostics;
+  checks: Array<{
+    name: string;
+    status: "passed" | "warning" | "failed";
+    path?: string;
+    message?: string;
+    metric?: number;
+  }>;
+}
+
+interface QualityGateResult {
+  quality: QualityLevel;
+  status: "passed" | "warning" | "failed";
+  warningsAllowed: boolean;
+  failedReasons: string[];
+  warningReasons: string[];
+}
+
+interface WireMapLatestAsset {
+  assetId: string;
+  mediaType: MediaContract["mediaType"];
+  engine: TargetEngine;
+  assetPath: string;
+  loadPath: string;
+  manifestPath: string;
+  manifestModule: string;
+  runId: string;
+  snippets: Array<{
+    label: string;
+    language: string;
+    code: string;
+  }>;
 }
 
 interface CompileSpriteResult {
@@ -3390,6 +4187,13 @@ interface CompileSpriteResult {
     path: string;
     metadata: ImageMetadata;
   };
+  processing?: {
+    removeBackground: boolean;
+    backgroundMode: BackgroundRemovalMode;
+    backgroundTolerance: number;
+    feather: number;
+    quality: QualityLevel;
+  };
   recipe: {
     packId: string;
     packVersion: string;
@@ -3401,6 +4205,9 @@ interface CompileSpriteResult {
     manifest: string;
     animationHelper?: string;
   };
+  manifest?: ManifestStrategyResult;
+  visualQuality?: VisualQualityResult;
+  qualityGate?: QualityGateResult;
   validation?: FrameValidationResult;
   invariants?: SpriteInvariantDiagnostics;
   frameSlices?: FrameSlice[];
