@@ -4,9 +4,9 @@
 
 현재 공개 문서와 agent-facing 기준은 다음 문서에서 관리한다.
 
-- `docs/openRender_v0.7.0.md`
+- openRender 0.7.0 Agent Token Saver reference
 - `RELEASES.md`
-- `docs/release-history.html`
+- public Release History
 - `ROADMAP.md`
 
 현재 기준은 0.7.0 Agent Token Saver 문서와 source에 적용된 compact agent output, read-only wire-map, local report/export/gallery, rollback, MCP metadata, P4 metadata contract를 중심으로 설명한다.

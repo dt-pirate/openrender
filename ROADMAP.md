@@ -2,7 +2,7 @@
 
 ## 0.7.0 Agent Token Saver
 
-- Documentation baseline: `docs/openRender_v0.7.0.md` and `docs/openRender_v0.7.0.html`.
+- Documentation baseline: openRender `0.7.0 Agent Token Saver`.
 - Local sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
 - Adapter registry surface through shared target types, adapter packages, and CLI dispatch for describe, install-plan, helper generation, and load-path verification.
 - Built-in recipe metadata under `recipes/`.

@@ -43,4 +43,4 @@ Rules:
 - Use `rollback --run latest --json` only for openRender install outputs.
 - Do not enable upload, telemetry, sync, login, billing, or cloud report assumptions.
 
-See `docs/LLM-OPTIMIZED-REFERENCE.md` for the compact LLM handoff reference.
+See the public LLM reference: https://docs-gamma-orcin.vercel.app/llm-reference.html

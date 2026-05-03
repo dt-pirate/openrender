@@ -5,7 +5,7 @@ Checks for the current local Developer Kit surface.
 ## Preflight
 
 - [ ] README describes openRender as a local-first media-to-engine compiler and agent token saver.
-- [ ] Docs point to `docs/openRender_v0.7.0.md` as the active local reference.
+- [ ] Docs point to openRender `0.7.0 Agent Token Saver` as the active reference.
 - [ ] Local compile/install is described as local Developer Kit behavior, not a metered cloud service.
 - [ ] Phaser, Godot, LOVE2D, PixiJS, and Canvas adapter packages build.
 - [ ] Schemas, plan, explain, diff, compact output, wire-map, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.
@@ -16,10 +16,10 @@ Checks for the current local Developer Kit surface.
 
 ## Docs Deployment
 
-- [ ] Run `vercel deploy docs --prod -y` from the repository root.
+- [ ] Run `vercel deploy <site-source> --prod -y` from the release environment.
 - [ ] Run `vercel inspect <deployment-url>` and confirm the aliases include `https://docs-gamma-orcin.vercel.app`.
 - [ ] Treat `https://docs-<hash>-stelify87s-projects.vercel.app` URLs as inspection artifacts only.
-- [ ] Treat GitHub Pages as an optional mirror. If needed, enable Pages with source `GitHub Actions` in repository settings.
+- [ ] Do not use GitHub Pages as the canonical docs path.
 
 ## Local Verification
 

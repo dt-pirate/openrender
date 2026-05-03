@@ -8,8 +8,8 @@ The webpage should introduce openRender as local infrastructure for AI agents th
 
 ## Current Truth
 
-- Source of truth: `README.md` and `docs/openRender_v0.7.0.md`.
-- Active reference: `docs/openRender_v0.7.0.md`.
+- Source of truth: `README.md` and the public openRender docs site.
+- Active reference: `0.7.0 Agent Token Saver`.
 - Implemented local compiler core: `0.6.1`; current documentation baseline: `0.7.0 Agent Token Saver`.
 - Supported engines: Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and Canvas + Vite.
 - Supported media: sprite image handoff, plus P4 metadata contracts for audio, atlas/tileset, and UI assets.

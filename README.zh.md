@@ -15,7 +15,7 @@
   <p>
     <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
-    <a href="./docs/LLM-OPTIMIZED-REFERENCE.md">LLM Reference</a> •
+    <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -199,14 +199,14 @@ https://docs-gamma-orcin.vercel.app
 
 GitHub README、release notes、issues 和面向用户的引用应使用这个 Vercel production alias。Vercel 每次部署也会生成唯一 URL，例如 `https://docs-<hash>-stelify87s-projects.vercel.app`；这些 URL 只用于检查某次部署，不是稳定文档链接。
 
-从仓库根目录部署 production 文档：
+从发布环境部署已配置的 Vercel production 站点：
 
 ```bash
-vercel deploy docs --prod -y
+vercel deploy <site-source> --prod -y
 vercel inspect <deployment-url>
 ```
 
-部署后确认 alias 列表包含 `https://docs-gamma-orcin.vercel.app`。GitHub Pages 只是可选 mirror。如需使用，请在 repository settings 中将 Pages source 启用为 `GitHub Actions`；不要把 GitHub Pages URL 作为官方文档 URL。
+部署后确认 alias 列表包含 `https://docs-gamma-orcin.vercel.app`。GitHub Pages 不是官方文档路径；公开 URL 保持为 Vercel production alias。
 
 ## 开发
 
