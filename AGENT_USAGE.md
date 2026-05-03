@@ -9,6 +9,28 @@ Install openRender for this project, then use it to add the generated game asset
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
+## Skill Setup
+
+Use an openRender skill when a coding agent needs repeatable local instructions for the CLI workflow. The skill is not a hosted marketplace feature. It is a local instruction layer that teaches the agent to use compact JSON, read-only wire maps, dry-runs, verification, reports, and rollback before editing game code.
+
+Ask the agent in natural language:
+
+```text
+Install the openRender skill for this repository.
+Preview the instruction files first. If the plan is safe, install it for my current agent and explain what changed.
+```
+
+The agent should translate that request into:
+
+```bash
+openrender install-agent --platform all --dry-run --json
+openrender install-agent --platform codex --json
+```
+
+Use `codex`, `cursor`, `claude`, or `all` for `--platform`. Existing instruction files are protected unless `--force` is passed.
+
+`install-agent` can write `AGENTS.md`, `.cursor/rules/openrender.md`, or `.claude/openrender.md`. Review dry-run output before writing files.
+
 The command sequence and rules below are the agent reference for carrying out that request safely.
 
 Recommended sequence:

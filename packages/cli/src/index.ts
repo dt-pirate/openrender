@@ -1671,15 +1671,19 @@ function isAgentKind(value: string): value is AgentKind {
 }
 
 function createAgentConfigSpec(agent: AgentKind): { relativePath: string; contents: string } {
-  const body = `# openRender Agent Usage
+  const body = `# openRender Skill
 
-Use openRender as a local-only handoff layer for generated media.
+Use openRender as a local-only handoff layer for generated media. Treat this file as the local openRender skill for the current coding agent.
 
 - Read README.md and AGENT_USAGE.md first.
 - Start with openrender context --json to collect the smallest useful project snapshot.
+- Use openrender context --json --compact when you need the shortest project handoff.
+- Use openrender context --json --wire-map to find read-only asset wiring candidates before editing game code.
 - Prefer JSON commands: context, scan, doctor, plan, compile, install, verify, report, explain, diff, rollback.
 - Before installing, run openrender compile sprite --dry-run --json and inspect installPlan.files.
 - By default, installs refuse to overwrite destination files. Use --force only after the user accepts manifest/helper overwrites.
+- After install, run openrender verify --run latest --json --compact.
+- Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Generated manifests are written from the current compile result; they are not merged with older manifest entries.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.

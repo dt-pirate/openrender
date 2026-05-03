@@ -509,6 +509,12 @@ test("agent init writes only the requested config and refuses overwrites by defa
   assert.equal(result.path, ".cursor/rules/openrender.md");
   assert.equal(await fileExists(path.join(root, ".cursor/rules/openrender.md")), true);
   assert.equal(await fileExists(path.join(root, "AGENTS.md")), false);
+  const instructions = await fs.readFile(path.join(root, ".cursor/rules/openrender.md"), "utf8");
+  assert.match(instructions, /# openRender Skill/);
+  assert.match(instructions, /local openRender skill/);
+  assert.match(instructions, /openrender context --json --compact/);
+  assert.match(instructions, /openrender context --json --wire-map/);
+  assert.match(instructions, /openrender verify --run latest --json --compact/);
 
   await assert.rejects(
     () => execFileAsync(process.execPath, [cliPath, "agent", "init", "--cursor", "--json"], { cwd: root }),

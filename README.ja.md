@@ -15,6 +15,7 @@
   <p>
     <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
     <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
@@ -54,6 +55,15 @@ pnpm build
 Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
+
+セットアップは skill リクエストとして自然言語で伝えることもできます:
+
+```text
+Install the openRender skill for this repository.
+Preview the instruction files first, install the right local agent instructions, and explain what changed.
+```
+
+この skill はローカル agent 指示です。自然言語リクエストを `install-agent`、compact context、読み取り専用 wire-map、dry-run、検証、レポート、rollback ルールに対応させます。
 
 以下の CLI 手順は、ローカル設定、エージェントの検証、手動参照用です。
 

@@ -15,6 +15,7 @@
   <p>
     <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
     <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
@@ -54,6 +55,15 @@ pnpm build
 Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
+
+설정은 스킬 요청처럼 자연어로 말해도 됩니다:
+
+```text
+Install the openRender skill for this repository.
+Preview the instruction files first, install the right local agent instructions, and explain what changed.
+```
+
+이 스킬은 로컬 에이전트 지침입니다. 자연어 요청을 `install-agent`, compact context, 읽기 전용 wire-map, dry-run, 검증, 리포트, 롤백 규칙으로 연결합니다.
 
 아래 CLI 순서는 로컬 설정, 에이전트 검증, 수동 참고용입니다.
 

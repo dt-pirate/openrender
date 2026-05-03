@@ -15,6 +15,7 @@
   <p>
     <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
     <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
@@ -54,6 +55,15 @@ For agent-led use, install openRender for the project and then tell your coding 
 Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
+
+You can also phrase setup as a skill request:
+
+```text
+Install the openRender skill for this repository.
+Preview the instruction files first, install the right local agent instructions, and explain what changed.
+```
+
+The skill is local agent guidance. It maps that natural-language request to `install-agent`, compact context, read-only wire maps, dry-runs, verification, reports, and rollback rules.
 
 The CLI sequence below is for local setup, agent verification, and manual reference.
 

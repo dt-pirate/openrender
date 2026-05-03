@@ -15,6 +15,7 @@
   <p>
     <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
     <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
@@ -54,6 +55,15 @@ pnpm build
 Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
+
+你也可以把设置说成一个 skill 请求:
+
+```text
+Install the openRender skill for this repository.
+Preview the instruction files first, install the right local agent instructions, and explain what changed.
+```
+
+这个 skill 是本地 agent 指令。它把自然语言请求映射到 `install-agent`、compact context、只读 wire-map、dry-run、verification、reports 和 rollback 规则。
 
 下面的 CLI 顺序用于本地设置、代理验证和人工参考。
 
