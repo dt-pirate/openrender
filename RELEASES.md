@@ -15,13 +15,15 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
 | Release channel | GitHub release `v0.7.1` |
-| Release date | 2026-05-03 |
+| Release timestamp | 2026-05-03 20:05:45 KST (2026-05-03 11:05:45 UTC) |
 | GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.1` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
 ## 0.7.1 Agent Asset Readiness
 
 `0.7.1` is the current implemented package and CLI version.
+
+Released: 2026-05-03 20:05:45 KST (2026-05-03 11:05:45 UTC).
 
 ### Added
 
