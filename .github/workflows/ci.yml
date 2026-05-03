@@ -38,6 +38,7 @@ jobs:
       - name: Verify package tarballs
         run: |
           pnpm clean
+          expected_version="$(node -p "require('./package.json').version")"
 
           pack_dir="$(mktemp -d)"
           pnpm --filter @openrender/core pack --pack-destination "$pack_dir"
@@ -63,15 +64,15 @@ jobs:
           cd "$pack_dir/install"
           npm init -y
           npm install \
-            "$pack_dir"/openrender-core-0.6.1.tgz \
-            "$pack_dir"/openrender-adapter-phaser-0.6.1.tgz \
-            "$pack_dir"/openrender-adapter-godot-0.6.1.tgz \
-            "$pack_dir"/openrender-adapter-love2d-0.6.1.tgz \
-            "$pack_dir"/openrender-adapter-pixi-0.6.1.tgz \
-            "$pack_dir"/openrender-adapter-canvas-0.6.1.tgz \
-            "$pack_dir"/openrender-reporter-0.6.1.tgz \
-            "$pack_dir"/openrender-doctor-0.6.1.tgz \
-            "$pack_dir"/openrender-harness-visual-0.6.1.tgz \
-            "$pack_dir"/openrender-mcp-server-0.6.1.tgz \
-            "$pack_dir"/openrender-cli-0.6.1.tgz
-          ./node_modules/.bin/openrender --version | grep '^0\.6\.0$'
+            "$pack_dir"/openrender-core-*.tgz \
+            "$pack_dir"/openrender-adapter-phaser-*.tgz \
+            "$pack_dir"/openrender-adapter-godot-*.tgz \
+            "$pack_dir"/openrender-adapter-love2d-*.tgz \
+            "$pack_dir"/openrender-adapter-pixi-*.tgz \
+            "$pack_dir"/openrender-adapter-canvas-*.tgz \
+            "$pack_dir"/openrender-reporter-*.tgz \
+            "$pack_dir"/openrender-doctor-*.tgz \
+            "$pack_dir"/openrender-harness-visual-*.tgz \
+            "$pack_dir"/openrender-mcp-server-*.tgz \
+            "$pack_dir"/openrender-cli-*.tgz
+          test "$(./node_modules/.bin/openrender --version)" = "$expected_version"
