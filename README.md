@@ -14,6 +14,7 @@
   </p>
   <p>
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./docs/LLM-OPTIMIZED-REFERENCE.md">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -35,7 +36,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.6.0` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+The current `0.6.1` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
 
 ## Quick Start
 
@@ -51,8 +52,16 @@ From a target game project:
 ```bash
 cd /path/to/game-project
 
+node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
+```
+
+For AI coding agents, install local instructions with a dry run first:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
 ```
 
 Plan and dry-run before writing files:
@@ -139,10 +148,12 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 
 ## Agent Rules
 
-- Run `scan --json` before assuming the project type.
+- Run `context --json` before reading broadly or assuming the project type.
 - Run `doctor --json` before writing into an unfamiliar project.
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
+- Inspect `installPlan.files` before installing.
 - Do not pass `--force` unless the user accepts overwriting destination files.
+- Treat generated manifests as current-result files, not automatic merges with previous manifest entries.
 - After install, run `verify --run latest --json`.
 - Use `rollback --run latest --json` only for the openRender install.
 

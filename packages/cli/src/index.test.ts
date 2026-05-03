@@ -20,7 +20,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.6.0");
+  assert.equal(stdout.trim(), "0.6.1");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -29,8 +29,10 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.6\.0/m);
+  assert.match(stdout, /^openRender 0\.6\.1/m);
   assert.match(stdout, /openrender --version/);
+  assert.match(stdout, /openrender context \[--json\]/);
+  assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile sprite --from\|--input <path>/);
@@ -47,7 +49,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.6.0");
+  assert.equal(schema.properties.schemaVersion.const, "0.6.1");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -56,7 +58,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.6.0 P4 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.6.1 P4 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -516,6 +518,69 @@ test("agent init writes only the requested config and refuses overwrites by defa
       return true;
     }
   );
+});
+
+test("install-agent dry-run previews all instruction files without writing", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-install-agent-"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "install-agent",
+    "--platform",
+    "all",
+    "--dry-run",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    agent: string;
+    dryRun: boolean;
+    files: Array<{ agent: string; path: string; action: string }>;
+  };
+
+  assert.equal(result.agent, "all");
+  assert.equal(result.dryRun, true);
+  assert.deepEqual(result.files.map((file) => file.agent), ["codex", "cursor", "claude"]);
+  assert.equal(result.files.every((file) => file.action === "would_create"), true);
+  assert.equal(await fileExists(path.join(root, "AGENTS.md")), false);
+  assert.equal(await fileExists(path.join(root, ".cursor/rules/openrender.md")), false);
+  assert.equal(await fileExists(path.join(root, ".claude/openrender.md")), false);
+});
+
+test("context command emits compact project handoff", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-context-"));
+  await fs.writeFile(path.join(root, "package.json"), JSON.stringify({
+    name: "context-game",
+    dependencies: {
+      vite: "^7.0.0",
+      phaser: "^3.90.0"
+    }
+  }, null, 2));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "context",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    ok: boolean;
+    version: string;
+    target: { engine: string; framework: string };
+    capabilities: { account: boolean; telemetry: boolean; cloudApi: boolean };
+    recommendedNextActions: string[];
+  };
+
+  assert.equal(result.ok, true);
+  assert.equal(result.version, "0.6.1");
+  assert.equal(result.target.engine, "phaser");
+  assert.equal(result.target.framework, "vite");
+  assert.equal(result.capabilities.account, false);
+  assert.equal(result.capabilities.telemetry, false);
+  assert.equal(result.capabilities.cloudApi, false);
+  assert.equal(result.recommendedNextActions.some((action) => action.includes("--dry-run")), true);
 });
 
 test("adapter create writes a bounded adapter scaffold", async () => {

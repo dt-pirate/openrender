@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Troubleshooting - openRender Docs</title>
+  <meta name="description" content="Common local workflow issues for Phaser, Godot, and LOVE2D image asset handoff.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <img class="brand-logo" src="./assets/openrender-logo-wordmark.png" alt="openRender" data-generated-model="ChatGPT Image 2">
+      </a>
+        <div data-language-switcher aria-label="Language selector"></div>
+    </div>
+  </header>
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Start</div>
+            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./quickstart.html">Quickstart</a>
+            <a href="./release-history.html">Release History</a>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Reference</div>
+            <a href="./cli-reference.html">CLI Reference</a>
+            <a href="./contracts.html">Contracts</a>
+            <a href="./agent-usage.html">Agent Usage</a>
+            <a href="./llm-reference.html">LLM Reference</a>
+            <a class="is-active" href="./troubleshooting.html">Troubleshooting</a>
+            <a href="./known-limitations.html">Boundaries</a>
+          </div>
+      </nav>
+    </aside>
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>Troubleshooting</h1>
+        <p class="summary">Common local workflow issues for Phaser, Godot, and LOVE2D image asset handoff.</p>
+      </header>
+
+      <div class="doc-content">
+        <p>For 0.3.1 planning, remember that recipe packs are intended to reduce repeated agent troubleshooting. They should capture fixes like frame mismatch guidance or engine load path rules without changing the local-first safety loop.</p>
+
+        <h2 id="scan-phaser">Scan Does Not Detect Phaser</h2>
+        <p>Check that <code>phaser</code> and <code>vite</code> exist in the target <code>package.json</code>.</p>
+
+        <h2 id="scan-godot">Scan Does Not Detect Godot</h2>
+        <p>Check that <code>project.godot</code> exists at the project root. Godot editor cache files are not required for openRender detection.</p>
+
+        <h2 id="scan-love2d">Scan Does Not Detect LOVE2D</h2>
+        <p>Check that <code>main.lua</code> or <code>conf.lua</code> exists at the project root.</p>
+
+        <h2 id="frame-count">Frame Count Mismatch</h2>
+        <p>For a horizontal strip, image width must equal <code>frames * frameWidth</code>. Run <code>detect-frames --json</code> when geometry is unclear, then adjust <code>--frames</code>, <code>--frame-size</code>, or regenerate the source image.</p>
+
+        <h2 id="godot-import">Godot Import Metadata Is Missing</h2>
+        <p>openRender does not write <code>.import</code> or <code>.godot/</code> metadata. Open or refresh the Godot project so the editor owns import cache generation.</p>
+
+        <h2 id="love2d-runtime">LOVE2D Runtime Does Not Launch</h2>
+        <p>openRender does not run LOVE2D or create <code>.love</code> archives. Require the generated Lua module from <code>openrender/</code>, load images with <code>love.graphics.newImage</code>, and run LOVE2D through your normal project command.</p>
+
+        <h2 id="overwrite">File Overwrite</h2>
+        <p>Install refuses to overwrite destination files unless <code>--force</code> is passed. Use <code>plan sprite --json</code>, dry-run output, and report output before deciding to force an install.</p>
+
+        <h2 id="pack-command-missing">Pack Sync Or Login Is Not Implemented</h2>
+        <p>0.3.1 includes built-in local <code>pack list</code>, <code>pack inspect core</code>, and <code>recipe list</code> metadata. Remote pack sync, login, and license refresh intentionally return <code>not_implemented_in_0_3_1</code>; local compile/install does not require an account.</p>
+
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer" aria-label="openRender footer">
+    <a class="footer-brand" href="./developer-webpage.html" aria-label="openRender home">
+      <img class="footer-logo" src="./assets/openrender-logo-wordmark.png" alt="openRender" data-generated-model="ChatGPT Image 2">
+    </a>
+    <nav class="footer-links" aria-label="Official documents">
+      <a href="./privacy-policy.html">Privacy Policy</a>
+      <a href="./terms-conditions.html">Terms &amp; Conditions</a>
+    </nav>
+  </footer>
+  <script src="./openrender-i18n.js"></script>
+</body>
+</html>

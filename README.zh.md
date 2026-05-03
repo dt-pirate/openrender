@@ -14,6 +14,7 @@
   </p>
   <p>
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./docs/LLM-OPTIMIZED-REFERENCE.md">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -35,7 +36,7 @@ openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `0.6.0` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite 的图片资源交接。
+当前 `0.6.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite 的图片资源交接。
 
 ## 快速开始
 
@@ -51,8 +52,16 @@ pnpm build
 ```bash
 cd /path/to/game-project
 
+node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
+```
+
+为 AI 编码代理安装本地指令时，先执行 dry-run：
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
 ```
 
 写入文件前先查看计划和 dry-run：
@@ -139,10 +148,12 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 
 ## 代理规则
 
-- 在假设项目类型前运行 `scan --json`。
+- 在广泛读取文件或假设项目类型前运行 `context --json`。
 - 在陌生项目中写文件前运行 `doctor --json`。
 - 在 `--install` 前使用 `plan sprite --json` 或 `compile sprite --dry-run --json`。
+- 安装前检查 `installPlan.files`。
 - 除非用户接受覆盖目标文件，不要传入 `--force`。
+- 将生成的 manifest 视为当前 compile 结果的写入文件，而不是与旧 manifest 条目自动合并。
 - 安装后运行 `verify --run latest --json`。
 - `rollback --run latest --json` 只用于 openRender 安装结果。
 

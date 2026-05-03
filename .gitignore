@@ -2,8 +2,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
-docs/
-
 .openrender/
 coverage/
 .env

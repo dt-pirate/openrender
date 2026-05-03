@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boundaries - openRender Docs</title>
+  <meta name="description" content="What the local workflow supports, and where it intentionally stops.">
+  <link rel="stylesheet" href="./openrender-docs.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./developer-webpage.html" aria-label="openRender home">
+        <img class="brand-logo" src="./assets/openrender-logo-wordmark.png" alt="openRender" data-generated-model="ChatGPT Image 2">
+      </a>
+        <div data-language-switcher aria-label="Language selector"></div>
+    </div>
+  </header>
+  <main class="doc-shell">
+    <aside class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-title">Documentation</div>
+      <nav>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Start</div>
+            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./quickstart.html">Quickstart</a>
+            <a href="./release-history.html">Release History</a>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-section-title">Reference</div>
+            <a href="./cli-reference.html">CLI Reference</a>
+            <a href="./contracts.html">Contracts</a>
+            <a href="./agent-usage.html">Agent Usage</a>
+            <a href="./llm-reference.html">LLM Reference</a>
+            <a href="./troubleshooting.html">Troubleshooting</a>
+            <a class="is-active" href="./known-limitations.html">Boundaries</a>
+          </div>
+      </nav>
+    </aside>
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">openRender docs</p>
+        <h1>Boundaries</h1>
+        <p class="summary">What the local workflow supports, and where it intentionally stops.</p>
+      </header>
+
+      <div class="doc-content">
+        <h2 id="supported">Supported</h2>
+        <ul>
+          <li>Image asset compilation to PNG artifacts.</li>
+          <li>Transparent sprite and sprite frame set contracts.</li>
+          <li>Official JSON schemas, plan output, explain output, and diff output.</li>
+          <li>Alpha diagnostics, frame detection, sprite invariants, normalize presets, and frame preview sheets.</li>
+          <li>Built-in local core pack and recipe metadata.</li>
+          <li>Vite + Phaser asset installation.</li>
+          <li>Godot 4 image asset installation.</li>
+          <li>LOVE2D image asset installation.</li>
+          <li>PixiJS + Vite image asset installation.</li>
+          <li>Plain Canvas + Vite image asset installation.</li>
+          <li>Local JSON-only MCP metadata for tools, resources, and prompts.</li>
+          <li>Local reports, previews, snapshots, verification, and rollback.</li>
+        </ul>
+
+        <h2 id="local-core">Local Core Boundary</h2>
+        <p>The Developer Kit stays local-first: it does not require remote accounts, billing, license services, cloud APIs, hosted workers, report sync, remote artifact caches, model provider calls, BYOK generation, or telemetry.</p>
+        <p>Scene and runtime edits remain explicit agent work. openRender writes generated assets, manifests, helpers, local reports, and rollback records; it does not auto-patch Phaser, Godot, LOVE2D, PixiJS, or Canvas gameplay code.</p>
+        <p>Godot <code>.import</code>/<code>.godot</code> files, LOVE2D <code>.love</code> archives, runtime launch, video, 3D, advanced matting, and segmentation remain outside the local image handoff scope. P4 audio, atlas, and UI metadata are schema-backed surfaces rather than full runtime asset pipelines.</p>
+
+        <h2 id="runtime">Runtime Boundary</h2>
+        <p>Verification checks local handoff invariants. It does not prove Phaser canvas runtime behavior, Godot editor/headless runtime behavior, LOVE2D runtime behavior, PixiJS rendering, or Canvas game-loop behavior.</p>
+
+      </div>
+    </article>
+  </main>
+  <footer class="site-footer" aria-label="openRender footer">
+    <a class="footer-brand" href="./developer-webpage.html" aria-label="openRender home">
+      <img class="footer-logo" src="./assets/openrender-logo-wordmark.png" alt="openRender" data-generated-model="ChatGPT Image 2">
+    </a>
+    <nav class="footer-links" aria-label="Official documents">
+      <a href="./privacy-policy.html">Privacy Policy</a>
+      <a href="./terms-conditions.html">Terms &amp; Conditions</a>
+    </nav>
+  </footer>
+  <script src="./openrender-i18n.js"></script>
+</body>
+</html>

@@ -14,6 +14,7 @@ What did you expect openRender to do?
 
 ```bash
 openrender --version
+openrender context --json
 openrender scan --json
 openrender doctor --json
 openrender plan sprite --from tmp/slime_raw.png --id enemy.slime.idle --frames 6 --frame-size 64x64 --json
@@ -43,10 +44,12 @@ openrender diff --run latest --json
 - Was this run by an AI agent? yes/no
 - Target project type: Vite + Phaser / Godot 4 / LOVE2D / PixiJS / Canvas / other
 - Asset mode: transparent sprite / sprite frame set
+- Did the agent start with `context --json`? yes/no
 - Did the command use `--dry-run` before install? yes/no
+- Did you inspect `installPlan.files` before install? yes/no
 - Did the command use `plan sprite` before install? yes/no
 - Did the command use `--force`? yes/no
 
 ## Scope check
 
-openRender Developer Kit 0.6.0 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, and Canvas workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.6.1 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, and Canvas workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

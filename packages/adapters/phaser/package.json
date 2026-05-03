@@ -1,6 +1,6 @@
 {
   "name": "@openrender/adapter-phaser",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Phaser and Vite adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",

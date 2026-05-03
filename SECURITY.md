@@ -1,12 +1,14 @@
 # Security
 
-openRender Developer Kit 0.6.0 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
+openRender Developer Kit 0.6.1 is local-first and agent-first. It should not upload project files, generated assets, reports, telemetry, crash data, or agent run context.
 
 ## Developer Kit Safety Rules
 
 - Write only inside the detected project root.
 - Do not overwrite existing files unless `--force` or another explicit force policy is implemented and requested.
 - Snapshot files before install writes.
+- Keep `context --json` compact and free of image payloads, credentials, or private source content.
+- Keep `install-agent --dry-run --json` side-effect free.
 - Keep reports local.
 - Do not add network calls to the Developer Kit path.
 - Do not create Godot `.import` files or write into `.godot/`; Godot owns its import metadata.
@@ -17,6 +19,7 @@ openRender Developer Kit 0.6.0 is local-first and agent-first. It should not upl
 AI agents using openRender should:
 
 - Prefer `plan sprite --json` or `compile sprite --dry-run --json` before install.
+- Start with `context --json` before broad repository reads.
 - Treat `installPlan.files` as the complete file write plan.
 - Avoid `--force` unless the human user explicitly accepts overwrite risk.
 - Run `verify --run latest --json` after install.

@@ -1,0 +1,34 @@
+# Agent Usage
+
+Guidance for coding agents using openRender inside local Phaser, Godot, LOVE2D, PixiJS, or Canvas projects.
+
+## Agent Role
+
+openRender is designed for AI coding agents operating inside local game repositories. The agent should use openRender for deterministic media-to-engine handoff, then use the generated paths and helpers while editing game code.
+
+openRender reduces repeated token-heavy handoff work. Agents should prefer compact JSON results, generated helper paths, and recipe metadata over re-deriving the same file layout or repair steps in every session.
+
+## Decision Rules
+
+- Run `context --json` before broad repo reads or target assumptions.
+- Run `scan --json` when you need the raw project detection result.
+- Run `doctor --json` before writing project files in an unfamiliar repo.
+- Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing agent instruction files.
+- Use `pack list --json` and `recipe list --json` when compact local recipe metadata helps avoid re-deriving the workflow.
+- Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
+- Use `detect-frames --json` when sprite sheet geometry is unclear.
+- Inspect `installPlan.files` before installing.
+- Do not use `--force` unless the user accepts overwriting generated destination files.
+- Remember generated manifests are written from the current compile result; they are not automatically merged with older manifest entries.
+- After install, run `verify --run latest --json`.
+- Use `report --run latest --json` when verification fails or when the user needs an audit trail.
+- Use `explain --run latest --json` for compact next actions and `diff --run latest --json` before deciding which generated files to inspect.
+- Use `rollback --run latest --json` only for files recorded by a specific openRender install.
+- Treat built-in pack/recipe guidance as reusable context. It does not replace dry-run, verification, or user approval for overwrite behavior.
+
+## Agent Prompt Example
+
+```text
+Use openRender to convert tmp/slime_idle_strip.png into an engine-ready sprite asset.
+Start with openrender context --json, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse recipe context instead of spending tokens on repeated handoff reasoning.
+```

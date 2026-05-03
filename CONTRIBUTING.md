@@ -1,12 +1,12 @@
 # Contributing
 
-openRender Developer Kit 0.6.0 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
+openRender Developer Kit 0.6.1 is local-first and agent-first. Keep changes aligned with the Developer Kit scope:
 
 - Prefer local deterministic behavior over cloud services.
 - Optimize CLI behavior for AI agents that need structured output, deterministic paths, and safe rollback.
-- Keep the current targets focused on Vite + Phaser, Godot 4, and LOVE2D.
+- Keep the current targets focused on Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and Canvas + Vite.
 - Keep the first media scope image-only.
-- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.6.0.
+- Keep account, billing, licensing services, telemetry, and hosted APIs out of Developer Kit 0.6.1.
 - Add tests for shared contracts, path safety, code generation, and CLI behavior.
 
 ## Setup
@@ -25,8 +25,11 @@ pnpm test
 - `@openrender/adapter-phaser` owns Phaser/Vite output generation.
 - `@openrender/adapter-godot` owns Godot 4 output generation.
 - `@openrender/adapter-love2d` owns LOVE2D Lua output generation.
+- `@openrender/adapter-pixi` owns PixiJS/Vite output generation.
+- `@openrender/adapter-canvas` owns Canvas/Vite output generation.
 - `@openrender/reporter` owns local report and preview generation.
 - `@openrender/doctor` owns environment diagnostics.
+- `@openrender/mcp-server` owns local JSON-only MCP metadata.
 
 Do not add cloud, billing, auth, or provider integration code to these Developer Kit packages.
 
@@ -36,7 +39,9 @@ When changing CLI behavior, preserve these agent contracts:
 
 - Every workflow command should remain usable with `--json`.
 - JSON fields should be stable, explicit, and safe for an agent to branch on.
+- `context --json` should remain compact enough to use before broad repository reads.
 - Dry-run output should describe planned files without writing project files.
+- `install-agent --dry-run --json` should preview instruction file writes before creating them.
 - Install should snapshot destination files before writing.
 - Existing destination files should not be overwritten unless the caller explicitly passes `--force`.
 - Verification failures should return non-zero and include enough structured detail for an agent to choose the next command.
@@ -48,8 +53,10 @@ When changing CLI behavior, preserve these agent contracts:
 Use this workflow as the baseline when reviewing changes:
 
 ```bash
+openrender context --json
 openrender scan --json
 openrender doctor --json
+openrender install-agent --platform all --dry-run --json
 openrender pack list --json
 openrender recipe list --json
 openrender plan sprite --from tmp/slime.png --id enemy.slime --output-size 64x64 --json

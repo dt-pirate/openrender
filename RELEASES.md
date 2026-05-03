@@ -10,19 +10,22 @@ Release dates are intentionally omitted until the repository starts publishing t
 
 | Field | Value |
 |---|---|
-| Current Developer Kit | `0.6.0` |
+| Current Developer Kit | `0.6.1` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
 | Release channel | Local source build |
 
-## 0.6.0 Developer Kit
+## 0.6.1 Developer Kit
 
-`0.6.0` is the current local-first Developer Kit version.
+`0.6.1` is the current local-first Developer Kit version.
 
 ### Added
 
+- `context --json` for compact agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.
+- `install-agent --platform codex|cursor|claude|all --dry-run --json` for safe agent instruction file planning.
+- LLM-optimized reference documentation for dry-run, install plan, manifest, MCP, verification, and rollback behavior.
 - P4 media metadata contracts for audio, atlas/tileset, and UI asset metadata.
 - Runtime smoke availability checks that report whether supported runtimes are present without requiring runtime execution by default.
 - Expanded QA coverage across CLI, adapters, schemas, reports, fixtures, and local metadata helpers.
@@ -31,7 +34,7 @@ Release dates are intentionally omitted until the repository starts publishing t
 
 - Local sprite compile, install, verify, report, diff, explain, and rollback.
 - Supported image handoff targets: Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and Canvas + Vite.
-- JSON-first agent output for scan, doctor, plan, compile, verify, report, explain, and diff workflows.
+- JSON-first agent output for context, scan, doctor, plan, compile, install-agent, verify, report, explain, and diff workflows.
 - Local `.openrender/` run state with artifacts, reports, previews, snapshots, and rollback records.
 
 ### Verification
@@ -47,7 +50,7 @@ node packages/cli/dist/index.js --version
 Expected CLI version:
 
 ```text
-0.6.0
+0.6.1
 ```
 
 ## 0.5.0 Developer Kit Milestone

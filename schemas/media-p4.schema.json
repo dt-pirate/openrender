@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-  "title": "openRender 0.6.0 P4 Media Contracts",
+  "title": "openRender 0.6.1 P4 Media Contracts",
   "type": "object",
   "required": ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
   "properties": {
-    "schemaVersion": { "const": "0.6.0" },
+    "schemaVersion": { "const": "0.6.1" },
     "mediaType": {
       "enum": [
         "audio.sound_effect",

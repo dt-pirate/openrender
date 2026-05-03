@@ -3,7 +3,18 @@ import { promisify } from "node:util";
 import { OPENRENDER_DEVKIT_VERSION, type TargetEngine } from "@openrender/core";
 
 const execFileAsync = promisify(execFile);
-const TOOL_NAMES = ["scan", "plan", "compile", "install", "verify", "rollback", "report", "explain"] as const;
+const TOOL_NAMES = [
+  "context",
+  "scan",
+  "plan",
+  "compile",
+  "install",
+  "verify",
+  "rollback",
+  "report",
+  "explain",
+  "install-agent"
+] as const;
 const TARGETS: TargetEngine[] = ["phaser", "godot", "love2d", "pixi", "canvas"];
 
 export interface McpToolDescriptor {
@@ -39,6 +50,8 @@ export function listMcpResources(): McpResourceDescriptor[] {
     { uri: "openrender://schema/contract", description: "Media contract schema", localOnly: true },
     { uri: "openrender://schema/report", description: "Report schema", localOnly: true },
     { uri: "openrender://schema/run-output", description: "Run output schema", localOnly: true },
+    { uri: "openrender://context", description: "Minimal agent handoff context for the current project", localOnly: true },
+    { uri: "openrender://docs/llm-reference", description: "LLM-optimized local usage rules", localOnly: true },
     { uri: "openrender://runs/latest", description: "Latest local run JSON", localOnly: true },
     { uri: "openrender://reports/{runId}", description: "Local report JSON by run id", localOnly: true }
   ];
@@ -48,7 +61,7 @@ export function listMcpPrompts(): McpPromptDescriptor[] {
   return TARGETS.map((target) => ({
     name: `${target}-handoff`,
     target,
-    text: `Use openRender ${OPENRENDER_DEVKIT_VERSION} locally for ${target}. Run scan, plan, compile --dry-run, install, verify, report, explain, diff, and rollback with --json. Do not upload artifacts or enable telemetry.`
+    text: `Use openRender ${OPENRENDER_DEVKIT_VERSION} locally for ${target}. Start with context --json, then compile --dry-run --json and inspect installPlan.files before install. Install refuses overwrites by default; use --force only after confirming manifest/helper replacement is acceptable. Run verify, report, explain, diff, and rollback with --json. Do not upload artifacts or enable telemetry.`
   }));
 }
 

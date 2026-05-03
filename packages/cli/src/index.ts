@@ -76,7 +76,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.6.0";
+const CLI_VERSION = "0.6.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -414,7 +414,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   "media-p4": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.6.0 P4 Media Contracts",
+    title: "openRender 0.6.1 P4 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -494,8 +494,10 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (command === "agent" && subcommand === "init") {
-    const result = await initAgentConfig(parsed);
+  if ((command === "agent" && subcommand === "init") || command === "install-agent") {
+    const result = await initAgentConfig(parsed, {
+      defaultAll: command === "install-agent"
+    });
     if (parsed.flags.get("json") === true) {
       console.log(JSON.stringify(result, null, 2));
     } else {
@@ -522,6 +524,16 @@ async function main(argv: string[]): Promise<number> {
       console.log(JSON.stringify(scan, null, 2));
     } else {
       printScan(scan);
+    }
+    return 0;
+  }
+
+  if (command === "context") {
+    const result = await createAgentContext();
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printAgentContext(result);
     }
     return 0;
   }
@@ -1161,35 +1173,177 @@ async function listJsonFiles(root: string): Promise<string[]> {
   return files.sort();
 }
 
-async function initAgentConfig(parsed: ParsedFlags): Promise<AgentInitCommandResult> {
+async function createAgentContext(): Promise<AgentContextCommandResult> {
   const projectRoot = process.cwd();
-  const selected = [
+  const scan = await scanProject(projectRoot);
+  const latestRun = await readLatestRunSummary(projectRoot);
+  const overwriteRisks: AgentContextCommandResult["overwriteRisks"] = [];
+  if (scan.manifestExists) {
+    overwriteRisks.push({
+      code: "manifest_exists",
+      path: toProjectRelativePath(projectRoot, scan.manifestPath),
+      note: "Generated manifests are replaced from the current compile result, not merged with older entries."
+    });
+  }
+
+  const recommendedNextActions = new Set<string>();
+  if (scan.engine === "unknown") {
+    recommendedNextActions.add("Run openrender init --target <engine> --json after choosing phaser, godot, love2d, pixi, or canvas.");
+  }
+  recommendedNextActions.add("Run openrender compile sprite --dry-run --json and inspect installPlan.files before install.");
+  if (scan.manifestExists) {
+    recommendedNextActions.add("Use --force only after confirming manifest or helper overwrites are acceptable.");
+  }
+  if (latestRun) {
+    recommendedNextActions.add("Run openrender verify --run latest --json and openrender report --run latest --json after install.");
+  } else {
+    recommendedNextActions.add("Run openrender scan --json and doctor --json before the first compile.");
+  }
+
+  return {
+    ok: true,
+    version: CLI_VERSION,
+    projectRoot,
+    packageManager: scan.packageManager,
+    target: {
+      engine: scan.engine,
+      framework: scan.framework
+    },
+    paths: {
+      assetRoot: scan.assetRoot,
+      sourceRoot: scan.sourceRoot,
+      config: toProjectRelativePath(projectRoot, scan.configPath),
+      state: toProjectRelativePath(projectRoot, scan.statePath),
+      manifest: toProjectRelativePath(projectRoot, scan.manifestPath)
+    },
+    exists: {
+      packageJson: scan.packageJsonPath !== null,
+      assetRoot: scan.assetRootExists,
+      sourceRoot: scan.sourceRootExists,
+      config: scan.configExists,
+      state: scan.stateExists,
+      manifest: scan.manifestExists
+    },
+    latestRun,
+    overwriteRisks,
+    recommendedNextActions: [...recommendedNextActions],
+    localOnly: true,
+    capabilities: {
+      account: false,
+      billing: false,
+      cloudApi: false,
+      hostedPlayground: false,
+      modelProviderCalls: false,
+      telemetry: false
+    }
+  };
+}
+
+async function readLatestRunSummary(projectRoot: string): Promise<AgentContextCommandResult["latestRun"]> {
+  try {
+    if (!await pathExists(resolveInsideProject(projectRoot, ".openrender/runs/latest.json"))) return null;
+    const record = await readCompileRecord(projectRoot, "latest");
+    const installResult = await readInstallResultIfAvailable(projectRoot, record.run.runId);
+    return {
+      runId: record.run.runId,
+      createdAt: record.run.createdAt,
+      status: record.run.status,
+      mediaType: record.run.contract.mediaType,
+      assetId: record.run.contract.id,
+      verification: record.run.verification?.status ?? null,
+      installRecorded: installResult !== null
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toProjectRelativePath(projectRoot: string, absoluteOrRelativePath: string): string {
+  if (!path.isAbsolute(absoluteOrRelativePath)) return absoluteOrRelativePath.split(path.sep).join(path.posix.sep);
+  return path.relative(projectRoot, absoluteOrRelativePath).split(path.sep).join(path.posix.sep);
+}
+
+async function initAgentConfig(
+  parsed: ParsedFlags,
+  options: { defaultAll: boolean } = { defaultAll: false }
+): Promise<AgentInitCommandResult> {
+  const projectRoot = process.cwd();
+  const agents = readAgentInstallTargets(parsed, options.defaultAll);
+  const force = parsed.flags.get("force") === true;
+  const dryRun = parsed.flags.get("dry-run") === true;
+  const specs = agents.map((agent) => ({
+    agent,
+    ...createAgentConfigSpec(agent)
+  }));
+
+  if (!dryRun && !force) {
+    for (const spec of specs) {
+      if (await pathExists(resolveInsideProject(projectRoot, spec.relativePath))) {
+        throw new Error(`Refusing to overwrite existing file without --force: ${spec.relativePath}`);
+      }
+    }
+  }
+
+  const files: AgentInstallFilePlan[] = [];
+  for (const spec of specs) {
+    const exists = await pathExists(resolveInsideProject(projectRoot, spec.relativePath));
+    if (!dryRun) {
+      await safeWriteProjectFile({
+        projectRoot,
+        relativePath: spec.relativePath,
+        contents: spec.contents,
+        allowOverwrite: force
+      });
+    }
+    files.push({
+      agent: spec.agent,
+      path: spec.relativePath,
+      exists,
+      action: dryRun
+        ? exists ? "would_overwrite" : "would_create"
+        : exists ? "overwritten" : "created"
+    });
+  }
+
+  return {
+    ok: true,
+    agent: agents.length === 1 ? agents[0]! : "all",
+    path: agents.length === 1 ? specs[0]!.relativePath : "",
+    files,
+    dryRun,
+    overwrittenAllowed: force,
+    nextActions: [
+      "Run openrender context --json to collect the minimal project handoff.",
+      "Run openrender compile sprite --dry-run --json before install and inspect installPlan.files.",
+      "Use --force only after confirming manifest or helper overwrites are acceptable."
+    ]
+  };
+}
+
+function readAgentInstallTargets(parsed: ParsedFlags, defaultAll: boolean): AgentKind[] {
+  const flagTargets = [
     parsed.flags.get("codex") === true ? "codex" : null,
     parsed.flags.get("cursor") === true ? "cursor" : null,
     parsed.flags.get("claude") === true ? "claude" : null
   ].filter((value): value is AgentKind => value !== null);
-  if (selected.length !== 1) throw new Error("Choose exactly one agent target: --codex, --cursor, or --claude.");
+  const platform = parsed.flags.get("platform");
 
-  const agent = selected[0]!;
-  const force = parsed.flags.get("force") === true;
-  const spec = createAgentConfigSpec(agent);
-  await safeWriteProjectFile({
-    projectRoot,
-    relativePath: spec.relativePath,
-    contents: spec.contents,
-    allowOverwrite: force
-  });
+  if (flagTargets.length > 0 && platform !== undefined) {
+    throw new Error("Choose either --platform or one of --codex, --cursor, --claude.");
+  }
 
-  return {
-    ok: true,
-    agent,
-    path: spec.relativePath,
-    overwrittenAllowed: force,
-    nextActions: [
-      "Run openrender scan --json to confirm the project target.",
-      "Use openrender plan sprite before install when an agent proposes asset changes."
-    ]
-  };
+  if (flagTargets.length > 0) return flagTargets;
+  if (typeof platform === "string") {
+    if (platform === "all") return ["codex", "cursor", "claude"];
+    if (isAgentKind(platform)) return [platform];
+    throw new Error("--platform must be codex, cursor, claude, or all.");
+  }
+  if (defaultAll) return ["codex", "cursor", "claude"];
+  throw new Error("Choose an agent target: --codex, --cursor, --claude, or --platform codex|cursor|claude|all.");
+}
+
+function isAgentKind(value: string): value is AgentKind {
+  return value === "codex" || value === "cursor" || value === "claude";
 }
 
 function createAgentConfigSpec(agent: AgentKind): { relativePath: string; contents: string } {
@@ -1198,11 +1352,14 @@ function createAgentConfigSpec(agent: AgentKind): { relativePath: string; conten
 Use openRender as a local-only handoff layer for generated media.
 
 - Read README.md and AGENT_USAGE.md first.
-- Keep docs/ local-only; do not stage it.
-- Prefer JSON commands: scan, plan, compile, install, verify, report, explain, diff, rollback.
-- Use --dry-run before writing project files.
+- Start with openrender context --json to collect the smallest useful project snapshot.
+- Prefer JSON commands: context, scan, doctor, plan, compile, install, verify, report, explain, diff, rollback.
+- Before installing, run openrender compile sprite --dry-run --json and inspect installPlan.files.
+- By default, installs refuse to overwrite destination files. Use --force only after the user accepts manifest/helper overwrites.
+- Generated manifests are written from the current compile result; they are not merged with older manifest entries.
+- Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.6.0: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.6.1: phaser, godot, love2d, pixi, canvas.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
@@ -2354,6 +2511,19 @@ function printScan(scan: ProjectScan): void {
   console.log(`openRender state: ${scan.stateExists ? "initialized" : "missing"}`);
 }
 
+function printAgentContext(result: AgentContextCommandResult): void {
+  console.log("openRender context");
+  console.log("");
+  console.log(`Version: ${result.version}`);
+  console.log(`Project root: ${result.projectRoot}`);
+  console.log(`Package manager: ${result.packageManager}`);
+  console.log(`Target: ${result.target.engine}/${result.target.framework}`);
+  console.log(`Manifest: ${result.exists.manifest ? result.paths.manifest : "missing"}`);
+  console.log(`Latest run: ${result.latestRun ? result.latestRun.runId : "missing"}`);
+  for (const risk of result.overwriteRisks) console.log(`Overwrite risk: ${risk.path} (${risk.code})`);
+  for (const action of result.recommendedNextActions) console.log(`Next: ${action}`);
+}
+
 function printDoctor(result: DoctorResult): void {
   console.log("openRender doctor");
   console.log("");
@@ -2513,10 +2683,11 @@ function printDiffResult(result: DiffCommandResult): void {
 }
 
 function printAgentInitResult(result: AgentInitCommandResult): void {
-  console.log("openRender agent init");
+  console.log("openRender install-agent");
   console.log("");
   console.log(`Agent: ${result.agent}`);
-  console.log(`Config: ${result.path}`);
+  console.log(`Dry run: ${result.dryRun ? "yes" : "no"}`);
+  for (const file of result.files) console.log(`Config: ${file.path} (${file.action})`);
   for (const action of result.nextActions) console.log(`Next: ${action}`);
 }
 
@@ -2527,9 +2698,11 @@ Usage:
   openrender --version
   openrender init [--target phaser|godot|love2d|pixi|canvas] [--framework vite|godot|love2d] [--force] [--json]
   openrender agent init --codex|--cursor|--claude [--force] [--json]
+  openrender install-agent [--platform codex|cursor|claude|all] [--dry-run] [--force] [--json]
   openrender adapter create --name <id> [--force] [--json]
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
+  openrender context [--json]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest|media-p4
   openrender pack list|inspect [packId] [--json]
@@ -2632,10 +2805,69 @@ interface RecipeValidateCommandResult {
 
 type AgentKind = "codex" | "cursor" | "claude";
 
-interface AgentInitCommandResult {
+interface AgentContextCommandResult {
   ok: true;
+  version: string;
+  projectRoot: string;
+  packageManager: ProjectScan["packageManager"];
+  target: {
+    engine: ProjectScan["engine"];
+    framework: ProjectScan["framework"];
+  };
+  paths: {
+    assetRoot: string;
+    sourceRoot: string;
+    config: string;
+    state: string;
+    manifest: string;
+  };
+  exists: {
+    packageJson: boolean;
+    assetRoot: boolean;
+    sourceRoot: boolean;
+    config: boolean;
+    state: boolean;
+    manifest: boolean;
+  };
+  latestRun: {
+    runId: string;
+    createdAt: string;
+    status: CompileSpriteResult["run"]["status"];
+    mediaType: CompileSpriteResult["run"]["contract"]["mediaType"];
+    assetId: string;
+    verification: NonNullable<CompileSpriteResult["run"]["verification"]>["status"] | null;
+    installRecorded: boolean;
+  } | null;
+  overwriteRisks: Array<{
+    code: "manifest_exists";
+    path: string;
+    note: string;
+  }>;
+  recommendedNextActions: string[];
+  localOnly: true;
+  capabilities: {
+    account: false;
+    billing: false;
+    cloudApi: false;
+    hostedPlayground: false;
+    modelProviderCalls: false;
+    telemetry: false;
+  };
+}
+
+interface AgentInstallFilePlan {
   agent: AgentKind;
   path: string;
+  exists: boolean;
+  action: "created" | "overwritten" | "would_create" | "would_overwrite";
+}
+
+interface AgentInitCommandResult {
+  ok: true;
+  agent: AgentKind | "all";
+  path: string;
+  files: AgentInstallFilePlan[];
+  dryRun: boolean;
   overwrittenAllowed: boolean;
   nextActions: string[];
 }

@@ -14,6 +14,7 @@
   </p>
   <p>
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
+    <a href="./docs/LLM-OPTIMIZED-REFERENCE.md">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -35,7 +36,7 @@ openRender es un Developer Kit local-first para agentes de codigo con IA que nec
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-El core actual `0.6.0` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
+El core actual `0.6.1` soporta handoff de imagenes para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
 
 ## Inicio rapido
 
@@ -51,8 +52,16 @@ Desde un proyecto de juego objetivo:
 ```bash
 cd /path/to/game-project
 
+node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
+```
+
+Para instalar instrucciones locales para agentes de codigo, revisa primero el dry-run:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
+node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
 ```
 
 Planifica y ejecuta un dry-run antes de escribir archivos:
@@ -139,10 +148,12 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 
 ## Reglas para agentes
 
-- Ejecuta `scan --json` antes de asumir el tipo de proyecto.
+- Ejecuta `context --json` antes de leer ampliamente o asumir el tipo de proyecto.
 - Ejecuta `doctor --json` antes de escribir en un proyecto desconocido.
 - Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
+- Inspecciona `installPlan.files` antes de instalar.
 - No pases `--force` salvo que el usuario acepte sobrescribir archivos de destino.
+- Trata los manifests generados como archivos escritos desde el resultado actual de compile, no como merges automaticos con entradas anteriores.
 - Despues de instalar, ejecuta `verify --run latest --json`.
 - Usa `rollback --run latest --json` solo para la instalacion de openRender.
 
