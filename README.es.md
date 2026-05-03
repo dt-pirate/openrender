@@ -13,6 +13,7 @@
     <a href="./README.es.md">Español</a>
   </p>
   <p>
+    <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
     <a href="./docs/LLM-OPTIMIZED-REFERENCE.md">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
@@ -187,6 +188,25 @@ schemas                    JSON schemas for contracts, outputs, reports, install
 fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
+
+## Despliegue de Docs
+
+La URL publica canonica de la documentacion es este alias fijo de production en Vercel:
+
+```text
+https://docs-gamma-orcin.vercel.app
+```
+
+Usa este alias de production de Vercel en README de GitHub, release notes, issues y referencias para usuarios. Vercel tambien crea una URL unica por despliegue, como `https://docs-<hash>-stelify87s-projects.vercel.app`; trata esas URLs como artefactos de inspeccion del despliegue, no como links estables de documentacion.
+
+Despliega la documentacion de production desde la raiz del repositorio:
+
+```bash
+vercel deploy docs --prod -y
+vercel inspect <deployment-url>
+```
+
+Despues del despliegue, confirma que los aliases incluyan `https://docs-gamma-orcin.vercel.app`. GitHub Pages es solo un mirror opcional. Si hace falta, habilita Pages en repository settings con source `GitHub Actions`; no uses la URL de GitHub Pages como URL canonica de docs.
 
 ## Desarrollo
 

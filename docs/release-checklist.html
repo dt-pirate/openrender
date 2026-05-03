@@ -54,6 +54,16 @@
           <li>Schemas, plan, explain, diff, compact output, wire-map, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.</li>
           <li>README, scope, CLI, and limitation docs mention Phaser, Godot, LOVE2D, PixiJS, and Canvas support.</li>
           <li>No docs imply required accounts, billing, telemetry, model calls, or cloud orchestration for local core use.</li>
+          <li>GitHub-facing docs link to the canonical Vercel production docs URL: https://docs-gamma-orcin.vercel.app.</li>
+          <li>GitHub-facing docs do not use per-deployment Vercel URLs as stable links.</li>
+        </ul>
+
+        <h2 id="docs-deployment">Docs Deployment</h2>
+        <ul>
+          <li>Run <code>vercel deploy docs --prod -y</code> from the repository root.</li>
+          <li>Run <code>vercel inspect &lt;deployment-url&gt;</code> and confirm the aliases include <code>https://docs-gamma-orcin.vercel.app</code>.</li>
+          <li>Treat <code>https://docs-&lt;hash&gt;-stelify87s-projects.vercel.app</code> URLs as inspection artifacts only.</li>
+          <li>Treat GitHub Pages as an optional mirror. If needed, enable Pages with source <code>GitHub Actions</code> in repository settings.</li>
         </ul>
 
         <h2 id="verify">Local Verification</h2>

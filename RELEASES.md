@@ -17,6 +17,7 @@ Release dates are intentionally omitted until the repository starts publishing t
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
 | Release channel | Local source build |
+| Public docs | `https://docs-gamma-orcin.vercel.app` |
 
 ## 0.7.0 Agent Token Saver
 
@@ -103,12 +104,15 @@ Before publishing a tagged release:
 - `pnpm typecheck` passes.
 - `pnpm test` passes.
 - README language links resolve.
+- GitHub-facing docs use `https://docs-gamma-orcin.vercel.app` as the canonical public docs URL.
+- Per-deployment Vercel URLs are not used as stable links in README, release notes, or issue templates.
 - Agent-facing JSON workflows remain local-first and do not require account, billing, telemetry, cloud sync, or hosted execution.
 - Release notes describe implemented behavior only.
 
 ## Related Documents
 
 - [README](./README.md)
+- [Public Docs](https://docs-gamma-orcin.vercel.app)
 - [Roadmap](./ROADMAP.md)
 - [Agent Usage](./AGENT_USAGE.md)
 - [Adapter Authoring](./ADAPTER_AUTHORING.md)

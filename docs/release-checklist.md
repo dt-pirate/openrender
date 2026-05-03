@@ -11,6 +11,15 @@ Checks for the current local Developer Kit surface.
 - [ ] Schemas, plan, explain, diff, compact output, wire-map, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.
 - [ ] README, scope, CLI, and limitation docs mention Phaser, Godot, LOVE2D, PixiJS, and Canvas support.
 - [ ] No docs imply required accounts, billing, telemetry, model calls, or cloud orchestration for local core use.
+- [ ] GitHub-facing docs link to the canonical Vercel production docs URL: `https://docs-gamma-orcin.vercel.app`.
+- [ ] GitHub-facing docs do not use per-deployment Vercel URLs as stable links.
+
+## Docs Deployment
+
+- [ ] Run `vercel deploy docs --prod -y` from the repository root.
+- [ ] Run `vercel inspect <deployment-url>` and confirm the aliases include `https://docs-gamma-orcin.vercel.app`.
+- [ ] Treat `https://docs-<hash>-stelify87s-projects.vercel.app` URLs as inspection artifacts only.
+- [ ] Treat GitHub Pages as an optional mirror. If needed, enable Pages with source `GitHub Actions` in repository settings.
 
 ## Local Verification
 

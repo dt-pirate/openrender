@@ -33,6 +33,20 @@ pnpm test
 
 Do not add cloud, billing, auth, or provider integration code to these Developer Kit packages.
 
+## Docs Deployment Rules
+
+The canonical public docs URL is the Vercel production alias:
+
+```text
+https://docs-gamma-orcin.vercel.app
+```
+
+- Use the canonical Vercel alias in GitHub README files, release notes, issues, and user-facing references.
+- Do not replace it with a per-deployment Vercel URL such as `https://docs-<hash>-stelify87s-projects.vercel.app`.
+- Deploy production docs from the repository root with `vercel deploy docs --prod -y`.
+- After deployment, run `vercel inspect <deployment-url>` and confirm `https://docs-gamma-orcin.vercel.app` appears in the alias list.
+- Treat GitHub Pages as an optional mirror. It requires repository settings to enable Pages with source `GitHub Actions`, and it should not become the canonical docs URL.
+
 ## Agent-Facing CLI Rules
 
 When changing CLI behavior, preserve these agent contracts:
