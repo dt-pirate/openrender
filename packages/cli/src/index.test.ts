@@ -6,11 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { test } from "node:test";
+import { loadImageMetadata } from "@openrender/harness-visual";
 
 const execFileAsync = promisify(execFile);
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(currentDir, "index.js");
 const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+const transparentBorderPng = "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFUlEQVR4nGNgIAT+MzD8B2HiJdABAI7jB/l+kPXlAAAAAElFTkSuQmCC";
 
 test("version prints the npm package version", async () => {
   const { stdout } = await execFileAsync(process.execPath, [
@@ -912,6 +914,60 @@ test("compile sprite can install, verify, report, and rollback a LOVE2D run", as
   ]);
   assert.equal(await fileExists(path.join(root, "assets/openrender/prop-dot.png")), false);
   assert.equal(await fileExists(path.join(root, "openrender/openrender_assets.lua")), false);
+});
+
+test("compile sprite writes cropped transparent sprite dimensions into LOVE2D manifest", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-love2d-cropped-manifest-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(transparentBorderPng, "base64"));
+  await fs.writeFile(path.join(root, "main.lua"), "function love.draw() end\n", "utf8");
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "love2d",
+    "--id",
+    "prop.trimmed",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const compileResult = JSON.parse(stdout) as {
+    contract: { visual: { outputWidth: number; outputHeight: number } };
+    artifact: { metadata: { width: number; height: number } };
+    outputPlan: { assetPath: string };
+  };
+  const manifest = await fs.readFile(path.join(root, "openrender/openrender_assets.lua"), "utf8");
+  const latestRun = JSON.parse(await fs.readFile(path.join(root, ".openrender/runs/latest.json"), "utf8")) as {
+    contract: { visual: { outputWidth: number; outputHeight: number } };
+  };
+  const installedMetadata = await loadImageMetadata(path.join(root, compileResult.outputPlan.assetPath));
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string; message?: string }>;
+  };
+  const dimensionCheck = verifyResult.checks.find((check) => check.name === "installed_asset_dimensions");
+
+  assert.equal(compileResult.artifact.metadata.width, 2);
+  assert.equal(compileResult.artifact.metadata.height, 2);
+  assert.equal(compileResult.contract.visual.outputWidth, 2);
+  assert.equal(compileResult.contract.visual.outputHeight, 2);
+  assert.equal(latestRun.contract.visual.outputWidth, 2);
+  assert.equal(latestRun.contract.visual.outputHeight, 2);
+  assert.equal(installedMetadata.width, 2);
+  assert.equal(installedMetadata.height, 2);
+  assert.match(manifest, /width = 2/);
+  assert.match(manifest, /height = 2/);
+  assert.equal(verifyResult.status, "passed");
+  assert.equal(dimensionCheck?.status, "passed");
+  assert.equal(dimensionCheck?.message, "2x2");
 });
 
 test("install rejects malformed run records", async () => {

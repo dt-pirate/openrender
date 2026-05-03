@@ -1620,10 +1620,10 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     };
   }
 
-  const descriptor = createEngineAssetDescriptor(contract);
+  let descriptor = createEngineAssetDescriptor(contract);
   const run = createInitialRun({ id, mediaType: contract.mediaType });
   const artifactPath = path.posix.join(".openrender", "artifacts", run.runId, path.posix.basename(descriptor.assetPath));
-  const installPlan = createEngineInstallPlan({
+  let installPlan = createEngineInstallPlan({
     contract,
     compiledAssetPath: artifactPath,
     frameSlices
@@ -1669,6 +1669,13 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         outputPath: absoluteArtifactPath,
         padding,
         outputSize
+      });
+      contract = materializeTransparentSpriteArtifactDimensions(contract, artifact.metadata);
+      descriptor = createEngineAssetDescriptor(contract);
+      installPlan = createEngineInstallPlan({
+        contract,
+        compiledAssetPath: artifactPath,
+        frameSlices
       });
     }
 
@@ -1729,6 +1736,28 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   }
 
   return result;
+}
+
+function materializeTransparentSpriteArtifactDimensions(
+  contract: SpriteCompileContract,
+  artifactMetadata: ImageMetadata
+): SpriteCompileContract {
+  if (contract.mediaType !== "visual.transparent_sprite") return contract;
+  if (
+    contract.visual.outputWidth === artifactMetadata.width &&
+    contract.visual.outputHeight === artifactMetadata.height
+  ) {
+    return contract;
+  }
+
+  return {
+    ...contract,
+    visual: {
+      ...contract.visual,
+      outputWidth: artifactMetadata.width,
+      outputHeight: artifactMetadata.height
+    }
+  };
 }
 
 async function writeCompileRecord(projectRoot: string, result: CompileSpriteResult, allowOverwrite = false): Promise<void> {
