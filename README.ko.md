@@ -51,7 +51,7 @@ pnpm build
 에이전트 중심으로 사용할 때는 프로젝트에 openRender를 설치한 뒤, 코딩 에이전트에게 openRender를 사용하라고 말하면 됩니다. 정확한 openRender 명령 선택은 로컬 지침과 레퍼런스를 읽은 에이전트가 처리합니다.
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 

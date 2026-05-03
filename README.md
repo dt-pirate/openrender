@@ -33,7 +33,7 @@
 
 ## What Is openRender?
 
-openRender is a local-first Developer Kit for AI coding agents that need to place generated game art into real projects.
+openRender is a local-first Developer Kit for AI coding agents that need to place generated game assets into real projects.
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
@@ -51,7 +51,7 @@ pnpm build
 For agent-led use, install openRender for the project and then tell your coding agent to use it. The agent can choose the exact openRender commands from the local instructions and references.
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 

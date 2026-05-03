@@ -5,7 +5,7 @@ Use openRender as a local-first handoff layer for generated media.
 When a human is working through an AI coding agent, the user-facing request can stay simple:
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 

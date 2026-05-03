@@ -33,7 +33,7 @@
 
 ## 什么是 openRender？
 
-openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生成式游戏美术安全地放入真实项目。
+openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生成式游戏资源安全地放入真实项目。
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
@@ -51,7 +51,7 @@ pnpm build
 以代理为中心使用时，先为项目安装 openRender，然后告诉编码代理使用 openRender。代理可以根据本地指令和参考资料选择准确的 openRender 命令。
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 

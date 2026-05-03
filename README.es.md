@@ -33,7 +33,7 @@
 
 ## Que es openRender?
 
-openRender es un Developer Kit local-first para agentes de codigo con IA que necesitan colocar arte de juego generado dentro de proyectos reales.
+openRender es un Developer Kit local-first para agentes de codigo con IA que necesitan colocar assets de juego generados dentro de proyectos reales.
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
@@ -51,7 +51,7 @@ pnpm build
 Para un uso guiado por agentes, instala openRender para el proyecto y luego dile al agente de codigo que lo use. El agente puede elegir los comandos exactos de openRender desde las instrucciones y referencias locales.
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 

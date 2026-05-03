@@ -33,7 +33,7 @@
 
 ## openRender とは？
 
-openRender は、AI コーディングエージェントが生成済みゲームアートを実際のゲームプロジェクトへ安全に配置するためのローカルファースト Developer Kit です。
+openRender は、AI コーディングエージェントが生成済みゲームアセットを実際のゲームプロジェクトへ安全に配置するためのローカルファースト Developer Kit です。
 
 画像生成器はピクセルを作ります。しかしゲームプロジェクトには、安定したパス、フレームメタデータ、manifest、補助コード、プレビュー、レポート、そしてインストールを戻せる境界が必要です。openRender はこのハンドオフ層を提供し、エージェントの推測を減らし、プロジェクト状態をレビュー可能に保ちます。
 
@@ -51,7 +51,7 @@ pnpm build
 エージェント主導で使う場合は、プロジェクトに openRender をインストールしてから、コーディングエージェントに openRender を使うよう伝えます。エージェントはローカル指示とリファレンスから正確な openRender コマンドを選べます。
 
 ```text
-Install openRender for this project, then use it to add the generated game art to the game.
+Install openRender for this project, then use it to add the generated game asset to the game.
 Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
