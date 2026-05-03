@@ -47,6 +47,15 @@ pnpm install
 pnpm build
 ```
 
+Para un uso guiado por agentes, empieza pidiendo la tarea al agente de codigo en lenguaje natural. El agente debe encontrar la imagen generada correcta, inspeccionar el proyecto y elegir los comandos seguros de openRender segun el contexto.
+
+```text
+Encuentra la imagen sprite generada en este proyecto y usa openRender para instalarla con seguridad.
+Detecta el motor, planifica y ejecuta primero un dry-run; instala solo si el plan es valido, verifica el resultado y devuelve las rutas generadas, el reporte, la preview y el comando rollback.
+```
+
+La secuencia CLI siguiente sirve para verificacion del agente y referencia manual.
+
 Desde un proyecto de juego objetivo:
 
 ```bash

@@ -1069,9 +1069,11 @@
     }
 
     .board-command pre {
+      display: flex;
+      align-items: center;
       margin: 0;
-      min-height: 56px;
-      padding: 0 64px 0 24px;
+      min-height: 92px;
+      padding: 16px 64px 16px 24px;
       border: 0;
       border-radius: 18px;
       background: #f0f0ef;
@@ -1083,10 +1085,18 @@
       font-family:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
         "Liberation Mono", monospace;
-      font-size: clamp(13px, 1.05vw, 16px);
-      line-height: 56px;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+      font-size: clamp(12px, 0.92vw, 14px);
+      line-height: 1.55;
+      white-space: pre-wrap;
+      text-overflow: clip;
+    }
+
+    .board-command pre code {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
     }
 
     .board-command pre::before {
@@ -1842,11 +1852,11 @@
       }
 
       .board-command pre {
-        min-height: 48px;
-        padding: 0 46px 0 16px;
-        font-size: 13px;
-        line-height: 48px;
-        white-space: nowrap;
+        min-height: 86px;
+        padding: 14px 46px 14px 16px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        white-space: pre-wrap;
       }
 
       .board-command .copy-button {
@@ -1986,12 +1996,13 @@
           </div>
 
           <div class="board-command">
-            <pre id="hero-command" translate="no">openrender compile sprite --from source.png --install --json</pre>
+            <pre id="hero-command"><code class="language-text">Find the generated sprite image in this project and use openRender to install it safely.
+Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.</code></pre>
             <button
               class="copy-button"
               type="button"
               data-copy-target="hero-command"
-              aria-label="Copy command"
+              aria-label="Copy agent prompt"
               aria-live="polite"
               aria-atomic="true"
             >Copy</button>

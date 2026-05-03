@@ -1819,8 +1819,11 @@
       ko: "로컬 이미지 파일\n-> 프로젝트 스캔\n-> 미디어 계약\n-> 결정적 PNG 산출물\n-> 프로젝트 설치 계획\n-> 스냅샷이 포함된 로컬 파일\n-> 검증과 리포트\n-> 에이전트가 생성된 경로/헬퍼 사용\n-> 롤백은 계속 사용 가능",
       es: "archivo de imagen local\n-> escaneo del proyecto\n-> contrato de medios\n-> artefacto PNG determinístico\n-> plan de instalación del proyecto\n-> archivos locales con instantáneas\n-> verificar y reportar\n-> el agente usa rutas/helpers generados\n-> rollback sigue disponible"
     },
-    "Use openRender to convert tmp/slime_idle_strip.png into an engine-ready sprite asset.\nDetect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse recipe context instead of spending tokens on repeated handoff reasoning.": {
-      ko: "openRender를 사용해 tmp/slime_idle_strip.png를 엔진에서 바로 쓸 수 있는 스프라이트 애셋으로 변환하세요.\n프로젝트가 Phaser, Godot, LOVE2D 중 무엇인지 감지하고, 코어 레시피 메타데이터를 확인하고, 구조가 불명확하면 detect-frames를 실행하고, 먼저 계획과 드라이런을 수행하세요. 계획이 유효할 때만 설치하고, 생성된 파일을 검증하고, 최종 답변에 로컬 리포트와 프레임 미리보기 경로를 남기며, 반복적인 인계 추론에 토큰을 쓰지 말고 레시피 맥락을 재사용하세요."
+    "Find the generated sprite image in this project and use openRender to install it safely. Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.": {
+      zh: "在这个项目中找到生成的 sprite 图片，并使用 openRender 安全安装它。\n先检测引擎，制定计划并执行 dry-run；只有计划有效时才安装，随后验证结果，并返回生成路径、报告、预览和 rollback 命令。",
+      ja: "このプロジェクト内の生成済み sprite 画像を見つけ、openRender で安全にインストールしてください。\n先にエンジンを検出し、計画と dry-run を実行します。計画が有効な場合だけインストールし、結果を検証して、生成されたパス、レポート、プレビュー、rollback コマンドを返してください。",
+      ko: "이 프로젝트에서 생성된 sprite 이미지를 찾아 openRender로 안전하게 설치하세요.\n먼저 엔진을 감지하고 계획과 dry-run을 실행하세요. 계획이 유효할 때만 설치하고, 결과를 검증한 뒤 생성된 경로, 리포트, 미리보기, rollback 명령을 반환하세요.",
+      es: "Encuentra la imagen sprite generada en este proyecto y usa openRender para instalarla con seguridad.\nDetecta el motor, planifica y ejecuta primero un dry-run; instala solo si el plan es válido, verifica el resultado y devuelve las rutas generadas, el reporte, la preview y el comando rollback."
     }
   };
 

@@ -47,6 +47,15 @@ pnpm install
 pnpm build
 ```
 
+For agent-led use, start by asking your coding agent in natural language. The agent should find the right generated image, inspect the project, and choose the safe openRender commands from context.
+
+```text
+Find the generated sprite image in this project and use openRender to install it safely.
+Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.
+```
+
+The exact CLI sequence below is for agent verification and manual reference.
+
 From a target game project:
 
 ```bash

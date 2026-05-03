@@ -31,6 +31,6 @@ openRender reduces repeated token-heavy handoff work. Agents should prefer compa
 ## Agent Prompt Example
 
 ```text
-Use openRender to convert tmp/slime_idle_strip.png into an engine-ready sprite asset.
-Start with openrender context --json --compact and openrender context --json --wire-map, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse compact output instead of spending tokens on repeated handoff reasoning.
+Find the generated sprite image in this project and use openRender to install it safely.
+Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.
 ```
