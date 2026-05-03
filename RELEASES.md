@@ -2,9 +2,7 @@
 
 Last updated: 2026-05-03
 
-This page tracks the implemented openRender Developer Kit surface and the documented version milestones.
-
-Release dates are intentionally omitted until the repository starts publishing tagged GitHub releases.
+This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
 
 ## Current Version
 
@@ -16,7 +14,9 @@ Release dates are intentionally omitted until the repository starts publishing t
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | Local source build |
+| Release channel | GitHub release `v0.7.1` |
+| Release date | 2026-05-03 |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.1` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
 ## 0.7.1 Agent Asset Readiness

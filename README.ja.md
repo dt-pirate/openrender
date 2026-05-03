@@ -23,6 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.1"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
