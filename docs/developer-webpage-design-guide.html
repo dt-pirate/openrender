@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -46,32 +46,31 @@
 
       <div class="doc-content">
         <h2 id="positioning">Positioning</h2>
-        <p>The webpage should introduce openRender as local infrastructure for AI agents that turn generated media into engine-ready playable project files while reducing repeated token-heavy handoff work. It should explain the local handoff loop, recipe/pack strategy, and long-term media-to-engine vision before listing current engine support.</p>
+        <p>The webpage should introduce openRender as local infrastructure for AI agents that turn generated media into engine-ready project files while reducing repeated token-heavy handoff work. It should explain the local handoff loop, compact JSON output, read-only wire maps, reports, rollback, and current engine support.</p>
 
         <h2 id="current-truth">Current Truth</h2>
         <ul>
-          <li>Source of truth: <code>README.md</code> and <code>docs/openRender_v0.6.1.md</code>.</li>
-          <li>Reference direction: <code>0.3.1</code>.</li>
-          <li>Implemented local compiler core: <code>0.6.1</code>.</li>
+          <li>Source of truth: <code>README.md</code> and <code>docs/openRender_v0.7.0.md</code>.</li>
+          <li>Active reference: <code>docs/openRender_v0.7.0.md</code>.</li>
+          <li>Implemented local compiler core: <code>0.6.1</code>; current documentation baseline: <code>0.7.0 Agent Token Saver</code>.</li>
           <li>Supported engines: Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and Canvas + Vite.</li>
-          <li>Supported media: image assets only.</li>
-          <li>Current agent surfaces: context, schemas, plan, detect-frames, normalize, install-agent, explain, diff, frame preview sheets, built-in core pack, recipe metadata, and local MCP metadata.</li>
-          <li>Monetization principle: local compile remains free; paid value comes from recipe packs, agent packs, update access, support, hosted workers, and OEM/platform licensing.</li>
+          <li>Supported media: sprite image handoff, plus P4 metadata contracts for audio, atlas/tileset, and UI assets.</li>
+          <li>Current agent surfaces: context, context --compact, context --wire-map, schemas, plan, detect-frames, normalize, install-agent, verify --compact, report --compact, explain --compact, diff --compact, frame preview sheets, built-in core pack, recipe metadata, and local MCP metadata.</li>
           <li>Local core boundary: no metered local compile, credit wallet, required hosted playground, model resale, telemetry, cloud orchestration, account, billing, or model provider call in the Developer Kit path.</li>
         </ul>
 
         <h2 id="page-style">Page Style</h2>
-        <p>Keep the page simple, white, spacious, and developer-tool focused. Use a high-quality wordmark, one clear command surface, and concise sections. Mention pack strategy as direction, not as active pricing or enforcement.</p>
+        <p>Keep the page simple, white, spacious, and developer-tool focused. Use a high-quality wordmark, one clear command surface, and concise sections. Keep the copy focused on implemented local workflow behavior.</p>
 
         <h2 id="content-order">Recommended Content Order</h2>
         <ol>
           <li>What openRender is.</li>
           <li>Why generated media is hard to use directly in game engines.</li>
           <li>How the local compiler handoff works.</li>
-          <li>How recipes and packs reduce repeated agent context.</li>
+          <li>How compact JSON and wire maps reduce repeated agent context.</li>
           <li>What agents get back: files, helpers, JSON, reports, rollback.</li>
-          <li>Current engine support: Phaser, Godot 4, and LOVE2D.</li>
-          <li>Vision: a broader media-to-engine infrastructure layer.</li>
+          <li>Current engine support: Phaser, Godot 4, LOVE2D, PixiJS, and Canvas.</li>
+          <li>Current local core boundaries.</li>
         </ol>
 
       </div>

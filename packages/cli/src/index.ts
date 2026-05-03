@@ -47,6 +47,7 @@ import {
   validateOpenRenderRun,
   type MediaContract,
   type OpenRenderAdapter,
+  type OpenRenderRun,
   type ProjectScan,
   type SpriteFrameSetContract,
   type TransparentSpriteContract,
@@ -94,6 +95,12 @@ type EngineInstallPlan =
 
 type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
 type SpriteAdapter = OpenRenderAdapter<EngineAssetDescriptor, EngineInstallPlan>;
+type CompactTableCell = string | number | boolean | null;
+
+interface CompactTable {
+  columns: string[];
+  rows: CompactTableCell[][];
+}
 
 const SPRITE_ADAPTER_REGISTRY: Record<TargetEngine, SpriteAdapter> = {
   phaser: {
@@ -529,9 +536,11 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (command === "context") {
-    const result = await createAgentContext();
+    const result = await createAgentContext({
+      includeWireMap: parsed.flags.get("wire-map") === true
+    });
     if (parsed.flags.get("json") === true) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactAgentContext(result) : result, null, 2));
     } else {
       printAgentContext(result);
     }
@@ -683,7 +692,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === "verify") {
     const result = await verifyRun(parsed);
     if (parsed.flags.get("json") === true) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactVerifyResult(result) : result, null, 2));
     } else {
       printVerifyResult(result);
     }
@@ -705,7 +714,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === "report") {
     const result = await writeReport(parsed);
     if (parsed.flags.get("json") === true) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactReportResult(result) : result, null, 2));
     } else {
       printReportResult(result);
     }
@@ -715,7 +724,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === "explain") {
     const result = await explainRun(parsed);
     if (parsed.flags.get("json") === true) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactExplainResult(result) : result, null, 2));
     } else {
       printExplainResult(result);
     }
@@ -725,7 +734,7 @@ async function main(argv: string[]): Promise<number> {
   if (command === "diff") {
     const result = await diffRun(parsed);
     if (parsed.flags.get("json") === true) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactDiffResult(result) : result, null, 2));
     } else {
       printDiffResult(result);
     }
@@ -1068,6 +1077,128 @@ async function diffRun(parsed: ParsedFlags): Promise<DiffCommandResult> {
   };
 }
 
+function compactAgentContext(result: AgentContextCommandResult): CompactAgentContextResult {
+  return {
+    ok: true,
+    version: result.version,
+    target: result.target,
+    paths: {
+      assetRoot: result.paths.assetRoot,
+      sourceRoot: result.paths.sourceRoot,
+      manifest: result.paths.manifest
+    },
+    latestRun: result.latestRun,
+    tables: {
+      overwriteRisks: {
+        columns: ["code", "path", "note"],
+        rows: result.overwriteRisks.map((risk) => [risk.code, risk.path, risk.note])
+      }
+    },
+    nextActions: result.recommendedNextActions,
+    localOnly: result.localOnly,
+    capabilities: result.capabilities,
+    ...(result.wireMap ? { wireMap: result.wireMap } : {})
+  };
+}
+
+function compactVerifyResult(result: VerifyCommandResult): CompactVerifyCommandResult {
+  const failedChecks = result.checks.filter((check) => check.status === "failed");
+  return {
+    ok: result.status === "passed",
+    runId: result.runId,
+    status: result.status,
+    summary: {
+      checks: result.checks.length,
+      failed: failedChecks.length
+    },
+    tables: {
+      checks: createVerificationCheckTable(result.checks)
+    },
+    nextActions: failedChecks.length > 0
+      ? failedChecks.map((check) => `Inspect ${check.name}${check.path ? ` at ${check.path}` : ""}.`)
+      : ["Run openrender report --run latest --json --compact before wiring game code."]
+  };
+}
+
+function compactReportResult(result: ReportCommandResult): CompactReportCommandResult {
+  return {
+    ok: true,
+    runId: result.runId,
+    status: result.status,
+    agentSummary: result.agentSummary,
+    reportPath: result.htmlPath,
+    previewPath: result.previewHtmlPath,
+    rollbackCommand: result.rollbackCommand,
+    tables: {
+      outputs: {
+        columns: ["kind", "path"],
+        rows: [
+          ["html", result.htmlPath],
+          ["json", result.jsonPath],
+          ["preview", result.previewHtmlPath],
+          ...(result.framePreviewPath ? [["framePreview", result.framePreviewPath] as CompactTableCell[]] : [])
+        ]
+      }
+    },
+    nextActions: result.nextActions
+  };
+}
+
+function compactExplainResult(result: ExplainCommandResult): CompactExplainCommandResult {
+  return {
+    ok: result.ok,
+    runId: result.runId,
+    agentSummary: result.agentSummary,
+    tables: {
+      nextActions: {
+        columns: ["index", "action"],
+        rows: result.nextActions.map((action, index) => [index + 1, action])
+      }
+    }
+  };
+}
+
+function compactDiffResult(result: DiffCommandResult): CompactDiffCommandResult {
+  const rows = [
+    ...result.filesPlanned.map((file) => ["planned", file] as CompactTableCell[]),
+    ...result.filesCreated.map((file) => ["created", file] as CompactTableCell[]),
+    ...result.filesModified.map((file) => ["modified", file] as CompactTableCell[]),
+    ...result.helperCodeGenerated.map((file) => ["helper", file] as CompactTableCell[])
+  ];
+
+  return {
+    ok: true,
+    runId: result.runId,
+    summary: {
+      planned: result.filesPlanned.length,
+      created: result.filesCreated.length,
+      modified: result.filesModified.length,
+      helperCodeGenerated: result.helperCodeGenerated.length,
+      rollbackAvailable: result.rollbackCommand !== null
+    },
+    tables: {
+      files: {
+        columns: ["category", "path"],
+        rows
+      }
+    },
+    snapshotPath: result.snapshotPath,
+    rollbackCommand: result.rollbackCommand
+  };
+}
+
+function createVerificationCheckTable(checks: VerifyCommandResult["checks"]): CompactTable {
+  return {
+    columns: ["name", "status", "path", "message"],
+    rows: checks.map((check) => [
+      check.name,
+      check.status,
+      check.path ?? null,
+      check.message ?? null
+    ])
+  };
+}
+
 function cloneParsedFlags(parsed: ParsedFlags): ParsedFlags {
   return {
     flags: new Map(parsed.flags),
@@ -1173,7 +1304,7 @@ async function listJsonFiles(root: string): Promise<string[]> {
   return files.sort();
 }
 
-async function createAgentContext(): Promise<AgentContextCommandResult> {
+async function createAgentContext(options: { includeWireMap?: boolean } = {}): Promise<AgentContextCommandResult> {
   const projectRoot = process.cwd();
   const scan = await scanProject(projectRoot);
   const latestRun = await readLatestRunSummary(projectRoot);
@@ -1235,7 +1366,8 @@ async function createAgentContext(): Promise<AgentContextCommandResult> {
       hostedPlayground: false,
       modelProviderCalls: false,
       telemetry: false
-    }
+    },
+    ...(options.includeWireMap ? { wireMap: await createWireMap(scan) } : {})
   };
 }
 
@@ -1256,6 +1388,198 @@ async function readLatestRunSummary(projectRoot: string): Promise<AgentContextCo
   } catch {
     return null;
   }
+}
+
+async function createWireMap(scan: ProjectScan): Promise<WireMapResult> {
+  const projectRoot = scan.projectRoot;
+  const candidates: WireMapResult["candidates"] = [];
+  const notes: string[] = ["Read-only scan; openRender does not patch game code."];
+
+  if (scan.engine === "phaser") {
+    const files = await listProjectTextFiles(projectRoot, ["src"], [".ts", ".tsx", ".js", ".jsx"]);
+    for (const file of files) {
+      const contents = await readSmallTextFile(resolveInsideProject(projectRoot, file));
+      const signals = collectSignals(contents, [
+        ["phaser_scene", /extends\s+Phaser\.Scene|new\s+Phaser\.Scene/],
+        ["preload", /\bpreload\s*\(/],
+        ["create", /\bcreate\s*\(/],
+        ["game_config", /new\s+Phaser\.Game|type\s*:\s*Phaser/]
+      ]);
+      if (signals.length > 0) {
+        candidates.push({
+          file,
+          kind: signals.includes("phaser_scene") ? "scene" : "entry",
+          signals,
+          suggestedAction: signals.includes("preload") || signals.includes("create")
+            ? "Wire generated preload/register helpers near the detected scene methods."
+            : "Inspect this Phaser entry point before wiring generated helpers."
+        });
+      }
+    }
+  } else if (scan.engine === "godot") {
+    if (await pathExists(path.join(projectRoot, "project.godot"))) {
+      candidates.push({
+        file: "project.godot",
+        kind: "config",
+        signals: ["godot_project"],
+        suggestedAction: "Use generated res:// asset paths from openRender helpers."
+      });
+    }
+    const files = await listProjectTextFiles(projectRoot, ["scripts", "scenes"], [".gd", ".tscn"]);
+    for (const file of files) {
+      const contents = await readSmallTextFile(resolveInsideProject(projectRoot, file));
+      const signals = collectSignals(contents, [
+        ["godot_script", /extends\s+\w+|class_name\s+\w+/],
+        ["ready", /func\s+_ready\s*\(/],
+        ["process", /func\s+_process\s*\(/],
+        ["scene", /\[node|\[gd_scene/],
+        ["sprite_node", /Sprite2D|AnimatedSprite2D|SpriteFrames/]
+      ]);
+      if (signals.length > 0) {
+        candidates.push({
+          file,
+          kind: file.endsWith(".tscn") ? "scene" : "script",
+          signals,
+          suggestedAction: "Connect generated GDScript helpers from scripts/openrender without creating .import files."
+        });
+      }
+    }
+  } else if (scan.engine === "love2d") {
+    const files = await listProjectTextFiles(projectRoot, ["."], [".lua"]);
+    for (const file of files) {
+      const contents = await readSmallTextFile(resolveInsideProject(projectRoot, file));
+      const signals = collectSignals(contents, [
+        ["love_load", /function\s+love\.load\s*\(/],
+        ["love_draw", /function\s+love\.draw\s*\(/],
+        ["love_update", /function\s+love\.update\s*\(/],
+        ["require", /\brequire\s*\(/],
+        ["love_config", /function\s+love\.conf\s*\(/]
+      ]);
+      if (signals.length > 0 || file === "main.lua" || file === "conf.lua") {
+        candidates.push({
+          file,
+          kind: file === "conf.lua" ? "config" : "entry",
+          signals: signals.length > 0 ? signals : ["love2d_entry"],
+          suggestedAction: "Require generated Lua helpers from openrender/ and load images in the LOVE2D lifecycle."
+        });
+      }
+    }
+  } else if (scan.engine === "pixi" || scan.engine === "canvas") {
+    const files = await listProjectTextFiles(projectRoot, ["src"], [".ts", ".tsx", ".js", ".jsx"]);
+    for (const file of files) {
+      const contents = await readSmallTextFile(resolveInsideProject(projectRoot, file));
+      const pixiSignals = collectSignals(contents, [
+        ["pixi_application", /new\s+Application|Application\.init|PIXI/],
+        ["pixi_assets", /Assets\.load|AnimatedSprite|Sprite\.from/]
+      ]);
+      const canvasSignals = collectSignals(contents, [
+        ["canvas_context", /getContext\s*\(\s*["']2d["']|HTMLCanvasElement/],
+        ["draw_loop", /requestAnimationFrame|\bdraw\s*\(|\brender\s*\(/],
+        ["image_load", /new\s+Image|createImageBitmap/]
+      ]);
+      const signals = scan.engine === "pixi" ? pixiSignals : canvasSignals;
+      if (signals.length > 0) {
+        candidates.push({
+          file,
+          kind: "entry",
+          signals,
+          suggestedAction: scan.engine === "pixi"
+            ? "Use generated Pixi helper paths near the application asset load path."
+            : "Use generated Canvas helper paths near image load or draw functions."
+        });
+      }
+    }
+  } else {
+    notes.push("Target engine is unknown; run openrender scan --json or init with an explicit target first.");
+  }
+
+  if (candidates.length === 0) {
+    notes.push("No obvious wiring location found; inspect the game entry file before editing.");
+  }
+
+  return {
+    target: scan.engine,
+    readOnly: true,
+    candidates: candidates.slice(0, 20),
+    tables: {
+      candidates: createWireMapTable(candidates.slice(0, 20))
+    },
+    notes
+  };
+}
+
+async function listProjectTextFiles(
+  projectRoot: string,
+  roots: string[],
+  extensions: string[],
+  limit = 200
+): Promise<string[]> {
+  const files: string[] = [];
+  for (const root of roots) {
+    const absoluteRoot = resolveInsideProject(projectRoot, root);
+    if (!await pathExists(absoluteRoot)) continue;
+    await collectProjectTextFiles(projectRoot, absoluteRoot, extensions, files, limit);
+    if (files.length >= limit) break;
+  }
+  return files;
+}
+
+async function collectProjectTextFiles(
+  projectRoot: string,
+  absoluteDir: string,
+  extensions: string[],
+  files: string[],
+  limit: number
+): Promise<void> {
+  if (files.length >= limit) return;
+  let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+  try {
+    entries = await fs.readdir(absoluteDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (files.length >= limit) return;
+    if (entry.name === "node_modules" || entry.name === ".git" || entry.name === ".openrender" || entry.name === "dist") {
+      continue;
+    }
+    const absolutePath = path.join(absoluteDir, entry.name);
+    if (entry.isDirectory()) {
+      await collectProjectTextFiles(projectRoot, absolutePath, extensions, files, limit);
+    } else if (entry.isFile() && extensions.includes(path.extname(entry.name))) {
+      files.push(toProjectRelativePath(projectRoot, absolutePath));
+    }
+  }
+}
+
+async function readSmallTextFile(filePath: string, maxBytes = 64 * 1024): Promise<string> {
+  const handle = await fs.open(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(maxBytes);
+    const result = await handle.read(buffer, 0, maxBytes, 0);
+    return buffer.subarray(0, result.bytesRead).toString("utf8");
+  } finally {
+    await handle.close();
+  }
+}
+
+function collectSignals(contents: string, patterns: Array<[string, RegExp]>): string[] {
+  return patterns
+    .filter(([, pattern]) => pattern.test(contents))
+    .map(([signal]) => signal);
+}
+
+function createWireMapTable(candidates: WireMapResult["candidates"]): CompactTable {
+  return {
+    columns: ["kind", "file", "signals", "suggestedAction"],
+    rows: candidates.map((candidate) => [
+      candidate.kind,
+      candidate.file,
+      candidate.signals.join(","),
+      candidate.suggestedAction
+    ])
+  };
 }
 
 function toProjectRelativePath(projectRoot: string, absoluteOrRelativePath: string): string {
@@ -2168,6 +2492,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
   const json = `${JSON.stringify(record, null, 2)}\n`;
   const visualOverlayHtml = createVisualOverlayHtml(record);
   const nextAction = createNextActionText(record);
+  const nextActions = nextAction
+    ? nextAction.split("\n").filter((line) => line.startsWith("- ")).map((line) => line.slice(2))
+    : createSuccessNextActions(record);
+  const installResult = record.installResult ?? await readInstallResultIfAvailable(projectRoot, record.run.runId);
   const framePreviewPath = record.run.outputs.find((output) => output.kind === "preview")?.path;
   const html = createReportHtml({
     title: `openRender report ${record.run.runId}`,
@@ -2242,6 +2570,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
 
   const result: ReportCommandResult = {
     runId: record.run.runId,
+    status: record.run.verification?.status ?? record.run.status,
+    agentSummary: createAgentSummary(record),
+    nextActions,
+    rollbackCommand: installResult ? `openrender rollback --run ${record.run.runId} --json` : null,
     jsonPath: reportJsonPath,
     htmlPath: reportHtmlPath,
     previewHtmlPath,
@@ -2702,7 +3034,7 @@ Usage:
   openrender adapter create --name <id> [--force] [--json]
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
-  openrender context [--json]
+  openrender context [--json] [--compact] [--wire-map]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest|media-p4
   openrender pack list|inspect [packId] [--json]
@@ -2714,12 +3046,12 @@ Usage:
   openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
-  openrender verify [runId|--run latest] [--json]
-  openrender report [runId|--run latest] [--open] [--json]
+  openrender verify [runId|--run latest] [--json] [--compact]
+  openrender report [runId|--run latest] [--open] [--json] [--compact]
   openrender report export [runId|--run latest] --format html|json [--out <path>] [--force] [--json]
   openrender reports serve [--port 3579] [--once] [--json]
-  openrender explain [runId|--run latest] [--json]
-  openrender diff [runId|--run latest] [--json]
+  openrender explain [runId|--run latest] [--json] [--compact]
+  openrender diff [runId|--run latest] [--json] [--compact]
   openrender rollback [runId|--run latest] [--json]
 `);
 }
@@ -2729,6 +3061,21 @@ interface InstallCommandResult {
   snapshotRoot: string;
   snapshots: Awaited<ReturnType<typeof snapshotProjectFile>>[];
   writes: Awaited<ReturnType<typeof safeWriteProjectFile>>[];
+}
+
+interface WireMapResult {
+  target: ProjectScan["engine"];
+  readOnly: true;
+  candidates: Array<{
+    file: string;
+    kind: "entry" | "scene" | "script" | "config";
+    signals: string[];
+    suggestedAction: string;
+  }>;
+  tables: {
+    candidates: CompactTable;
+  };
+  notes: string[];
 }
 
 interface VerifyCommandResult {
@@ -2744,6 +3091,10 @@ interface VerifyCommandResult {
 
 interface ReportCommandResult {
   runId: string;
+  status: OpenRenderRun["status"] | NonNullable<OpenRenderRun["verification"]>["status"];
+  agentSummary: string;
+  nextActions: string[];
+  rollbackCommand: string | null;
   jsonPath: string;
   htmlPath: string;
   previewHtmlPath: string;
@@ -2844,6 +3195,7 @@ interface AgentContextCommandResult {
     note: string;
   }>;
   recommendedNextActions: string[];
+  wireMap?: WireMapResult;
   localOnly: true;
   capabilities: {
     account: false;
@@ -2853,6 +3205,75 @@ interface AgentContextCommandResult {
     modelProviderCalls: false;
     telemetry: false;
   };
+}
+
+interface CompactAgentContextResult {
+  ok: true;
+  version: string;
+  target: AgentContextCommandResult["target"];
+  paths: Pick<AgentContextCommandResult["paths"], "assetRoot" | "sourceRoot" | "manifest">;
+  latestRun: AgentContextCommandResult["latestRun"];
+  tables: {
+    overwriteRisks: CompactTable;
+  };
+  nextActions: string[];
+  wireMap?: WireMapResult;
+  localOnly: true;
+  capabilities: AgentContextCommandResult["capabilities"];
+}
+
+interface CompactVerifyCommandResult {
+  ok: boolean;
+  runId: string;
+  status: VerifyCommandResult["status"];
+  summary: {
+    checks: number;
+    failed: number;
+  };
+  tables: {
+    checks: CompactTable;
+  };
+  nextActions: string[];
+}
+
+interface CompactReportCommandResult {
+  ok: true;
+  runId: string;
+  status: ReportCommandResult["status"];
+  agentSummary: string;
+  reportPath: string;
+  previewPath: string;
+  rollbackCommand: string | null;
+  tables: {
+    outputs: CompactTable;
+  };
+  nextActions: string[];
+}
+
+interface CompactExplainCommandResult {
+  ok: boolean;
+  runId: string;
+  agentSummary: string;
+  tables: {
+    nextActions: CompactTable;
+  };
+}
+
+interface CompactDiffCommandResult {
+  ok: true;
+  runId: string;
+  summary: {
+    planned: number;
+    created: number;
+    modified: number;
+    helperCodeGenerated: number;
+    rollbackAvailable: boolean;
+  };
+  tables: {
+    files: CompactTable;
+  };
+  snapshotPath: string | null;
+  rollbackCommand: string | null;
 }
 
 interface AgentInstallFilePlan {

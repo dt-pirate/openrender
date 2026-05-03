@@ -1898,7 +1898,7 @@
           >
         </a>
         <nav class="nav" aria-label="Primary navigation">
-          <a href="./openRender_v0.6.1.html">Docs</a>
+          <a href="./openRender_v0.7.0.html">Docs</a>
           <a class="nav-cta" href="./quickstart.html">Start</a>
         </nav>
         <div data-language-switcher aria-label="Language selector"></div>
@@ -1916,7 +1916,7 @@
             guessing and start building.
           </p>
           <div class="hero-actions">
-            <a class="button secondary" href="./openRender_v0.6.1.html">Read the technical scope</a>
+            <a class="button secondary" href="./openRender_v0.7.0.html">Read the technical scope</a>
           </div>
           <div class="hero-badges" aria-label="Product principles">
             <span class="inline-badge">Local by default</span>
@@ -2004,8 +2004,8 @@
           <h2 id="impact-title">What agents save with openRender</h2>
           <p>
             openRender turns a noisy asset handoff into compact, repeatable
-            project evidence. Agents read less context, make fewer guesses, and
-            leave a safer trail for the next iteration.
+            project evidence. Agents can request short summaries, compact
+            tables, and read-only wiring hints before editing game code.
           </p>
         </div>
 
@@ -2058,8 +2058,8 @@
             <strong class="impact-value">Est. 56%</strong>
             <h3>fewer handoff tokens</h3>
             <p>
-              Agents read compact JSON contracts instead of re-describing frame
-              geometry, load paths, helper files, reports, and recovery steps.
+              Agents read compact JSON views instead of re-describing frame
+              geometry, load paths, helper files, reports, diffs, and recovery steps.
             </p>
             <small class="impact-note">Local estimate: 188-token manual handoff brief vs 83-token openRender summary, using chars/4 token approximation.</small>
           </article>
@@ -2332,7 +2332,7 @@
             </div>
             <div class="core-summary-item">
               <span>Agent layer</span>
-              <strong>Schemas, plans, summaries, recipes</strong>
+              <strong>Schemas, plans, compact views, wire maps, recipes</strong>
             </div>
           </div>
 
@@ -2370,8 +2370,8 @@
             <article class="core-card">
               <span>06</span>
               <h3>Reports and previews</h3>
-              <p>Write local reports, visual overlays, frame preview sheets, explicit exports, gallery metadata, and next actions.</p>
-              <code translate="no">report / reports serve</code>
+              <p>Write local reports, visual overlays, frame preview sheets, compact report views, gallery metadata, and next actions.</p>
+              <code translate="no">report --compact</code>
             </article>
             <article class="core-card">
               <span>07</span>
@@ -2388,8 +2388,8 @@
             <article class="core-card">
               <span>09</span>
               <h3>Agent handoff</h3>
-              <p>Leave each run with structured outputs, summaries, recipes, and next actions another agent or developer can continue from.</p>
-              <code translate="no">summary / recipe / next-action</code>
+              <p>Leave each run with structured outputs, compact summaries, read-only wiring candidates, recipes, and next actions another agent or developer can continue from.</p>
+              <code translate="no">context --wire-map</code>
             </article>
           </div>
         </div>

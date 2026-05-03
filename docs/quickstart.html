@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a class="is-active" href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -50,15 +50,18 @@
         <pre><code class="language-bash">pnpm install
 pnpm build
 node packages/cli/dist/index.js --version</code></pre>
-        <p>Before packages are published, run the built CLI from the target game project root:</p>
+<p>Before packages are published, run the built CLI from the target game project root:</p>
         <pre><code class="language-bash">cd /path/to/game-project
 node /path/to/openrender/packages/cli/dist/index.js context --json
+node /path/to/openrender/packages/cli/dist/index.js context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json</code></pre>
 
         <h2 id="common-flow">Common Flow</h2>
         <p>Every engine follows the same safety loop:</p>
         <pre><code class="language-bash">openrender init --target &lt;engine&gt; --json
 openrender context --json
+openrender context --json --compact
+openrender context --json --wire-map
 openrender scan --json
 openrender doctor --json
 openrender install-agent --platform all --dry-run --json
@@ -69,11 +72,12 @@ openrender detect-frames tmp/slime_idle_strip.png --frames 6 --json
 openrender compile sprite --from tmp/slime_idle_strip.png --target &lt;engine&gt; --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime_idle_strip.png --target &lt;engine&gt; --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 openrender verify --run latest --json
-openrender report --run latest --json
-openrender explain --run latest --json
-openrender diff --run latest --json
+openrender report --run latest --json --compact
+openrender explain --run latest --json --compact
+openrender diff --run latest --json --compact
 openrender rollback --run latest --json</code></pre>
         <p>Use <code>phaser</code>, <code>godot</code>, <code>love2d</code>, <code>pixi</code>, or <code>canvas</code> as the target engine.</p>
+        <p>Use <code>--compact</code> when an agent needs a short status and next-action view. Use <code>context --json --wire-map</code> to find likely game-code connection points without editing files.</p>
 
         <h2 id="recipe-direction">Recipe Direction</h2>
         <p>The built-in <code>core</code> pack and recipes are available locally with <code>pack list</code>, <code>pack inspect core</code>, and <code>recipe list</code>. They summarize known-good commands, helper conventions, compact repair guidance, and agent instructions. They do not make local compile require login, credits, telemetry, sync, or hosted execution.</p>

@@ -16,12 +16,14 @@ What the local workflow supports, and where it intentionally stops.
 - Plain Canvas + Vite image asset installation.
 - Local JSON-only MCP metadata for tools, resources, and prompts.
 - Local reports, previews, snapshots, verification, and rollback.
+- Compact agent output for context, verify, report, explain, and diff.
+- Read-only wiring candidates through `context --json --wire-map`.
 
 ## Local Core Boundary
 
 The Developer Kit stays local-first: it does not require remote accounts, billing, license services, cloud APIs, hosted workers, report sync, remote artifact caches, model provider calls, BYOK generation, or telemetry.
 
-Scene and runtime edits remain explicit agent work. openRender writes generated assets, manifests, helpers, local reports, and rollback records; it does not auto-patch Phaser, Godot, LOVE2D, PixiJS, or Canvas gameplay code.
+Scene and runtime edits remain explicit agent work. openRender writes generated assets, manifests, helpers, local reports, compact views, and rollback records; it reports wiring candidates but does not auto-patch Phaser, Godot, LOVE2D, PixiJS, or Canvas gameplay code.
 
 Godot `.import`/`.godot` files, LOVE2D `.love` archives, runtime launch, video, 3D, advanced matting, and segmentation remain outside the local image handoff scope. P4 audio, atlas, and UI metadata are schema-backed surfaces rather than full runtime asset pipelines.
 

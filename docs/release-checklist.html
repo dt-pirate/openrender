@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Release Checklist - openRender Docs</title>
-  <meta name="description" content="Checks for the current 0.3.1 reference direction and the existing local compiler surface.">
+  <meta name="description" content="Checks for the current local Developer Kit surface.">
   <link rel="stylesheet" href="./openrender-docs.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -41,20 +41,19 @@
       <header class="doc-header">
         <p class="eyebrow">openRender docs</p>
         <h1>Release Checklist</h1>
-        <p class="summary">Checks for the current 0.3.1 reference direction and the existing local compiler surface.</p>
+        <p class="summary">Checks for the current local Developer Kit surface.</p>
       </header>
 
       <div class="doc-content">
         <h2 id="preflight">Preflight</h2>
         <ul>
           <li>README describes openRender as a local-first media-to-engine compiler and agent token saver.</li>
-          <li>Docs point to <code>docs/openRender_v0.6.1.md</code> as the active local reference.</li>
-          <li>Local compile/install is described as free core behavior, not a metered hosted service.</li>
-          <li>Recipe packs, agent packs, updates, support, hosted workers, and OEM/platform licensing are framed as future value surfaces.</li>
-          <li>Phaser, Godot, and LOVE2D adapter packages build.</li>
-          <li>Schemas, plan, explain, diff, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.</li>
-          <li>README, scope, CLI, and limitation docs mention Phaser, Godot, and LOVE2D support.</li>
-          <li>No docs imply required hosted accounts, billing, telemetry, model calls, or cloud orchestration for local core use.</li>
+          <li>Docs point to <code>docs/openRender_v0.7.0.md</code> as the active local reference.</li>
+          <li>Local compile/install is described as local Developer Kit behavior, not a metered cloud service.</li>
+          <li>Phaser, Godot, LOVE2D, PixiJS, and Canvas adapter packages build.</li>
+          <li>Schemas, plan, explain, diff, compact output, wire-map, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.</li>
+          <li>README, scope, CLI, and limitation docs mention Phaser, Godot, LOVE2D, PixiJS, and Canvas support.</li>
+          <li>No docs imply required accounts, billing, telemetry, model calls, or cloud orchestration for local core use.</li>
         </ul>
 
         <h2 id="verify">Local Verification</h2>
@@ -68,6 +67,11 @@ pnpm dev:cli -- scan --json</code></pre>
           <li>Phaser compile/install/verify/report/rollback workflow.</li>
           <li>Godot compile/install/verify/report/rollback workflow.</li>
           <li>LOVE2D compile/install/verify/report/rollback workflow.</li>
+          <li>PixiJS compile/install/verify/report/rollback workflow.</li>
+          <li>Canvas compile/install/verify/report/rollback workflow.</li>
+          <li><code>context --json --compact</code> returns a short project handoff.</li>
+          <li><code>context --json --wire-map</code> returns read-only wiring candidates without editing game code.</li>
+          <li><code>verify/report/explain/diff --compact</code> return compact JSON tables.</li>
           <li>Godot workflow does not write <code>.import</code> or <code>.godot/</code>.</li>
           <li>LOVE2D workflow does not create <code>.love</code> archives or launch the runtime.</li>
           <li>Package tarball install smoke check passes before publishing.</li>
@@ -79,10 +83,10 @@ pnpm dev:cli -- scan --json</code></pre>
         <ul>
           <li>Any command requires credentials, telemetry, billing, cloud sync, or account setup.</li>
           <li>Local compile/install is presented as usage-metered or credit-wallet driven.</li>
-          <li>Pack strategy is presented as implemented billing, license enforcement, or hosted compile.</li>
+          <li>Local metadata commands are presented as implemented billing, license enforcement, or cloud compile.</li>
           <li>Godot support is described as editor/runtime smoke-tested beyond local file handoff.</li>
           <li>LOVE2D support is described as runtime-launched or archive-packaged beyond local file handoff.</li>
-          <li>Docs omit Godot 4 or LOVE2D support.</li>
+          <li>Docs omit Godot 4, LOVE2D, PixiJS, or Canvas support.</li>
         </ul>
 
       </div>

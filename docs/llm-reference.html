@@ -22,7 +22,7 @@
       <nav>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Start</div>
-          <a href="./openRender_v0.6.1.html">Overview</a>
+          <a href="./openRender_v0.7.0.html">Overview</a>
           <a href="./quickstart.html">Quickstart</a>
           <a href="./release-history.html">Release History</a>
         </div>
@@ -47,9 +47,12 @@
       <div class="doc-content">
         <h2 id="first-commands">First Commands</h2>
         <pre><code class="language-bash">openrender context --json
+openrender context --json --compact
+openrender context --json --wire-map
 openrender doctor --json
 openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --dry-run --json</code></pre>
         <p>Use <code>context --json</code> as the first handoff. It reports the detected target, local paths, latest run summary, overwrite risks, and recommended next actions without reading the whole repository.</p>
+        <p>Use <code>context --json --compact</code> when the agent only needs the shortest useful handoff. Use <code>context --json --wire-map</code> to find read-only asset wiring candidates before editing game code.</p>
 
         <h2 id="safe-install">Safe Install Rule</h2>
         <p>Before installing, run <code>compile sprite --dry-run --json</code> and inspect <code>installPlan.files</code>. openRender refuses to overwrite existing destination files by default. Use <code>--force</code> only after the user confirms that manifest or helper replacement is acceptable.</p>
@@ -80,6 +83,7 @@ openrender report --run latest --json
 openrender explain --run latest --json
 openrender diff --run latest --json
 openrender rollback --run latest --json</code></pre>
+        <p>For short agent output, add <code>--compact</code> to <code>verify</code>, <code>report</code>, <code>explain</code>, and <code>diff</code>. Compact output keeps status, next actions, rollback information, and compact <code>{ columns, rows }</code> tables.</p>
         <p>Rollback only affects files in a recorded openRender install plan. It does not revert game code edits made separately by an agent.</p>
 
         <h2 id="boundary">Local Core Boundary</h2>

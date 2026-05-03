@@ -25,3 +25,7 @@ openRender is distributed under the repository license. Unless required by law o
 ## Changes
 
 These terms may be updated as the project evolves. The latest version is published with the project documentation.
+
+## Contact
+
+For project questions, contact `stelify87@gmail.com`.

@@ -53,6 +53,7 @@ From a target game project:
 cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
+node /path/to/openrender/packages/cli/dist/index.js context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
@@ -98,10 +99,12 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 
 node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js report --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
 ```
+
+Use `context --json --wire-map` when an agent needs read-only hints for where generated helpers should be connected in game code.
 
 Rollback the latest openRender install:
 
@@ -131,6 +134,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 
 - Project scanning and doctor checks.
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
+- Compact agent output for context, verification, reports, explanations, and diffs.
+- Read-only wiring maps that point agents toward likely game-code connection locations.
 - Alpha diagnostics, frame detection, normalization presets, sprite invariants, and frame preview sheets.
 - Engine adapters for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
 - JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
@@ -149,12 +154,15 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 ## Agent Rules
 
 - Run `context --json` before reading broadly or assuming the project type.
+- Use `context --json --compact` for the shortest project handoff.
+- Use `context --json --wire-map` before editing game code that should connect generated helpers.
 - Run `doctor --json` before writing into an unfamiliar project.
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
 - Inspect `installPlan.files` before installing.
 - Do not pass `--force` unless the user accepts overwriting destination files.
 - Treat generated manifests as current-result files, not automatic merges with previous manifest entries.
 - After install, run `verify --run latest --json`.
+- Use `report`, `explain`, and `diff` with `--compact` when the agent only needs status, next actions, and compact tables.
 - Use `rollback --run latest --json` only for the openRender install.
 
 ## Repository Layout
@@ -192,3 +200,7 @@ Run the CLI from source:
 pnpm build
 node packages/cli/dist/index.js --version
 ```
+
+## Contact
+
+For project questions, contact `stelify87@gmail.com`.

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Troubleshooting - openRender Docs</title>
-  <meta name="description" content="Common local workflow issues for Phaser, Godot, and LOVE2D image asset handoff.">
+  <meta name="description" content="Common local workflow issues for Phaser, Godot, LOVE2D, PixiJS, and Canvas image asset handoff.">
   <link rel="stylesheet" href="./openrender-docs.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -41,12 +41,10 @@
       <header class="doc-header">
         <p class="eyebrow">openRender docs</p>
         <h1>Troubleshooting</h1>
-        <p class="summary">Common local workflow issues for Phaser, Godot, and LOVE2D image asset handoff.</p>
+        <p class="summary">Common local workflow issues for Phaser, Godot, LOVE2D, PixiJS, and Canvas image asset handoff.</p>
       </header>
 
       <div class="doc-content">
-        <p>For 0.3.1 planning, remember that recipe packs are intended to reduce repeated agent troubleshooting. They should capture fixes like frame mismatch guidance or engine load path rules without changing the local-first safety loop.</p>
-
         <h2 id="scan-phaser">Scan Does Not Detect Phaser</h2>
         <p>Check that <code>phaser</code> and <code>vite</code> exist in the target <code>package.json</code>.</p>
 
@@ -68,8 +66,14 @@
         <h2 id="overwrite">File Overwrite</h2>
         <p>Install refuses to overwrite destination files unless <code>--force</code> is passed. Use <code>plan sprite --json</code>, dry-run output, and report output before deciding to force an install.</p>
 
-        <h2 id="pack-command-missing">Pack Sync Or Login Is Not Implemented</h2>
-        <p>0.3.1 includes built-in local <code>pack list</code>, <code>pack inspect core</code>, and <code>recipe list</code> metadata. Remote pack sync, login, and license refresh intentionally return <code>not_implemented_in_0_3_1</code>; local compile/install does not require an account.</p>
+        <h2 id="large-output">Agent Output Is Too Large</h2>
+        <p>Use <code>context --json --compact</code> for a shorter project handoff. Use <code>verify --json --compact</code>, <code>report --json --compact</code>, <code>explain --json --compact</code>, and <code>diff --json --compact</code> when you only need status, next actions, rollback information, and compact tables.</p>
+
+        <h2 id="wire-map">Agent Cannot Find Where To Connect Helpers</h2>
+        <p>Use <code>context --json --wire-map</code>. It returns read-only wiring candidates for supported targets and does not edit game code.</p>
+
+        <h2 id="pack-command-missing">Built-in Pack And Recipe Metadata</h2>
+        <p>The Developer Kit includes built-in local <code>pack list</code>, <code>pack inspect core</code>, and <code>recipe list</code> metadata. These commands provide local agent context only; local compile/install does not require an account.</p>
 
       </div>
     </article>

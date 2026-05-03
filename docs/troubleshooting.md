@@ -1,8 +1,6 @@
 # Troubleshooting
 
-Common local workflow issues for Phaser, Godot, and LOVE2D image asset handoff.
-
-For 0.3.1 planning, remember that recipe packs are intended to reduce repeated agent troubleshooting. They should capture fixes like frame mismatch guidance or engine load path rules without changing the local-first safety loop.
+Common local workflow issues for Phaser, Godot, LOVE2D, PixiJS, and Canvas image asset handoff.
 
 ## Scan Does Not Detect Phaser
 
@@ -38,6 +36,14 @@ Generated manifest files are written from the current compile result. They are n
 
 Rollback only affects files in the selected openRender install plan. It does not revert game code edits made separately by an agent.
 
-## Pack Sync Or Login Is Not Implemented
+## Agent Output Is Too Large
 
-0.3.1 includes built-in local `pack list`, `pack inspect core`, and `recipe list` metadata. Remote pack sync, login, and license refresh intentionally return `not_implemented_in_0_3_1`; local compile/install does not require an account.
+Use `context --json --compact` for a shorter project handoff. Use `verify --json --compact`, `report --json --compact`, `explain --json --compact`, and `diff --json --compact` when you only need status, next actions, rollback information, and compact tables.
+
+## Agent Cannot Find Where To Connect Helpers
+
+Use `context --json --wire-map`. It returns read-only wiring candidates for supported targets and does not edit game code.
+
+## Built-in Pack And Recipe Metadata
+
+The Developer Kit includes built-in local `pack list`, `pack inspect core`, and `recipe list` metadata. These commands provide local agent context only; local compile/install does not require an account.

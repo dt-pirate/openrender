@@ -1,17 +1,16 @@
 # Release Checklist
 
-Checks for the current 0.3.1 reference direction and the existing local compiler surface.
+Checks for the current local Developer Kit surface.
 
 ## Preflight
 
 - [ ] README describes openRender as a local-first media-to-engine compiler and agent token saver.
-- [ ] Docs point to `docs/openRender_v0.6.1.md` as the active local reference.
-- [ ] Local compile/install is described as free core behavior, not a metered hosted service.
-- [ ] Recipe packs, agent packs, updates, support, hosted workers, and OEM/platform licensing are framed as future value surfaces.
-- [ ] Phaser, Godot, and LOVE2D adapter packages build.
-- [ ] Schemas, plan, explain, diff, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.
-- [ ] README, scope, CLI, and limitation docs mention Phaser, Godot, and LOVE2D support.
-- [ ] No docs imply required hosted accounts, billing, telemetry, model calls, or cloud orchestration for local core use.
+- [ ] Docs point to `docs/openRender_v0.7.0.md` as the active local reference.
+- [ ] Local compile/install is described as local Developer Kit behavior, not a metered cloud service.
+- [ ] Phaser, Godot, LOVE2D, PixiJS, and Canvas adapter packages build.
+- [ ] Schemas, plan, explain, diff, compact output, wire-map, detect-frames, normalize, frame preview sheets, and built-in core pack/recipe metadata are documented.
+- [ ] README, scope, CLI, and limitation docs mention Phaser, Godot, LOVE2D, PixiJS, and Canvas support.
+- [ ] No docs imply required accounts, billing, telemetry, model calls, or cloud orchestration for local core use.
 
 ## Local Verification
 
@@ -27,6 +26,11 @@ pnpm dev:cli -- scan --json
 - [ ] Phaser compile/install/verify/report/rollback workflow.
 - [ ] Godot compile/install/verify/report/rollback workflow.
 - [ ] LOVE2D compile/install/verify/report/rollback workflow.
+- [ ] PixiJS compile/install/verify/report/rollback workflow.
+- [ ] Canvas compile/install/verify/report/rollback workflow.
+- [ ] `context --json --compact` returns a short project handoff.
+- [ ] `context --json --wire-map` returns read-only wiring candidates without editing game code.
+- [ ] `verify/report/explain/diff --compact` return compact JSON tables.
 - [ ] Godot workflow does not write `.import` or `.godot/`.
 - [ ] LOVE2D workflow does not create `.love` archives or launch the runtime.
 - [ ] Package tarball install smoke check passes before publishing.
@@ -37,7 +41,7 @@ pnpm dev:cli -- scan --json
 
 - Any command requires credentials, telemetry, billing, cloud sync, or account setup.
 - Local compile/install is presented as usage-metered or credit-wallet driven.
-- Pack strategy is presented as implemented billing, license enforcement, or hosted compile.
+- Local metadata commands are presented as implemented billing, license enforcement, or cloud compile.
 - Godot support is described as editor/runtime smoke-tested beyond local file handoff.
 - LOVE2D support is described as runtime-launched or archive-packaged beyond local file handoff.
-- Docs omit Godot 4 or LOVE2D support.
+- Docs omit Godot 4, LOVE2D, PixiJS, or Canvas support.

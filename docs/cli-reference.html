@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CLI Reference - openRender Docs</title>
-  <meta name="description" content="Current local CLI command surface for Phaser, Godot, and LOVE2D image asset workflows.">
+  <meta name="description" content="Current local CLI command surface for Phaser, Godot, LOVE2D, PixiJS, and Canvas image asset workflows.">
   <link rel="stylesheet" href="./openrender-docs.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -50,7 +50,7 @@
 openrender agent init --codex|--cursor|--claude [--force] [--json]
 openrender install-agent [--platform codex|cursor|claude|all] [--dry-run] [--force] [--json]
 openrender scan [--json]
-openrender context [--json]
+openrender context [--json] [--compact] [--wire-map]
 openrender doctor [--json]
 openrender schema contract|output|report|install-plan|pack-manifest|media-p4
 openrender pack list|inspect [packId] [--json]
@@ -62,12 +62,12 @@ openrender metadata audio|atlas|ui &lt;path&gt; [--target engine] [--id asset.id
 openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--json]
 openrender compile sprite --from|--input &lt;path&gt; --id &lt;asset.id&gt; [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
 openrender install [runId|--run latest] [--force] [--json]
-openrender verify [runId|--run latest] [--json]
-openrender report [runId|--run latest] [--open] [--json]
+openrender verify [runId|--run latest] [--json] [--compact]
+openrender report [runId|--run latest] [--open] [--json] [--compact]
 openrender report export [runId|--run latest] --format html|json [--out &lt;path&gt;] [--force] [--json]
 openrender reports serve [--port 3579] [--once] [--json]
-openrender explain [runId|--run latest] [--json]
-openrender diff [runId|--run latest] [--json]
+openrender explain [runId|--run latest] [--json] [--compact]
+openrender diff [runId|--run latest] [--json] [--compact]
 openrender rollback [runId|--run latest] [--json]
 openrender --help
 openrender --version</code></pre>
@@ -88,6 +88,8 @@ openrender --version</code></pre>
         <h2 id="json">JSON-first Contract</h2>
         <p>Agent-facing commands should expose stable fields such as <code>ok</code>, <code>version</code>, <code>runId</code>, <code>target</code>, <code>engine</code>, <code>artifact</code>, <code>installPlan</code>, <code>agentSummary</code>, <code>recipe</code>, <code>verification</code>, <code>reportPath</code>, and <code>rollbackHint</code>.</p>
         <p><code>context --json</code> is the minimal handoff command for agents. It reports the detected target, local paths, latest run summary, overwrite risks, and recommended next actions.</p>
+        <p>Use <code>--compact</code> on <code>context</code>, <code>verify</code>, <code>report</code>, <code>explain</code>, and <code>diff</code> when an agent needs the shortest useful JSON view. Compact results keep next actions and status while summarizing repeated lists as <code>{ columns, rows }</code> tables.</p>
+        <p>Use <code>context --json --wire-map</code> to find read-only asset wiring candidates in Phaser, Godot, LOVE2D, PixiJS, or Canvas projects. It does not edit game code.</p>
 
         <h2 id="handoff">Image Handoff Commands</h2>
         <p><code>detect-frames</code> infers frame layout and dimensions before compile. <code>normalize</code> applies deterministic local presets: <code>transparent-sprite</code>, <code>ui-icon</code>, <code>sprite-strip</code>, and <code>sprite-grid</code>.</p>

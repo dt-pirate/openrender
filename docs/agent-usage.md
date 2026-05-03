@@ -11,6 +11,8 @@ openRender reduces repeated token-heavy handoff work. Agents should prefer compa
 ## Decision Rules
 
 - Run `context --json` before broad repo reads or target assumptions.
+- Use `context --json --compact` when you need the shortest handoff summary.
+- Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 - Run `scan --json` when you need the raw project detection result.
 - Run `doctor --json` before writing project files in an unfamiliar repo.
 - Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing agent instruction files.
@@ -22,7 +24,7 @@ openRender reduces repeated token-heavy handoff work. Agents should prefer compa
 - Remember generated manifests are written from the current compile result; they are not automatically merged with older manifest entries.
 - After install, run `verify --run latest --json`.
 - Use `report --run latest --json` when verification fails or when the user needs an audit trail.
-- Use `explain --run latest --json` for compact next actions and `diff --run latest --json` before deciding which generated files to inspect.
+- Use `verify --run latest --json --compact`, `report --run latest --json --compact`, `explain --run latest --json --compact`, and `diff --run latest --json --compact` when you only need status, next actions, rollback information, and compact tables.
 - Use `rollback --run latest --json` only for files recorded by a specific openRender install.
 - Treat built-in pack/recipe guidance as reusable context. It does not replace dry-run, verification, or user approval for overwrite behavior.
 
@@ -30,5 +32,5 @@ openRender reduces repeated token-heavy handoff work. Agents should prefer compa
 
 ```text
 Use openRender to convert tmp/slime_idle_strip.png into an engine-ready sprite asset.
-Start with openrender context --json, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse recipe context instead of spending tokens on repeated handoff reasoning.
+Start with openrender context --json --compact and openrender context --json --wire-map, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse compact output instead of spending tokens on repeated handoff reasoning.
 ```

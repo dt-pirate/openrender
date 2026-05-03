@@ -22,4 +22,4 @@ openRender writes local reports under `.openrender/reports/`. These reports are 
 
 ## Contact
 
-Use the repository issue tracker for privacy-related questions about the openRender project.
+For privacy-related questions about the openRender project, contact `stelify87@gmail.com`.

@@ -4,26 +4,43 @@ Last updated: 2026-05-03
 
 This page tracks the implemented openRender Developer Kit surface and the documented version milestones.
 
-Release dates are intentionally omitted until the repository starts publishing tagged GitHub releases. The current source-of-truth version is the package metadata in `package.json` and the CLI version returned by `openrender --version`.
+Release dates are intentionally omitted until the repository starts publishing tagged GitHub releases. The documentation baseline can move ahead of the package metadata when source behavior has been implemented but package versions have not been bumped yet.
 
 ## Current Version
 
 | Field | Value |
 |---|---|
-| Current Developer Kit | `0.6.1` |
+| Current docs baseline | `0.7.0 Agent Token Saver` |
+| Package/CLI version | `0.6.1` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
 | Release channel | Local source build |
 
-## 0.6.1 Developer Kit
+## 0.7.0 Agent Token Saver
 
-`0.6.1` is the current local-first Developer Kit version.
+`0.7.0` is the current documentation baseline for the agent token-saving command surface implemented in source.
 
 ### Added
 
-- `context --json` for compact agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.
+- `context --json --compact` for shorter agent handoff output.
+- `context --json --wire-map` for read-only game-code wiring candidates across supported targets.
+- `verify`, `report`, `explain`, and `diff` support `--compact` JSON views with compact table output.
+- Documentation updates across README, CLI reference, quickstart, agent usage, LLM reference, troubleshooting, boundaries, web pages, release history, and i18n strings.
+
+### Core Surface
+
+- Compact agent views keep status, next actions, rollback information, and `{ columns, rows }` tables without replacing full JSON or HTML reports.
+- Wire-map output reports read-only connection candidates for Phaser, Godot, LOVE2D, PixiJS, and Canvas without editing game code.
+
+## 0.6.1 Developer Kit
+
+`0.6.1` is the local-first Developer Kit base used by the current source.
+
+### Added
+
+- `context --json` for agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.
 - `install-agent --platform codex|cursor|claude|all --dry-run --json` for safe agent instruction file planning.
 - LLM-optimized reference documentation for dry-run, install plan, manifest, MCP, verification, and rollback behavior.
 - P4 media metadata contracts for audio, atlas/tileset, and UI asset metadata.
@@ -76,10 +93,6 @@ Expected CLI version:
 - Local JSON-only MCP metadata package.
 - `agent init` support.
 - Built-in recipe substrate for local core workflows.
-
-## Strategy Baseline
-
-The current Developer Kit keeps local compile/install usage as the free core. Optional hosted workers, remote pack distribution, license/update infrastructure, support bundles, and OEM/platform licensing are future surfaces, not local core requirements.
 
 ## Release Checklist
 

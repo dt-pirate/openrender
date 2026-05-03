@@ -53,6 +53,7 @@ Desde un proyecto de juego objetivo:
 cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
+node /path/to/openrender/packages/cli/dist/index.js context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
@@ -98,10 +99,12 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 
 node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js report --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
 ```
+
+Cuando un agente necesite saber donde conectar helpers generados, usa `context --json --wire-map` para obtener candidatos de solo lectura.
 
 Revierte la ultima instalacion de openRender:
 
@@ -131,6 +134,8 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 
 - Escaneo de proyecto y checks de doctor.
 - Planes de sprite, dry-runs, instalaciones, verificacion, reportes, diffs, explicaciones y rollback.
+- Salida compacta para agentes en context, verificacion, reportes, explain y diff.
+- Wiring map de solo lectura para posibles puntos de conexion en el codigo del juego.
 - Diagnostico alpha, deteccion de frames, presets de normalizacion, invariants de sprites y hojas de preview de frames.
 - Adaptadores para Phaser, Godot, LOVE2D, PixiJS y Canvas.
 - JSON schemas, resumenes compactos para agentes, recipes, fixture capture y golden fixtures.
@@ -149,6 +154,8 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 ## Reglas para agentes
 
 - Ejecuta `context --json` antes de leer ampliamente o asumir el tipo de proyecto.
+- Usa `context --json --compact` para el handoff mas corto.
+- Usa `context --json --wire-map` antes de editar codigo de juego que conecta helpers generados.
 - Ejecuta `doctor --json` antes de escribir en un proyecto desconocido.
 - Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
 - Inspecciona `installPlan.files` antes de instalar.
@@ -192,3 +199,7 @@ Ejecutar la CLI desde el codigo fuente:
 pnpm build
 node packages/cli/dist/index.js --version
 ```
+
+## Contact
+
+For project questions, contact `stelify87@gmail.com`.

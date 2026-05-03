@@ -53,6 +53,7 @@ pnpm build
 cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
+node /path/to/openrender/packages/cli/dist/index.js context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
@@ -98,10 +99,12 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 
 node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js report --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json
-node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json
+node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
 ```
+
+当代理需要知道生成的 helper 应连接到哪里时，使用 `context --json --wire-map` 获取只读连接候选。
 
 回滚最近一次 openRender 安装：
 
@@ -131,6 +134,8 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 
 - 项目扫描和 doctor 检查。
 - sprite 计划、dry-run、安装、验证、报告、diff、explain 和 rollback。
+- 面向 context、验证、报告、explain、diff 的紧凑 agent 输出。
+- 指向可能代码连接位置的只读 wiring map。
 - alpha 诊断、帧检测、normalize presets、sprite invariants 和帧预览图。
 - Phaser、Godot、LOVE2D、PixiJS、Canvas 适配器。
 - JSON schemas、精简 agent summaries、recipes、fixture capture 和 golden fixtures。
@@ -149,6 +154,8 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 ## 代理规则
 
 - 在广泛读取文件或假设项目类型前运行 `context --json`。
+- 需要最短项目 handoff 时使用 `context --json --compact`。
+- 编辑连接生成 helper 的游戏代码前使用 `context --json --wire-map`。
 - 在陌生项目中写文件前运行 `doctor --json`。
 - 在 `--install` 前使用 `plan sprite --json` 或 `compile sprite --dry-run --json`。
 - 安装前检查 `installPlan.files`。
@@ -192,3 +199,7 @@ pnpm test
 pnpm build
 node packages/cli/dist/index.js --version
 ```
+
+## 联系方式
+
+For project questions, contact `stelify87@gmail.com`.

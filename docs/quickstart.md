@@ -17,6 +17,7 @@ Before packages are published, run the built CLI from the target game project ro
 ```bash
 cd /path/to/game-project
 node /path/to/openrender/packages/cli/dist/index.js context --json
+node /path/to/openrender/packages/cli/dist/index.js context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 ```
 
@@ -27,6 +28,8 @@ Every engine follows the same safety loop:
 ```bash
 openrender init --target <engine> --json
 openrender context --json
+openrender context --json --compact
+openrender context --json --wire-map
 openrender scan --json
 openrender doctor --json
 openrender install-agent --platform all --dry-run --json
@@ -37,13 +40,15 @@ openrender detect-frames tmp/slime_idle_strip.png --frames 6 --json
 openrender compile sprite --from tmp/slime_idle_strip.png --target <engine> --id enemy.slime.idle --frames 6 --frame-size 64x64 --dry-run --json
 openrender compile sprite --from tmp/slime_idle_strip.png --target <engine> --id enemy.slime.idle --frames 6 --frame-size 64x64 --install --json
 openrender verify --run latest --json
-openrender report --run latest --json
-openrender explain --run latest --json
-openrender diff --run latest --json
+openrender report --run latest --json --compact
+openrender explain --run latest --json --compact
+openrender diff --run latest --json --compact
 openrender rollback --run latest --json
 ```
 
 Use `phaser`, `godot`, `love2d`, `pixi`, or `canvas` as the target engine.
+
+Use `--compact` when an agent needs a short status and next-action view. Use `context --json --wire-map` to find likely game-code connection points without editing files.
 
 ## Recipe Direction
 

@@ -6,11 +6,15 @@ This is the compact reference for AI coding agents using openRender in a local g
 
 ```bash
 openrender context --json
+openrender context --json --compact
+openrender context --json --wire-map
 openrender doctor --json
 openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --dry-run --json
 ```
 
 Use `context --json` as the first handoff. It reports the detected target, local paths, latest run summary, overwrite risks, and recommended next actions without reading the whole repository.
+
+Use `context --json --compact` when the agent only needs the shortest useful handoff. Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 
 ## Safe Install Rule
 
@@ -62,6 +66,8 @@ openrender report --run latest --json
 openrender explain --run latest --json
 openrender diff --run latest --json
 ```
+
+For short agent output, add `--compact` to `verify`, `report`, `explain`, and `diff`. Compact output keeps status, next actions, rollback information, and compact `{ columns, rows }` tables.
 
 Use rollback only for files in a recorded openRender install plan:
 

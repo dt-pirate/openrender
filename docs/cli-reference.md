@@ -9,7 +9,7 @@ openrender init [--target phaser|godot|love2d|pixi|canvas] [--framework vite|god
 openrender agent init --codex|--cursor|--claude [--force] [--json]
 openrender install-agent [--platform codex|cursor|claude|all] [--dry-run] [--force] [--json]
 openrender scan [--json]
-openrender context [--json]
+openrender context [--json] [--compact] [--wire-map]
 openrender doctor [--json]
 openrender schema contract|output|report|install-plan|pack-manifest|media-p4
 openrender pack list|inspect [packId] [--json]
@@ -21,12 +21,12 @@ openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--j
 openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--json]
 openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--install] [--force] [--dry-run] [--json]
 openrender install [runId|--run latest] [--force] [--json]
-openrender verify [runId|--run latest] [--json]
-openrender report [runId|--run latest] [--open] [--json]
+openrender verify [runId|--run latest] [--json] [--compact]
+openrender report [runId|--run latest] [--open] [--json] [--compact]
 openrender report export [runId|--run latest] --format html|json [--out <path>] [--force] [--json]
 openrender reports serve [--port 3579] [--once] [--json]
-openrender explain [runId|--run latest] [--json]
-openrender diff [runId|--run latest] [--json]
+openrender explain [runId|--run latest] [--json] [--compact]
+openrender diff [runId|--run latest] [--json] [--compact]
 openrender rollback [runId|--run latest] [--json]
 openrender --help
 openrender --version
@@ -51,6 +51,10 @@ openrender --version
 Agent-facing commands should expose stable fields such as `ok`, `version`, `runId`, `target`, `engine`, `artifact`, `installPlan`, `agentSummary`, `recipe`, `verification`, `reportPath`, and `rollbackHint`.
 
 `context --json` is the minimal handoff command for agents. It reports the detected target, local paths, latest run summary, overwrite risks, and recommended next actions.
+
+Use `--compact` on `context`, `verify`, `report`, `explain`, and `diff` when an agent needs the shortest useful JSON view. Compact results keep next actions and status while summarizing repeated lists as `{ columns, rows }` tables.
+
+Use `context --json --wire-map` to find read-only asset wiring candidates in Phaser, Godot, LOVE2D, PixiJS, or Canvas projects. It does not edit game code.
 
 ## Image Handoff Commands
 

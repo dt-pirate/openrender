@@ -11,14 +11,14 @@ visual.transparent_sprite
 visual.sprite_frame_set
 ```
 
-Audio, video, scene, and 3D contract names remain future directions and are not part of the current local workflow.
+Audio, atlas/tileset, and UI metadata are covered by P4 schemas. Video, scene, and 3D contracts are not part of the current local workflow.
 
 ## Engine Asset Descriptor
 
 ```ts
 interface EngineAssetDescriptor {
   id: string;
-  engine: "phaser" | "godot" | "love2d";
+  engine: "phaser" | "godot" | "love2d" | "pixi" | "canvas";
   type: "transparent_sprite" | "sprite_frame_set";
   assetPath: string;
   loadPath: string;
@@ -47,7 +47,7 @@ For sprite frame sets, `framePreview` points to `.openrender/runs/{runId}/previe
 
 ## Built-in Pack Manifest
 
-The local Developer Kit exposes a built-in `core` pack. It is metadata only in 0.3.1 and does not require login, billing, sync, telemetry, or hosted workers.
+The local Developer Kit exposes a built-in `core` pack. It is local metadata for agent context and does not require login, billing, sync, telemetry, or cloud execution.
 
 ## Phaser Output Shape
 

@@ -31,13 +31,14 @@ test("help prints the npm package version and supported options", async () => {
 
   assert.match(stdout, /^openRender 0\.6\.1/m);
   assert.match(stdout, /openrender --version/);
-  assert.match(stdout, /openrender context \[--json\]/);
+  assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile sprite --from\|--input <path>/);
   assert.match(stdout, /openrender install \[runId\|--run latest\] \[--force\] \[--json\]/);
-  assert.match(stdout, /openrender report \[runId\|--run latest\] \[--open\] \[--json\]/);
+  assert.match(stdout, /openrender report \[runId\|--run latest\] \[--open\] \[--json\] \[--compact\]/);
+  assert.match(stdout, /openrender verify \[runId\|--run latest\] \[--json\] \[--compact\]/);
 });
 
 test("schema command emits official schemas", async () => {
@@ -583,6 +584,118 @@ test("context command emits compact project handoff", async () => {
   assert.equal(result.recommendedNextActions.some((action) => action.includes("--dry-run")), true);
 });
 
+test("context compact output keeps agent essentials and drops broad state", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-context-compact-"));
+  await fs.writeFile(path.join(root, "package.json"), JSON.stringify({
+    name: "context-game",
+    dependencies: {
+      vite: "^7.0.0",
+      phaser: "^3.90.0"
+    }
+  }, null, 2));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "context",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    ok: boolean;
+    target: { engine: string };
+    exists?: unknown;
+    tables: { overwriteRisks: { columns: string[]; rows: unknown[][] } };
+    nextActions: string[];
+  };
+
+  assert.equal(result.ok, true);
+  assert.equal(result.target.engine, "phaser");
+  assert.equal(result.exists, undefined);
+  assert.deepEqual(result.tables.overwriteRisks.columns, ["code", "path", "note"]);
+  assert.equal(Array.isArray(result.tables.overwriteRisks.rows), true);
+  assert.equal(result.nextActions.some((action) => action.includes("--dry-run")), true);
+});
+
+test("context wire-map finds read-only wiring candidates for supported targets", async () => {
+  const cases = [
+    {
+      name: "phaser",
+      files: {
+        "package.json": JSON.stringify({ dependencies: { vite: "^7.0.0", phaser: "^3.90.0" } }),
+        "src/scenes/GameScene.ts": "export class GameScene extends Phaser.Scene { preload() {} create() {} }\n"
+      },
+      expectedFile: "src/scenes/GameScene.ts",
+      expectedSignal: "preload"
+    },
+    {
+      name: "godot",
+      files: {
+        "project.godot": "[application]\nconfig/name=\"Sample\"\n",
+        "scripts/player.gd": "extends Node2D\nfunc _ready():\n  pass\n"
+      },
+      expectedFile: "project.godot",
+      expectedSignal: "godot_project"
+    },
+    {
+      name: "love2d",
+      files: {
+        "main.lua": "function love.load() end\nfunction love.draw() end\n"
+      },
+      expectedFile: "main.lua",
+      expectedSignal: "love_load"
+    },
+    {
+      name: "pixi",
+      files: {
+        "package.json": JSON.stringify({ dependencies: { vite: "^7.0.0", "pixi.js": "^8.0.0" } }),
+        "src/main.ts": "import { Application, Assets } from 'pixi.js';\nnew Application();\nAssets.load('/asset.png');\n"
+      },
+      expectedFile: "src/main.ts",
+      expectedSignal: "pixi_application"
+    },
+    {
+      name: "canvas",
+      files: {
+        "package.json": JSON.stringify({ dependencies: { vite: "^7.0.0" } }),
+        "src/main.ts": "const canvas = document.querySelector('canvas') as HTMLCanvasElement;\ncanvas.getContext('2d');\nfunction draw() {}\n"
+      },
+      expectedFile: "src/main.ts",
+      expectedSignal: "canvas_context"
+    }
+  ];
+
+  for (const testCase of cases) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), `openrender-cli-wire-${testCase.name}-`));
+    for (const [relativePath, contents] of Object.entries(testCase.files)) {
+      await fs.mkdir(path.dirname(path.join(root, relativePath)), { recursive: true });
+      await fs.writeFile(path.join(root, relativePath), contents, "utf8");
+    }
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      "context",
+      "--json",
+      "--wire-map"
+    ], {
+      cwd: root
+    });
+    const result = JSON.parse(stdout) as {
+      wireMap: {
+        readOnly: boolean;
+        candidates: Array<{ file: string; signals: string[] }>;
+        tables: { candidates: { columns: string[]; rows: unknown[][] } };
+      };
+    };
+
+    assert.equal(result.wireMap.readOnly, true, testCase.name);
+    assert.equal(result.wireMap.candidates.some((candidate) => candidate.file === testCase.expectedFile), true, testCase.name);
+    assert.equal(result.wireMap.candidates.some((candidate) => candidate.signals.includes(testCase.expectedSignal)), true, testCase.name);
+    assert.deepEqual(result.wireMap.tables.candidates.columns, ["kind", "file", "signals", "suggestedAction"]);
+  }
+});
+
 test("adapter create writes a bounded adapter scaffold", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-adapter-create-"));
 
@@ -1092,6 +1205,104 @@ test("verify latest run passes after install", async () => {
   };
   assert.equal(record.run.status, "verified");
   assert.equal(record.run.verification?.status, "passed");
+});
+
+test("compact verify report explain and diff return table-shaped agent output", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-compact-agent-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.dot",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const verify = await execFileAsync(process.execPath, [
+    cliPath,
+    "verify",
+    "--run",
+    "latest",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    ok: boolean;
+    checks?: unknown;
+    summary: { failed: number };
+    tables: { checks: { columns: string[]; rows: unknown[][] } };
+  };
+  assert.equal(verifyResult.ok, true);
+  assert.equal(verifyResult.checks, undefined);
+  assert.equal(verifyResult.summary.failed, 0);
+  assert.deepEqual(verifyResult.tables.checks.columns, ["name", "status", "path", "message"]);
+  assert.equal(verifyResult.tables.checks.rows.length > 0, true);
+
+  const report = await execFileAsync(process.execPath, [
+    cliPath,
+    "report",
+    "--run",
+    "latest",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const reportResult = JSON.parse(report.stdout) as {
+    agentSummary: string;
+    reportPath: string;
+    tables: { outputs: { rows: unknown[][] } };
+    nextActions: string[];
+  };
+  assert.match(reportResult.agentSummary, /Installed prop\.dot/);
+  assert.match(reportResult.reportPath, /\.openrender\/reports\/run_/);
+  assert.equal(reportResult.tables.outputs.rows.some((row) => row[0] === "html"), true);
+  assert.equal(reportResult.nextActions.length > 0, true);
+
+  const explain = await execFileAsync(process.execPath, [
+    cliPath,
+    "explain",
+    "--run",
+    "latest",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const explainResult = JSON.parse(explain.stdout) as {
+    tables: { nextActions: { columns: string[]; rows: unknown[][] } };
+  };
+  assert.deepEqual(explainResult.tables.nextActions.columns, ["index", "action"]);
+  assert.equal(explainResult.tables.nextActions.rows.length > 0, true);
+
+  const diff = await execFileAsync(process.execPath, [
+    cliPath,
+    "diff",
+    "--run",
+    "latest",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const diffResult = JSON.parse(diff.stdout) as {
+    summary: { planned: number; created: number; rollbackAvailable: boolean };
+    tables: { files: { columns: string[]; rows: unknown[][] } };
+  };
+  assert.equal(diffResult.summary.planned, 2);
+  assert.equal(diffResult.summary.created, 2);
+  assert.equal(diffResult.summary.rollbackAvailable, true);
+  assert.deepEqual(diffResult.tables.files.columns, ["category", "path"]);
+  assert.equal(diffResult.tables.files.rows.some((row) => row[0] === "created"), true);
 });
 
 test("report latest run writes html and json reports", async () => {

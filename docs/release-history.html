@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a class="is-active" href="./release-history.html">Release History</a>
           </div>
@@ -52,7 +52,8 @@
           <table>
             <thead><tr><th>Field</th><th>Value</th></tr></thead>
             <tbody>
-              <tr><td>Current Developer Kit</td><td><code>0.6.1</code></td></tr>
+              <tr><td>Current docs baseline</td><td><code>0.7.0 Agent Token Saver</code></td></tr>
+              <tr><td>Package/CLI version</td><td><code>0.6.1</code></td></tr>
               <tr><td>CLI</td><td><code>openrender</code></td></tr>
               <tr><td>Runtime</td><td>Node.js <code>&gt;=22</code></td></tr>
               <tr><td>Package manager</td><td>pnpm <code>10.x</code></td></tr>
@@ -62,10 +63,21 @@
           </table>
         </div>
 
-        <h2 id="v0-6-0">0.6.1 Developer Kit</h2>
-        <p><code>0.6.1</code> is the current local-first Developer Kit version.</p>
+        <h2 id="v0-7-0">0.7.0 Agent Token Saver</h2>
+        <p><code>0.7.0</code> is the current documentation baseline for the agent token-saving command surface implemented in source.</p>
         <ul>
-          <li><code>context --json</code> for compact agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.</li>
+          <li><code>context --json --compact</code> for shorter agent handoff output.</li>
+          <li><code>context --json --wire-map</code> for read-only game-code wiring candidates across supported targets.</li>
+          <li><code>verify</code>, <code>report</code>, <code>explain</code>, and <code>diff</code> support <code>--compact</code> JSON views with compact table output.</li>
+          <li>Documentation updates across README, CLI reference, quickstart, agent usage, LLM reference, troubleshooting, boundaries, web pages, release history, and i18n strings.</li>
+          <li>Compact agent views keep status, next actions, rollback information, and <code>{ columns, rows }</code> tables without replacing full JSON or HTML reports.</li>
+          <li>Wire-map output reports read-only connection candidates for Phaser, Godot, LOVE2D, PixiJS, and Canvas without editing game code.</li>
+        </ul>
+
+        <h2 id="v0-6-1">0.6.1 Developer Kit</h2>
+        <p><code>0.6.1</code> is the local-first Developer Kit base used by the current source.</p>
+        <ul>
+          <li><code>context --json</code> for agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.</li>
           <li><code>install-agent --platform codex|cursor|claude|all --dry-run --json</code> for safe agent instruction file planning.</li>
           <li>LLM-optimized reference documentation for dry-run, install plan, manifest, MCP, verification, and rollback behavior.</li>
           <li>P4 media metadata contracts for audio, atlas/tileset, and UI asset metadata.</li>
@@ -93,9 +105,6 @@
           <li><code>agent init</code> support.</li>
           <li>Built-in recipe substrate for local core workflows.</li>
         </ul>
-
-        <h2 id="strategy">Strategy Baseline</h2>
-        <p>The Developer Kit keeps local compile/install usage as the free core. Optional hosted workers, remote pack distribution, license/update infrastructure, support bundles, and OEM/platform licensing are future surfaces, not local core requirements.</p>
 
         <h2 id="checklist">Release Checklist</h2>
         <ul>

@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a href="./openRender_v0.6.1.html">Overview</a>
+            <a href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -51,6 +51,8 @@
         <h2 id="rules">Decision Rules</h2>
         <ul>
           <li>Run <code>context --json</code> before broad repo reads or target assumptions.</li>
+          <li>Use <code>context --json --compact</code> when you need the shortest handoff summary.</li>
+          <li>Use <code>context --json --wire-map</code> to find read-only asset wiring candidates before editing game code.</li>
           <li>Run <code>scan --json</code> when you need the raw project detection result.</li>
           <li>Run <code>doctor --json</code> before writing project files in an unfamiliar repo.</li>
           <li>Use <code>install-agent --platform codex|cursor|claude|all --dry-run --json</code> before writing agent instruction files.</li>
@@ -62,14 +64,14 @@
           <li>Remember generated manifests are written from the current compile result; they are not automatically merged with older manifest entries.</li>
           <li>After install, run <code>verify --run latest --json</code>.</li>
           <li>Use <code>report --run latest --json</code> when verification fails or when the user needs an audit trail.</li>
-          <li>Use <code>explain --run latest --json</code> for compact next actions and <code>diff --run latest --json</code> before deciding which generated files to inspect.</li>
+          <li>Use <code>verify --run latest --json --compact</code>, <code>report --run latest --json --compact</code>, <code>explain --run latest --json --compact</code>, and <code>diff --run latest --json --compact</code> when you only need status, next actions, rollback information, and compact tables.</li>
           <li>Use <code>rollback --run latest --json</code> only for files recorded by openRender install.</li>
           <li>Treat built-in pack/recipe guidance as reusable context. It does not replace dry-run, verification, or user approval for overwrite behavior.</li>
         </ul>
 
         <h2 id="prompt">Agent Prompt Example</h2>
         <pre><code class="language-text">Use openRender to convert tmp/slime_idle_strip.png into an engine-ready sprite asset.
-Start with openrender context --json, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse recipe context instead of spending tokens on repeated handoff reasoning.</code></pre>
+Start with openrender context --json --compact and openrender context --json --wire-map, detect whether the project is Phaser, Godot, LOVE2D, PixiJS, or Canvas, inspect the core recipe metadata, run detect-frames if geometry is unclear, plan and dry-run first, install only if the plan is valid, verify the generated files, keep the local report and frame preview paths in your final answer, and reuse compact output instead of spending tokens on repeated handoff reasoning.</code></pre>
 
       </div>
     </article>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>0.6.1 Developer Kit - openRender Docs</title>
-  <meta name="description" content="openRender 0.6.1 Developer Kit overview for local-first asset handoff, adapters, MCP metadata, fixtures, recipes, and P4 media metadata.">
+  <title>0.7.0 Agent Token Saver - openRender Docs</title>
+  <meta name="description" content="openRender 0.7.0 Agent Token Saver overview for local-first asset handoff, adapters, MCP metadata, fixtures, recipes, and P4 media metadata.">
   <link rel="stylesheet" href="./openrender-docs.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
       <nav>
           <div class="sidebar-section">
             <div class="sidebar-section-title">Start</div>
-            <a class="is-active" href="./openRender_v0.6.1.html">Overview</a>
+            <a class="is-active" href="./openRender_v0.7.0.html">Overview</a>
             <a href="./quickstart.html">Quickstart</a>
             <a href="./release-history.html">Release History</a>
           </div>
@@ -40,13 +40,13 @@
     <article class="doc">
       <header class="doc-header">
         <p class="eyebrow">openRender docs</p>
-        <h1>0.6.1 Developer Kit</h1>
-        <p class="summary">Local-first asset handoff for Phaser, Godot, LOVE2D, PixiJS, and Canvas with compact agent context, reports, fixtures, recipes, MCP metadata, and P4 media metadata.</p>
+        <h1>0.7.0 Agent Token Saver</h1>
+        <p class="summary">Local-first asset handoff for Phaser, Godot, LOVE2D, PixiJS, and Canvas with compact agent views, read-only wiring maps, reports, fixtures, recipes, MCP metadata, and P4 media metadata.</p>
       </header>
 
       <div class="doc-content">
         <h2 id="summary">What It Is</h2>
-        <p>openRender 0.6.1 keeps the local media-to-engine compiler as the free core and expands the Developer Kit surface around compact LLM handoff context, safe agent instruction install, deterministic adapter output, recipes, fixtures, report export, local gallery metadata, MCP metadata, and P4 media metadata contracts.</p>
+        <p>openRender 0.7.0 documents the Agent Token Saver layer on top of the local media-to-engine Developer Kit: compact LLM handoff context, read-only wiring maps, compact table output, safe agent instruction install, deterministic adapter output, recipes, fixtures, report export, local gallery metadata, MCP metadata, and P4 media metadata contracts.</p>
         <p>The compiler takes an existing local image and produces compiled PNG output, install plans, helper files, verification results, frame preview sheets, local reports, and rollback records.</p>
 
         <div class="table-wrap">
@@ -56,13 +56,14 @@
               <tr><td>Product</td><td><code>openRender</code></td></tr>
               <tr><td>CLI</td><td><code>openrender</code></td></tr>
               <tr><td>Primary user</td><td>AI coding agents working inside local game projects</td></tr>
-              <tr><td>Reference doc</td><td><code>docs/openRender_v0.6.1.md</code> with 0.6.1 implementation status</td></tr>
+              <tr><td>Reference doc</td><td><code>docs/openRender_v0.7.0.md</code></td></tr>
+              <tr><td>Version basis</td><td>0.7.0 Agent Token Saver on top of the 0.6.1 Developer Kit implementation</td></tr>
               <tr><td>Adapter model</td><td>Project-specific asset paths, manifests, and helper files</td></tr>
-              <tr><td>Strategy focus</td><td>Agent token savings through schemas, compact summaries, recipes, packs, updates, support, and future OEM distribution</td></tr>
+              <tr><td>Agent focus</td><td>Compact summaries, compact tables, read-only wiring candidates, recipes, and local reports</td></tr>
               <tr><td>Supported targets</td><td>Phaser, Godot, LOVE2D, PixiJS, Plain Canvas</td></tr>
               <tr><td>Supported media</td><td>Sprite image handoff plus deterministic metadata for audio, atlas/tileset, and UI contracts</td></tr>
               <tr><td>Local state</td><td><code>.openrender/</code></td></tr>
-              <tr><td>Local boundary</td><td>Image handoff works without accounts, billing, cloud APIs, hosted playgrounds, telemetry, model provider calls, or remote sync</td></tr>
+              <tr><td>Local boundary</td><td>Image handoff works without accounts, billing, cloud APIs, telemetry, model provider calls, or remote sync</td></tr>
             </tbody>
           </table>
         </div>
@@ -88,9 +89,9 @@
           <li><strong>Helper files:</strong> provide project-facing code for sprite frame sets and animation setup.</li>
         </ul>
 
-        <h2 id="implemented">Implemented 0.6.1 Surfaces</h2>
+        <h2 id="implemented">Implemented Agent Surfaces</h2>
         <ul>
-          <li><strong>Agent-safe CLI:</strong> <code>context</code>, <code>schema</code>, <code>plan sprite</code>, <code>install-agent</code>, <code>explain</code>, <code>diff</code>, and JSON-first output.</li>
+          <li><strong>Agent-safe CLI:</strong> <code>context</code>, <code>schema</code>, <code>plan sprite</code>, <code>install-agent</code>, <code>explain</code>, <code>diff</code>, compact JSON views, read-only wire maps, and JSON-first output.</li>
           <li><strong>Adapter registry:</strong> Phaser, Godot, LOVE2D, PixiJS, and Canvas share contract validation, install plans, helper generation, verification, and fixture coverage.</li>
           <li><strong>Image handoff quality:</strong> alpha diagnostics, <code>detect-frames</code>, sprite invariants, normalize presets, frame preview sheets, Pixi spritesheet JSON, and Canvas draw helpers.</li>
           <li><strong>Contributor base:</strong> tracked schemas, recipe validation, adapter scaffolding, fixture capture, compatibility matrix, and at least two golden fixtures per built-in target.</li>
@@ -99,11 +100,20 @@
           <li><strong>P4 media metadata:</strong> schema-backed audio, atlas/tileset, UI asset metadata and runtime smoke availability checks.</li>
         </ul>
 
-        <h2 id="pack-strategy">Pack Strategy</h2>
-        <p>0.6.1 does not charge for local compile/install usage. The monetization direction remains paid recipe and agent packs, update access, support bundles, hosted workers as an opt-in future path, and OEM/platform licensing.</p>
+        <h2 id="agent-output">Agent Output</h2>
+        <p><code>context --json --compact</code> provides a short project handoff. <code>context --json --wire-map</code> returns read-only wiring candidates. <code>verify</code>, <code>report</code>, <code>explain</code>, and <code>diff</code> support <code>--compact</code> JSON views with status, next actions, rollback information, and compact tables.</p>
+
+        <h2 id="version-history">Version History</h2>
+        <ul>
+          <li><strong>0.4.0:</strong> adapter registry, PixiJS, Canvas, MCP metadata, agent init, and recipe substrate.</li>
+          <li><strong>0.5.0:</strong> adapter scaffold, fixture capture, report export/gallery, and stronger failure guidance.</li>
+          <li><strong>0.6.1:</strong> P4 media metadata contracts, runtime smoke availability checks, and expanded QA coverage.</li>
+          <li><strong>0.7.0:</strong> compact agent output, read-only wire-map, and compact table output for verify/report/explain/diff.</li>
+        </ul>
+        <p>Detailed release notes are maintained in <code>RELEASES.md</code> and <code>docs/release-history.html</code>.</p>
 
         <h2 id="safety">Safety And Privacy</h2>
-        <p>openRender is not a hosted platform. The default workflow stays inside the target project, avoids network calls, does not require an account, and records installed files so the openRender change can be rolled back.</p>
+        <p>The default workflow stays inside the target project, avoids network calls, does not require an account, and records installed files so the openRender change can be rolled back.</p>
 
       </div>
     </article>
