@@ -48,14 +48,14 @@ pnpm install
 pnpm build
 ```
 
-以代理为中心使用时，先用自然语言向编码代理提出请求。代理应找到合适的生成图片，检查项目，并根据上下文选择安全的 openRender 命令。
+以代理为中心使用时，先为项目安装 openRender，然后告诉编码代理使用 openRender。代理可以根据本地指令和参考资料选择准确的 openRender 命令。
 
 ```text
-在这个项目中找到生成的 sprite 图片，并使用 openRender 安全安装它。
-先检测引擎，制定计划并执行 dry-run；只有计划有效时才安装，随后验证结果，并返回生成路径、报告、预览和 rollback 命令。
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
-下面的 CLI 顺序用于代理验证和人工参考。
+下面的 CLI 顺序用于本地设置、代理验证和人工参考。
 
 在目标游戏项目中：
 

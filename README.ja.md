@@ -48,14 +48,14 @@ pnpm install
 pnpm build
 ```
 
-エージェント主導で使う場合は、まずコーディングエージェントに自然言語で依頼してください。エージェントは適切な生成画像を見つけ、プロジェクトを検査し、状況に合う安全な openRender コマンドを選ぶべきです。
+エージェント主導で使う場合は、プロジェクトに openRender をインストールしてから、コーディングエージェントに openRender を使うよう伝えます。エージェントはローカル指示とリファレンスから正確な openRender コマンドを選べます。
 
 ```text
-このプロジェクト内の生成済み sprite 画像を見つけ、openRender で安全にインストールしてください。
-先にエンジンを検出し、計画と dry-run を実行します。計画が有効な場合だけインストールし、結果を検証して、生成されたパス、レポート、プレビュー、rollback コマンドを返してください。
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
-以下の CLI 手順は、エージェントの検証と手動参照用です。
+以下の CLI 手順は、ローカル設定、エージェントの検証、手動参照用です。
 
 対象のゲームプロジェクトで:
 

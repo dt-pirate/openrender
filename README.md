@@ -48,14 +48,14 @@ pnpm install
 pnpm build
 ```
 
-For agent-led use, start by asking your coding agent in natural language. The agent should find the right generated image, inspect the project, and choose the safe openRender commands from context.
+For agent-led use, install openRender for the project and then tell your coding agent to use it. The agent can choose the exact openRender commands from the local instructions and references.
 
 ```text
-Find the generated sprite image in this project and use openRender to install it safely.
-Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
-The exact CLI sequence below is for agent verification and manual reference.
+The CLI sequence below is for local setup, agent verification, and manual reference.
 
 From a target game project:
 

@@ -30,7 +30,9 @@ openRender reduces repeated token-heavy handoff work. Agents should prefer compa
 
 ## Agent Prompt Example
 
+User-facing prompts can stay simple. The agent rules above cover planning, overwrite protection, verification, and reporting.
+
 ```text
-Find the generated sprite image in this project and use openRender to install it safely.
-Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```

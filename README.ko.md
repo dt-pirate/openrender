@@ -48,14 +48,14 @@ pnpm install
 pnpm build
 ```
 
-에이전트 중심으로 사용할 때는 코딩 에이전트에게 자연어로 먼저 요청하세요. 에이전트가 알맞은 생성 이미지를 찾고, 프로젝트를 검사한 뒤, 상황에 맞는 안전한 openRender 명령을 선택해야 합니다.
+에이전트 중심으로 사용할 때는 프로젝트에 openRender를 설치한 뒤, 코딩 에이전트에게 openRender를 사용하라고 말하면 됩니다. 정확한 openRender 명령 선택은 로컬 지침과 레퍼런스를 읽은 에이전트가 처리합니다.
 
 ```text
-이 프로젝트에서 생성된 sprite 이미지를 찾아 openRender로 안전하게 설치하세요.
-먼저 엔진을 감지하고 계획과 dry-run을 실행하세요. 계획이 유효할 때만 설치하고, 결과를 검증한 뒤 생성된 경로, 리포트, 미리보기, rollback 명령을 반환하세요.
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
-아래 CLI 순서는 에이전트 검증과 수동 참고용입니다.
+아래 CLI 순서는 로컬 설정, 에이전트 검증, 수동 참고용입니다.
 
 대상 게임 프로젝트에서:
 

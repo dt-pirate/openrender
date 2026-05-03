@@ -67,7 +67,7 @@
       "Each install leaves proof: generated files, checks, preview sheets, report output, diff context, and a rollback command for recovery.": "每次 install 都留下证据：generated files、checks、preview sheets、report output、diff context，以及用于恢复的 rollback command。",
       "Failure paths become short next actions instead of another long debugging thread.": "失败路径会变成简短的 next actions，而不是另一段漫长的 debugging thread。",
       "Handoff core": "交接核心",
-      "openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it safely, and leave proof for the next agent or developer.": "openRender 围绕可重复的本地 surface 构建：理解项目、诊断图片、编译 media package、安全安装，并为下一个 agent 或 developer 留下证据。",
+      "openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it into the project, and leave proof for the next agent or developer.": "openRender 围绕可重复的本地 surface 构建：理解项目、诊断图片、编译 media package、安装到项目中，并为下一个 agent 或 developer 留下证据。",
       "Project layer": "项目层",
       "Adapter-shaped project output": "Adapter-shaped project output",
       "Media layer": "媒体层",
@@ -306,7 +306,7 @@
     "Each install leaves proof: generated files, checks, preview sheets, report output, diff context, and a rollback command for recovery.": "각 설치는 생성 파일, 검사 결과, 프리뷰 시트, 리포트 출력, 차이점 맥락, 복구용 롤백 명령을 증거로 남깁니다.",
     "Failure paths become short next actions instead of another long debugging thread.": "실패 경로는 긴 디버깅 대화가 아니라 짧은 다음 작업으로 정리됩니다.",
     "Handoff core": "핸드오프 핵심",
-    "openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it safely, and leave proof for the next agent or developer.": "openRender는 반복 가능한 로컬 작업면을 중심으로 구성됩니다. 프로젝트를 이해하고, 이미지를 진단하고, 미디어 패키지를 컴파일하고, 안전하게 설치하며, 다음 에이전트나 개발자를 위한 증거를 남깁니다.",
+    "openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it into the project, and leave proof for the next agent or developer.": "openRender는 반복 가능한 로컬 작업면을 중심으로 구성됩니다. 프로젝트를 이해하고, 이미지를 진단하고, 미디어 패키지를 컴파일하고, 프로젝트에 설치하며, 다음 에이전트나 개발자를 위한 증거를 남깁니다.",
     "Project layer": "프로젝트 계층",
     "Adapter-shaped project output": "어댑터 형태의 프로젝트 출력",
     "Media layer": "미디어 계층",
@@ -1505,7 +1505,8 @@
     [". It returns read-only wiring candidates for supported targets and does not edit game code.", "。它会为 supported targets 返回 read-only wiring candidates，并且不编辑 game code。", "。supported targets の read-only wiring candidates を返し、game code は編集しません。", ". supported targets의 read-only wiring candidates를 반환하며 game code는 편집하지 않습니다.", ". Devuelve candidatos de wiring de solo lectura para targets soportados y no edita código del juego."],
     ["Built-in Pack And Recipe Metadata", "内置 Pack 和 Recipe Metadata", "Built-in Pack と Recipe Metadata", "Built-in Pack 및 Recipe Metadata", "Metadata integrada de Pack y Recipe"],
     ["The Developer Kit includes built-in local", "Developer Kit 包含内置本地", "Developer Kit には built-in local", "Developer Kit에는 내장 local", "El Developer Kit incluye metadata local integrada"],
-    ["metadata. These commands provide local agent context only; local compile/install does not require an account.", "metadata。这些命令只提供本地 agent context；local compile/install 不需要账号。", "metadata が含まれます。これらの commands は local agent context のみを提供し、local compile/install に account は不要です。", "metadata가 포함됩니다. 이 commands는 local agent context만 제공하며 local compile/install은 account를 요구하지 않습니다.", ". Estos comandos solo proporcionan contexto local para agentes; local compile/install no requiere cuenta."]
+    ["metadata. These commands provide local agent context only; local compile/install does not require an account.", "metadata。这些命令只提供本地 agent context；local compile/install 不需要账号。", "metadata が含まれます。これらの commands は local agent context のみを提供し、local compile/install に account は不要です。", "metadata가 포함됩니다. 이 commands는 local agent context만 제공하며 local compile/install은 account를 요구하지 않습니다.", ". Estos comandos solo proporcionan contexto local para agentes; local compile/install no requiere cuenta."],
+    ["User-facing prompts can stay simple. The agent rules above cover planning, overwrite protection, verification, and reporting.", "面向用户的提示可以保持简单。上面的代理规则会覆盖计划、覆盖保护、验证和报告。", "ユーザー向けプロンプトはシンプルなままで構いません。上のエージェントルールが計画、上書き保護、検証、レポートを扱います。", "사용자에게 보이는 프롬프트는 단순해도 됩니다. 위의 에이전트 규칙이 계획, 덮어쓰기 보호, 검증, 리포트를 다룹니다.", "Los prompts para usuarios pueden mantenerse simples. Las reglas de agente anteriores cubren planificacion, proteccion contra sobrescritura, verificacion y reportes."]
   ].forEach(([source, zh, ja, ko, es]) => {
     dictionary.zh[source] = zh;
     dictionary.ja[source] = ja;
@@ -1577,7 +1578,7 @@
     ["to verify, report, or rollback", "用于 verify、report 或 rollback", "verify、report、rollback 用", "para verify, report o rollback"],
     ["Each install leaves proof: generated files, checks, preview sheets, report output, diff context, and a rollback command for recovery.", "每次 install 都留下 proof：generated files、checks、preview sheets、report output、diff context，以及 recovery 用 rollback command。", "各 install は proof を残します: generated files、checks、preview sheets、report output、diff context、recovery 用 rollback command。", "Cada install deja prueba: archivos generados, checks, preview sheets, salida de report, contexto diff y un comando rollback para recuperación."],
     ["Failure paths become short next actions instead of another long debugging thread.", "Failure paths 会变成简短 next actions，而不是另一段漫长 debugging thread。", "Failure paths は別の長い debugging thread ではなく短い next actions になります。", "Los paths de fallo se convierten en próximas acciones breves en vez de otro hilo largo de debugging."],
-    ["openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it safely, and leave proof for the next agent or developer.", "openRender 围绕可重复的 local surfaces 构建：理解项目、诊断图片、编译 media package、安全 install，并为下一个 agent 或 developer 留下 proof。", "openRender は反復可能な local surfaces を中心に作られています: project を理解し、image を診断し、media package を compile し、安全に install し、次の agent や developer に proof を残します。", "openRender se construye alrededor de superficies locales repetibles: entender el proyecto, diagnosticar la imagen, compilar el paquete de medios, instalarlo con seguridad y dejar prueba para el siguiente agente o desarrollador."],
+    ["openRender is built around repeatable local surfaces: understand the project, diagnose the image, compile the media package, install it into the project, and leave proof for the next agent or developer.", "openRender 围绕可重复的 local surfaces 构建：理解项目、诊断图片、编译 media package、install 到项目中，并为下一个 agent 或 developer 留下 proof。", "openRender は反復可能な local surfaces を中心に作られています: project を理解し、image を診断し、media package を compile し、project に install し、次の agent や developer に proof を残します。", "openRender는 반복 가능한 local surfaces를 중심으로 구성됩니다. project를 이해하고, image를 진단하고, media package를 compile하고, project에 install한 뒤 다음 agent나 developer를 위한 proof를 남깁니다.", "openRender se construye alrededor de superficies locales repetibles: entender el proyecto, diagnosticar la imagen, compilar el paquete de medios, instalarlo en el proyecto y dejar prueba para el siguiente agente o desarrollador."],
     ["Project layer", "项目层", "Project layer", "Capa de proyecto"],
     ["Adapter-shaped project output", "Adapter-shaped project output", "Adapter-shaped project output", "Salida de proyecto con forma de adapter"],
     ["Media layer", "媒体层", "Media layer", "Capa de medios"],
@@ -1825,12 +1826,6 @@
       ja: "ローカル画像ファイル\n-> プロジェクトスキャン\n-> メディア契約\n-> 決定的な PNG 成果物\n-> プロジェクトのインストール計画\n-> スナップショット付きローカルファイル\n-> 検証とレポート\n-> エージェントが生成済みパス/ヘルパーを使用\n-> ロールバックは利用可能",
       ko: "로컬 이미지 파일\n-> 프로젝트 스캔\n-> 미디어 계약\n-> 결정적 PNG 산출물\n-> 프로젝트 설치 계획\n-> 스냅샷이 포함된 로컬 파일\n-> 검증과 리포트\n-> 에이전트가 생성된 경로/헬퍼 사용\n-> 롤백은 계속 사용 가능",
       es: "archivo de imagen local\n-> escaneo del proyecto\n-> contrato de medios\n-> artefacto PNG determinístico\n-> plan de instalación del proyecto\n-> archivos locales con instantáneas\n-> verificar y reportar\n-> el agente usa rutas/helpers generados\n-> rollback sigue disponible"
-    },
-    "Find the generated sprite image in this project and use openRender to install it safely. Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.": {
-      zh: "在这个项目中找到生成的 sprite 图片，并使用 openRender 安全安装它。\n先检测引擎，制定计划并执行 dry-run；只有计划有效时才安装，随后验证结果，并返回生成路径、报告、预览和 rollback 命令。",
-      ja: "このプロジェクト内の生成済み sprite 画像を見つけ、openRender で安全にインストールしてください。\n先にエンジンを検出し、計画と dry-run を実行します。計画が有効な場合だけインストールし、結果を検証して、生成されたパス、レポート、プレビュー、rollback コマンドを返してください。",
-      ko: "이 프로젝트에서 생성된 sprite 이미지를 찾아 openRender로 안전하게 설치하세요.\n먼저 엔진을 감지하고 계획과 dry-run을 실행하세요. 계획이 유효할 때만 설치하고, 결과를 검증한 뒤 생성된 경로, 리포트, 미리보기, rollback 명령을 반환하세요.",
-      es: "Encuentra la imagen sprite generada en este proyecto y usa openRender para instalarla con seguridad.\nDetecta el motor, planifica y ejecuta primero un dry-run; instala solo si el plan es válido, verifica el resultado y devuelve las rutas generadas, el reporte, la preview y el comando rollback."
     }
   };
 
@@ -1876,6 +1871,7 @@
 
   function translateCodeBlocks(locale) {
     document.querySelectorAll("pre code.language-text").forEach((code) => {
+      if (code.closest("[translate='no']")) return;
       const key = normalize(code.textContent || "").replace(/\s*->\s*/g, "\n-> ");
       const translated = codeBlockTranslations[key]?.[locale];
       if (translated) code.textContent = translated;

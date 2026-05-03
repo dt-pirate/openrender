@@ -2,14 +2,14 @@
 
 Use openRender as a local-first handoff layer for generated media.
 
-When a human is working through an AI coding agent, they can start with a natural-language request:
+When a human is working through an AI coding agent, the user-facing request can stay simple:
 
 ```text
-Find the generated sprite image in this project and use openRender to install it safely.
-Detect the engine, plan and dry-run first, install only if the plan is valid, verify the result, and return the generated paths, report, preview, and rollback command.
+Install openRender for this project, then use it to add the generated game art to the game.
+Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
 ```
 
-The command sequence below is the agent reference for carrying out that request.
+The command sequence and rules below are the agent reference for carrying out that request safely.
 
 Recommended sequence:
 
