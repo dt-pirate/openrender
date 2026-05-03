@@ -16,7 +16,8 @@
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
-    <a href="./ROADMAP.md">Roadmap</a>
+    <a href="./ROADMAP.md">Roadmap</a> •
+    <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
