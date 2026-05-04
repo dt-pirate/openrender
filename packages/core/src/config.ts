@@ -119,6 +119,14 @@ function getTargetDefaults(target: TargetEngine): Pick<OpenRenderConfig["target"
     };
   }
 
+  if (target === "unity") {
+    return {
+      framework: "unity",
+      assetRoot: "Assets/OpenRender/Generated",
+      sourceRoot: "Assets/OpenRender"
+    };
+  }
+
   return {
     framework: "vite",
     assetRoot: "public/assets",
@@ -137,6 +145,10 @@ function validateTargetFrameworkPair(target: TargetEngine, framework: TargetFram
 
   if (target === "love2d" && framework !== "love2d") {
     throw new Error("LOVE2D target requires the love2d framework.");
+  }
+
+  if (target === "unity" && framework !== "unity") {
+    throw new Error("Unity target requires the unity framework.");
   }
 }
 

@@ -23,7 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.3"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.3-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender es un Developer Kit local-first para agentes de codigo con IA que nec
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-El core actual `0.7.3` soporta handoff de sprites y pipelines P4 de audio, atlas/tileset y UI para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite y Canvas plano + Vite.
+El core actual `0.8.0` soporta handoff de sprites y pipelines de audio, atlas/tileset y UI para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 
@@ -133,7 +133,7 @@ Revierte la ultima instalacion de openRender:
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-Puedes usar `--target phaser`, `--target godot`, `--target love2d`, `--target pixi` o `--target canvas`.
+Puedes usar `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas` o `--target unity`.
 
 ## Como funciona
 
@@ -155,11 +155,11 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 
 - Escaneo de proyecto y checks de doctor.
 - Planes de sprite, dry-runs, instalaciones, verificacion, reportes, diffs, explicaciones y rollback.
-- Compile/install/verify/report/rollback para P4 audio, atlas/tileset y UI en el mismo pipeline local de run-state.
+- Compile/install/verify/report/rollback para audio, atlas/tileset y UI en el mismo pipeline local de run-state.
 - Salida compacta para agentes en context, verificacion, reportes, explain y diff.
 - Wiring map de solo lectura para posibles puntos de conexion en el codigo del juego.
 - Diagnostico alpha, cutout de fondo seguro por defecto, eliminacion edge-flood de fondo, deteccion de frames, presets de normalizacion, invariants de sprites y hojas de preview de frames.
-- Adaptadores para Phaser, Godot, LOVE2D, PixiJS y Canvas.
+- Adaptadores para Phaser, Godot, LOVE2D, PixiJS, Canvas y Unity.
 - JSON schemas, resumenes compactos para agentes, recipes, fixture capture y golden fixtures.
 - Helpers locales JSON-only de metadata MCP para los targets soportados.
 
@@ -172,6 +172,7 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 | LOVE2D | Assets PNG, modulo Lua, metadata de animacion, snippets load/draw |
 | PixiJS + Vite | Assets PNG, spritesheet JSON opcional, helpers Pixi en TypeScript |
 | Canvas + Vite | Assets PNG, manifest TypeScript, helpers para cargar imagenes y dibujar frames |
+| Unity | Assets PNG/audio bajo `Assets/OpenRender`, manifests C#, clases helper para sprite/media |
 
 ## Reglas para agentes
 

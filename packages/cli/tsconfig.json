@@ -15,6 +15,7 @@
     { "path": "../adapters/love2d" },
     { "path": "../adapters/pixi" },
     { "path": "../adapters/canvas" },
+    { "path": "../adapters/unity" },
     { "path": "../reporter" }
   ]
 }

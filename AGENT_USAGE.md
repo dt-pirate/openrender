@@ -62,7 +62,7 @@ Rules:
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 - Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing local agent instructions.
 - Run a dry run before install and inspect `installPlan.files`.
-- Use `compile audio`, `compile atlas`, or `compile ui` when the source asset is P4 media rather than a sprite image; these commands now produce installable, verifiable, reportable, rollback-safe runs.
+- Use `compile audio`, `compile atlas`, or `compile ui` when the source asset is audio, atlas/tileset, or UI media rather than a sprite image; these commands produce installable, verifiable, reportable, rollback-safe runs.
 - Generated sprite handoff uses safe `--background-policy auto` cutout by default.
 - Use `--background-policy preserve` to keep the original background, or `--background-policy remove` / `--remove-background` to force cutout.
 - Use default `--manifest-strategy merge` for cumulative manifests; use `replace` for one-entry manifests and `isolated` when no shared manifest should be written.

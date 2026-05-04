@@ -66,6 +66,23 @@ test("scanProject detects LOVE2D projects", async () => {
   assert.equal(path.basename(scan.manifestPath), "openrender_assets.lua");
 });
 
+test("scanProject detects Unity projects", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-unity-"));
+  await fs.mkdir(path.join(root, "Assets/OpenRender/Generated"), { recursive: true });
+  await fs.mkdir(path.join(root, "ProjectSettings"), { recursive: true });
+  await fs.writeFile(path.join(root, "ProjectSettings/ProjectVersion.txt"), "m_EditorVersion: 6000.0.0f1\n", "utf8");
+
+  const scan = await scanProject(root);
+
+  assert.equal(scan.framework, "unity");
+  assert.equal(scan.engine, "unity");
+  assert.equal(scan.assetRoot, "Assets/OpenRender/Generated");
+  assert.equal(scan.assetRootExists, true);
+  assert.equal(scan.sourceRoot, "Assets/OpenRender");
+  assert.equal(scan.sourceRootExists, true);
+  assert.equal(path.basename(scan.manifestPath), "OpenRenderAssets.cs");
+});
+
 test("scanProject detects PixiJS Vite projects", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-scan-pixi-"));
   await fs.mkdir(path.join(root, "src"), { recursive: true });

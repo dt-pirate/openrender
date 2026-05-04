@@ -52,4 +52,4 @@ openrender diff --run latest --json
 
 ## Scope check
 
-openRender Developer Kit 0.6.1 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, and Canvas workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.8.0 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Canvas, and Unity workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

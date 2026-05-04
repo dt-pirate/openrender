@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.7.3");
+  assert.equal(stdout.trim(), "0.8.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,11 +31,11 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.7\.3/m);
+  assert.match(stdout, /^openRender 0\.8\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
-  assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
+  assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|unity/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile audio .*--media-type audio\.sound_effect\|audio\.music_loop/);
   assert.match(stdout, /compile atlas .*--media-type visual\.atlas\|visual\.tileset/);
@@ -59,7 +59,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.7.3");
+  assert.equal(schema.properties.schemaVersion.const, "0.8.0");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -68,7 +68,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.7.3 P4 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.8.0 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -378,6 +378,39 @@ test("compile atlas and ui assets promote P4 metadata into installable verified 
   assert.equal(uiVerifyResult.checks.some((check) => check.name === "ui_states_declared" && check.status === "passed"), true);
   assert.equal(uiVerifyResult.checks.some((check) => check.name === "godot_import_cache_boundary" && check.status === "passed"), true);
   assert.equal(await fileExists(path.join(uiRoot, "scripts/openrender/openrender_media_assets.gd")), true);
+
+  const unityRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-unity-"));
+  await fs.writeFile(path.join(unityRoot, "sound.wav"), Buffer.from("RIFF0000WAVE", "ascii"));
+  await fs.mkdir(path.join(unityRoot, "Assets"), { recursive: true });
+  await fs.mkdir(path.join(unityRoot, "ProjectSettings"), { recursive: true });
+  await fs.writeFile(path.join(unityRoot, "ProjectSettings/ProjectVersion.txt"), "m_EditorVersion: 6000.0.0f1\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "audio",
+    "--from",
+    "sound.wav",
+    "--target",
+    "unity",
+    "--id",
+    "sfx.click",
+    "--install",
+    "--json"
+  ], {
+    cwd: unityRoot
+  });
+  const unityVerify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json"], {
+    cwd: unityRoot
+  });
+  const unityVerifyResult = JSON.parse(unityVerify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string }>;
+  };
+  assert.equal(unityVerifyResult.status, "passed");
+  assert.equal(unityVerifyResult.checks.some((check) => check.name === "audio_format_supported" && check.status === "passed"), true);
+  assert.equal(unityVerifyResult.checks.some((check) => check.name === "unity_import_cache_boundary" && check.status === "passed"), true);
+  assert.equal(await fileExists(path.join(unityRoot, "Assets/OpenRender/OpenRenderMediaAssets.cs")), true);
 });
 
 test("init emits JSON when requested", async () => {
@@ -452,6 +485,33 @@ test("init supports LOVE2D defaults", async () => {
     framework: "love2d",
     assetRoot: "assets/openrender",
     sourceRoot: "openrender"
+  });
+});
+
+test("init supports Unity defaults", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-unity-"));
+  await fs.mkdir(path.join(root, "Assets"), { recursive: true });
+  await fs.mkdir(path.join(root, "ProjectSettings"), { recursive: true });
+  await fs.writeFile(path.join(root, "ProjectSettings/ProjectVersion.txt"), "m_EditorVersion: 6000.0.0f1\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "init",
+    "--target",
+    "unity",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const config = JSON.parse(await fs.readFile(path.join(root, "openrender.config.json"), "utf8")) as {
+    target: { engine: string; framework: string; assetRoot: string; sourceRoot: string };
+  };
+
+  assert.deepEqual(config.target, {
+    engine: "unity",
+    framework: "unity",
+    assetRoot: "Assets/OpenRender/Generated",
+    sourceRoot: "Assets/OpenRender"
   });
 });
 
@@ -620,6 +680,50 @@ test("compile sprite dry-run emits a LOVE2D frame set plan as JSON", async () =>
   assert.match(result.generatedSources.animationHelper ?? "", /love\.graphics\.newQuad/);
 });
 
+test("compile sprite dry-run emits a Unity frame set plan as JSON", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-unity-frame-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "unity",
+    "--id",
+    "enemy.dot.idle",
+    "--frames",
+    "1",
+    "--frame-size",
+    "1x1",
+    "--dry-run",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const result = JSON.parse(stdout) as {
+    contract: { target: { engine: string; framework: string } };
+    outputPlan: { engine: string; assetPath: string; loadPath: string; manifestPath: string; codegenPath: string };
+    installPlan: { files: Array<{ kind: string; to: string }> };
+    generatedSources: { manifest: string; animationHelper?: string };
+  };
+
+  assert.equal(result.contract.target.engine, "unity");
+  assert.equal(result.contract.target.framework, "unity");
+  assert.equal(result.outputPlan.engine, "unity");
+  assert.equal(result.outputPlan.assetPath, "Assets/OpenRender/Generated/enemy-dot-idle.png");
+  assert.equal(result.outputPlan.loadPath, "Assets/OpenRender/Generated/enemy-dot-idle.png");
+  assert.equal(result.outputPlan.manifestPath, "Assets/OpenRender/OpenRenderAssets.cs");
+  assert.equal(result.outputPlan.codegenPath, "Assets/OpenRender/Sprites/EnemyDotIdleSprites.cs");
+  assert.deepEqual(result.installPlan.files.map((file) => file.kind), ["compiled_asset", "manifest", "codegen"]);
+  assert.match(result.generatedSources.manifest, /OpenRenderAssets/);
+  assert.match(result.generatedSources.animationHelper ?? "", /Sprite\.Create/);
+});
+
 test("compile sprite dry-run emits PixiJS and Canvas frame set plans as JSON", async () => {
   for (const target of ["pixi", "canvas"]) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), `openrender-cli-${target}-frame-`));
@@ -754,7 +858,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.7.3");
+  assert.equal(result.version, "0.8.0");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -842,6 +946,15 @@ test("context wire-map finds read-only wiring candidates for supported targets",
       },
       expectedFile: "src/main.ts",
       expectedSignal: "canvas_context"
+    },
+    {
+      name: "unity",
+      files: {
+        "Assets/Scripts/Player.cs": "using UnityEngine;\npublic class Player : MonoBehaviour { public SpriteRenderer spriteRenderer; }\n",
+        "ProjectSettings/ProjectVersion.txt": "m_EditorVersion: 6000.0.0f1\n"
+      },
+      expectedFile: "ProjectSettings/ProjectVersion.txt",
+      expectedSignal: "unity_project"
     }
   ];
 
@@ -1509,6 +1622,82 @@ test("compile sprite can install, verify, report, and rollback a LOVE2D run", as
   ]);
   assert.equal(await fileExists(path.join(root, "assets/openrender/prop-dot.png")), false);
   assert.equal(await fileExists(path.join(root, "openrender/openrender_assets.lua")), false);
+});
+
+test("compile sprite can install, verify, report, and rollback a Unity run", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-unity-install-"));
+  const imagePath = path.join(root, "sprite.png");
+  await fs.writeFile(imagePath, Buffer.from(onePixelPng, "base64"));
+  await fs.mkdir(path.join(root, "Assets"), { recursive: true });
+  await fs.mkdir(path.join(root, "ProjectSettings"), { recursive: true });
+  await fs.writeFile(path.join(root, "ProjectSettings/ProjectVersion.txt"), "m_EditorVersion: 6000.0.0f1\n", "utf8");
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "unity",
+    "--id",
+    "prop.dot",
+    "--output-size",
+    "8x8",
+    "--background-policy",
+    "preserve",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const compileResult = JSON.parse(stdout) as {
+    run: { runId: string };
+    outputPlan: { loadPath: string; assetPath: string; manifestPath: string };
+    installResult: { writes: Array<{ relativePath: string }> };
+  };
+
+  assert.equal(compileResult.outputPlan.loadPath, "Assets/OpenRender/Generated/prop-dot.png");
+  assert.deepEqual(compileResult.installResult.writes.map((write) => write.relativePath), [
+    "Assets/OpenRender/Generated/prop-dot.png",
+    "Assets/OpenRender/OpenRenderAssets.cs"
+  ]);
+  assert.equal(await fileExists(path.join(root, "Assets/OpenRender/Generated/prop-dot.png")), true);
+  assert.equal(await fileExists(path.join(root, "Assets/OpenRender/OpenRenderAssets.cs")), true);
+  assert.equal(await fileExists(path.join(root, "Assets/OpenRender/Generated/prop-dot.png.meta")), false);
+  assert.equal(await fileExists(path.join(root, "Library")), false);
+
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string; path?: string }>;
+  };
+  assert.equal(verifyResult.status, "passed");
+  assert.equal(verifyResult.checks.some((check) => check.name === "engine_load_path_shape" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "unity_project_layout_detected" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "unity_import_cache_boundary" && check.status === "passed"), true);
+
+  const report = await execFileAsync(process.execPath, [cliPath, "report", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const reportResult = JSON.parse(report.stdout) as { htmlPath: string };
+  const reportHtml = await fs.readFile(path.join(root, reportResult.htmlPath), "utf8");
+  assert.match(reportHtml, /Unity Import Note/);
+
+  const rollback = await execFileAsync(process.execPath, [cliPath, "rollback", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const rollbackResult = JSON.parse(rollback.stdout) as {
+    actions: Array<{ action: string; path: string }>;
+  };
+  assert.deepEqual(rollbackResult.actions.map((action) => action.path), [
+    "Assets/OpenRender/Generated/prop-dot.png",
+    "Assets/OpenRender/OpenRenderAssets.cs"
+  ]);
+  assert.equal(await fileExists(path.join(root, "Assets/OpenRender/Generated/prop-dot.png")), false);
+  assert.equal(await fileExists(path.join(root, "Assets/OpenRender/OpenRenderAssets.cs")), false);
 });
 
 test("manifest merge keeps multiple entries and updates same asset id without force", async () => {

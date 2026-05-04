@@ -56,7 +56,7 @@ test("golden fixtures match compile output shape", async () => {
     assert.deepEqual(result.installPlan.files.map((file) => file.kind), spec.expected.installKinds, spec.name);
   }
 
-  for (const target of ["phaser", "godot", "love2d", "pixi", "canvas"]) {
+  for (const target of ["phaser", "godot", "love2d", "pixi", "canvas", "unity"]) {
     assert.equal((fixtureCountByTarget.get(target) ?? 0) >= 2, true, `${target} should have at least two golden fixtures`);
   }
 });

@@ -162,6 +162,38 @@ test("validateMediaContract accepts a LOVE2D transparent sprite contract", () =>
   assert.equal(result.ok, true);
 });
 
+test("validateMediaContract accepts a Unity transparent sprite contract", () => {
+  const contract: MediaContract = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    mediaType: "visual.transparent_sprite",
+    sourcePath: "tmp/tree.png",
+    target: {
+      engine: "unity",
+      framework: "unity",
+      projectRoot: "/tmp/game"
+    },
+    id: "prop.tree",
+    visual: {
+      outputWidth: 128,
+      outputHeight: 128,
+      padding: 0,
+      background: "transparent",
+      outputFormat: "png"
+    },
+    install: {
+      enabled: true,
+      assetRoot: "Assets/OpenRender/Generated",
+      writeManifest: true,
+      writeCodegen: false,
+      snapshotBeforeInstall: true
+    }
+  };
+
+  const result = validateMediaContract(contract);
+
+  assert.equal(result.ok, true);
+});
+
 test("validateMediaContract accepts Pixi and Canvas Vite targets", () => {
   for (const engine of ["pixi", "canvas"] as const) {
     const contract: MediaContract = {

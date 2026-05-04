@@ -8,20 +8,51 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.7.3 Stabilized P4 Pipeline` |
-| Package/CLI version | `0.7.3` |
+| Current docs baseline | `0.8.0 Unity Support` |
+| Package/CLI version | `0.8.0` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release `v0.7.3` |
-| Release timestamp | 2026-05-04 20:00 KST (2026-05-04 11:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.3` |
+| Release channel | GitHub release `v0.8.0` |
+| Release timestamp | 2026-05-04 22:00 KST (2026-05-04 13:00 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.0` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
-## 0.7.3 Stabilized P4 Pipeline
+## 0.8.0 Unity Support
 
-`0.7.3` is the current implemented package and CLI version.
+`0.8.0` is the current implemented package and CLI version.
+
+Released: 2026-05-04 22:00 KST (2026-05-04 13:00 UTC).
+
+### Added
+
+- Unity target/framework support across shared contracts, config defaults, project scanning, validation, CLI flags, schemas, MCP prompts, and doctor checks.
+- `@openrender/adapter-unity` for sprite handoff into Unity projects: assets under `Assets/OpenRender/Generated`, C# manifest output, C# sprite helper classes, fixture coverage, and load-path verification.
+- Unity support in `compile audio`, `compile atlas`, and `compile ui` through `Assets/OpenRender/OpenRenderMediaAssets.cs` and target-shaped helper classes.
+- Read-only Unity wire maps that detect `ProjectSettings`, `MonoBehaviour` scripts, SpriteRenderer/UI/Image usage, AudioSource usage, scenes, and prefabs without editing Unity code.
+- Unity readiness verification checks for project layout, `Assets/` load-path shape, manifest/helper path shape, and the `.meta`/`Library` import boundary.
+- Unity golden fixtures and install/verify/report/rollback regression coverage.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.8.0
+```
+
+## 0.7.3 Additional Media Pipeline
+
+`0.7.3` was the additional media pipeline package and CLI version.
 
 Released: 2026-05-04 20:00 KST (2026-05-04 11:00 UTC).
 
@@ -29,9 +60,9 @@ Released: 2026-05-04 20:00 KST (2026-05-04 11:00 UTC).
 
 - Stabilization coverage for the current `0.7.x` surface: `pnpm typecheck`, `pnpm test`, golden fixtures, compact output, wire-map, rollback, report, and local run records.
 - Engine readiness checks in `verify`: Phaser loader path shape, Pixi asset path shape, Canvas media path shape, Godot project/import-cache boundary, LOVE2D entry/load-path boundary, manifest path shape, and helper path shape.
-- P4 media compile pipeline for `compile audio`, `compile atlas`, and `compile ui`, promoting audio, atlas/tileset, and UI metadata contracts into installable local runs.
-- P4 media manifests and helper files for Phaser, Godot, LOVE2D, PixiJS, and Canvas, with the same install, verify, report, diff, explain, and rollback workflow used by sprite assets.
-- P4 regression tests covering audio install/verify/report/rollback plus atlas and UI verified install runs.
+- Additional media compile pipeline for `compile audio`, `compile atlas`, and `compile ui`, promoting audio, atlas/tileset, and UI metadata contracts into installable local runs.
+- Additional media manifests and helper files for Phaser, Godot, LOVE2D, PixiJS, and Canvas, with the same install, verify, report, diff, explain, and rollback workflow used by sprite assets.
+- Regression tests covering audio install/verify/report/rollback plus atlas and UI verified install runs.
 
 ### Verification
 
@@ -119,7 +150,7 @@ Expected CLI version:
 - `context --json` for agent handoff: detected target, local paths, latest run, overwrite risks, and next actions.
 - `install-agent --platform codex|cursor|claude|all --dry-run --json` for safe agent instruction file planning.
 - LLM-optimized reference documentation for dry-run, install plan, manifest, MCP, verification, and rollback behavior.
-- P4 media metadata contracts for audio, atlas/tileset, and UI asset metadata.
+- Additional media metadata contracts for audio, atlas/tileset, and UI asset metadata.
 - Runtime smoke availability checks that report whether supported runtimes are present without requiring runtime execution by default.
 - Expanded QA coverage across CLI, adapters, schemas, reports, fixtures, and local metadata helpers.
 

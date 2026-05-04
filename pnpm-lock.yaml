@@ -45,6 +45,12 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/adapters/unity:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/cli:
     dependencies:
       '@openrender/adapter-canvas':
@@ -62,6 +68,9 @@ importers:
       '@openrender/adapter-pixi':
         specifier: workspace:*
         version: link:../adapters/pixi
+      '@openrender/adapter-unity':
+        specifier: workspace:*
+        version: link:../adapters/unity
       '@openrender/core':
         specifier: workspace:*
         version: link:../core

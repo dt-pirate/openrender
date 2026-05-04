@@ -38,6 +38,12 @@ export async function runDoctor(projectRoot = process.cwd()): Promise<DoctorResu
       status: "passed",
       message: "LOVE2D project detected"
     });
+  } else if (scan.engine === "unity") {
+    checks.push({
+      name: "unity",
+      status: "passed",
+      message: "Unity project detected"
+    });
   } else {
     checks.push({
       name: "vite",

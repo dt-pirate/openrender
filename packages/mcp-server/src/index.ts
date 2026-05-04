@@ -15,7 +15,7 @@ const TOOL_NAMES = [
   "explain",
   "install-agent"
 ] as const;
-const TARGETS: TargetEngine[] = ["phaser", "godot", "love2d", "pixi", "canvas"];
+const TARGETS: TargetEngine[] = ["phaser", "godot", "love2d", "pixi", "canvas", "unity"];
 
 export interface McpToolDescriptor {
   name: (typeof TOOL_NAMES)[number];

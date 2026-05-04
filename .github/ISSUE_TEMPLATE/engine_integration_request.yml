@@ -13,6 +13,7 @@ body:
         - love2d
         - pixi
         - canvas
+        - unity
         - other
     validations:
       required: true

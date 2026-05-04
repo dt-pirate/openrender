@@ -1,6 +1,6 @@
 {
   "name": "@openrender/cli",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "description": "Command-line interface for openRender",
   "license": "Apache-2.0",
   "type": "module",
@@ -55,6 +55,7 @@
     "@openrender/adapter-love2d": "workspace:*",
     "@openrender/adapter-phaser": "workspace:*",
     "@openrender/adapter-pixi": "workspace:*",
+    "@openrender/adapter-unity": "workspace:*",
     "@openrender/core": "workspace:*",
     "@openrender/doctor": "workspace:*",
     "@openrender/harness-visual": "workspace:*",
