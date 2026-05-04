@@ -44,6 +44,7 @@ export async function scanProject(projectRootInput = process.cwd()): Promise<Pro
   const hasVite = dependencyNames.has("vite");
   const hasPhaser = dependencyNames.has("phaser");
   const hasPixi = dependencyNames.has("pixi.js");
+  const hasThree = dependencyNames.has("three");
   const framework = hasGodotProject
     ? "godot"
     : hasLove2DProject
@@ -63,6 +64,8 @@ export async function scanProject(projectRootInput = process.cwd()): Promise<Pro
       ? "phaser"
     : hasPixi
       ? "pixi"
+    : hasThree
+      ? "three"
     : hasVite
       ? "canvas"
       : "unknown";

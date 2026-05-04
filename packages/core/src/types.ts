@@ -1,7 +1,7 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.8.0" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.8.2" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
-export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas" | "unity";
+export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas" | "three" | "unity";
 export type TargetFramework = "vite" | "godot" | "love2d" | "unity";
 export type VisualMediaType =
   | "visual.transparent_sprite"

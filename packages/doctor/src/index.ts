@@ -50,11 +50,7 @@ export async function runDoctor(projectRoot = process.cwd()): Promise<DoctorResu
       status: scan.framework === "vite" ? "passed" : "warning",
       message: scan.framework === "vite" ? "Vite detected" : "Vite dependency not detected"
     });
-    checks.push({
-      name: "phaser",
-      status: scan.engine === "phaser" ? "passed" : "warning",
-      message: scan.engine === "phaser" ? "Phaser detected" : "Phaser dependency not detected"
-    });
+    checks.push(createWebEngineCheck(scan));
   }
   checks.push({
     name: "write_permission",
@@ -73,6 +69,22 @@ export async function runDoctor(projectRoot = process.cwd()): Promise<DoctorResu
     scan,
     checks
   };
+}
+
+function createWebEngineCheck(scan: ProjectScan): DoctorCheck {
+  if (scan.engine === "phaser") {
+    return { name: "phaser", status: "passed", message: "Phaser detected" };
+  }
+  if (scan.engine === "pixi") {
+    return { name: "pixi", status: "passed", message: "PixiJS detected" };
+  }
+  if (scan.engine === "three") {
+    return { name: "three", status: "passed", message: "Three.js detected" };
+  }
+  if (scan.engine === "canvas") {
+    return { name: "canvas", status: "passed", message: "Plain Vite Canvas target selected" };
+  }
+  return { name: "web_engine", status: "warning", message: "Phaser, PixiJS, Three.js, or Vite Canvas target not detected" };
 }
 
 function checkNodeVersion(version: string): DoctorCheck {

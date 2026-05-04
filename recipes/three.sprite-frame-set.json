@@ -1,0 +1,7 @@
+{
+  "id": "core.three.sprite-frame-set",
+  "packId": "core",
+  "mediaType": "visual.sprite_frame_set",
+  "targets": ["three"],
+  "summary": "Compile a local sprite sheet into a Three.js/Vite PNG plus TextureLoader, Sprite, and Plane helpers."
+}

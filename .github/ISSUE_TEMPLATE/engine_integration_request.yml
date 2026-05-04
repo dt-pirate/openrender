@@ -12,6 +12,7 @@ body:
         - godot
         - love2d
         - pixi
+        - three
         - canvas
         - unity
         - other

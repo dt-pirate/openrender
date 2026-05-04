@@ -42,7 +42,7 @@ openrender diff --run latest --json
 ## Agent context
 
 - Was this run by an AI agent? yes/no
-- Target project type: Vite + Phaser / Godot 4 / LOVE2D / PixiJS / Canvas / other
+- Target project type: Vite + Phaser / Godot 4 / LOVE2D / PixiJS / Three.js / Canvas / Unity / other
 - Asset mode: transparent sprite / sprite frame set
 - Did the agent start with `context --json`? yes/no
 - Did the command use `--dry-run` before install? yes/no
@@ -52,4 +52,4 @@ openrender diff --run latest --json
 
 ## Scope check
 
-openRender Developer Kit 0.8.0 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Canvas, and Unity workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender Developer Kit 0.8.2 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.

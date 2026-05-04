@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.8.0");
+  assert.equal(stdout.trim(), "0.8.2");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,11 +31,11 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.8\.0/m);
+  assert.match(stdout, /^openRender 0\.8\.2/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
-  assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|unity/);
+  assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|three\|unity/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
   assert.match(stdout, /compile audio .*--media-type audio\.sound_effect\|audio\.music_loop/);
   assert.match(stdout, /compile atlas .*--media-type visual\.atlas\|visual\.tileset/);
@@ -59,7 +59,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.8.0");
+  assert.equal(schema.properties.schemaVersion.const, "0.8.2");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -68,7 +68,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.8.0 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.8.2 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -515,6 +515,30 @@ test("init supports Unity defaults", async () => {
   });
 });
 
+test("init supports Three.js defaults", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-init-three-"));
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "init",
+    "--target",
+    "three",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const config = JSON.parse(await fs.readFile(path.join(root, "openrender.config.json"), "utf8")) as {
+    target: { engine: string; framework: string; assetRoot: string; sourceRoot: string };
+  };
+
+  assert.deepEqual(config.target, {
+    engine: "three",
+    framework: "vite",
+    assetRoot: "public/assets",
+    sourceRoot: "src"
+  });
+});
+
 test("compile sprite dry-run emits a transparent sprite plan as JSON", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-"));
   const imagePath = path.join(root, "sprite.png");
@@ -724,8 +748,8 @@ test("compile sprite dry-run emits a Unity frame set plan as JSON", async () => 
   assert.match(result.generatedSources.animationHelper ?? "", /Sprite\.Create/);
 });
 
-test("compile sprite dry-run emits PixiJS and Canvas frame set plans as JSON", async () => {
-  for (const target of ["pixi", "canvas"]) {
+test("compile sprite dry-run emits Vite web engine frame set plans as JSON", async () => {
+  for (const target of ["pixi", "canvas", "three"]) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), `openrender-cli-${target}-frame-`));
     await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
 
@@ -764,7 +788,8 @@ test("compile sprite dry-run emits PixiJS and Canvas frame set plans as JSON", a
     assert.equal(result.outputPlan.codegenPath, `src/openrender/${target}/enemy-dot-idle.ts`);
     assert.equal(result.installPlan.files.some((file) => file.to === "public/assets/enemy-dot-idle.png"), true);
     assert.match(result.generatedSources.manifest, /openRenderAssets/);
-    assert.match(result.generatedSources.animationHelper ?? "", target === "pixi" ? /AnimatedSprite/ : /drawFrame/);
+    const helperPattern = target === "pixi" ? /AnimatedSprite/ : target === "three" ? /TextureLoader/ : /drawFrame/;
+    assert.match(result.generatedSources.animationHelper ?? "", helperPattern);
   }
 });
 
@@ -858,7 +883,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.8.0");
+  assert.equal(result.version, "0.8.2");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -937,6 +962,15 @@ test("context wire-map finds read-only wiring candidates for supported targets",
       },
       expectedFile: "src/main.ts",
       expectedSignal: "pixi_application"
+    },
+    {
+      name: "three",
+      files: {
+        "package.json": JSON.stringify({ dependencies: { vite: "^7.0.0", three: "^0.176.0" } }),
+        "src/main.ts": "import { Scene, WebGLRenderer, TextureLoader, SpriteMaterial } from 'three';\nnew Scene();\nnew WebGLRenderer();\nnew TextureLoader();\nnew SpriteMaterial();\n"
+      },
+      expectedFile: "src/main.ts",
+      expectedSignal: "three_scene"
     },
     {
       name: "canvas",
@@ -1698,6 +1732,90 @@ test("compile sprite can install, verify, report, and rollback a Unity run", asy
   ]);
   assert.equal(await fileExists(path.join(root, "Assets/OpenRender/Generated/prop-dot.png")), false);
   assert.equal(await fileExists(path.join(root, "Assets/OpenRender/OpenRenderAssets.cs")), false);
+});
+
+test("compile sprite can install, verify, report, and rollback a Three.js run", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-three-install-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(
+    path.join(root, "package.json"),
+    JSON.stringify({ dependencies: { three: "^0.176.0" }, devDependencies: { vite: "^7.0.0" } }),
+    "utf8"
+  );
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--target",
+    "three",
+    "--id",
+    "prop.dot",
+    "--output-size",
+    "8x8",
+    "--background-policy",
+    "preserve",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const compileResult = JSON.parse(stdout) as {
+    run: { runId: string };
+    outputPlan: { loadPath: string; assetPath: string; manifestPath: string; codegenPath: string };
+    installResult: { writes: Array<{ relativePath: string }> };
+  };
+
+  assert.equal(compileResult.outputPlan.loadPath, "/assets/prop-dot.png");
+  assert.equal(compileResult.outputPlan.codegenPath, "src/openrender/three/prop-dot.ts");
+  assert.deepEqual(compileResult.installResult.writes.map((write) => write.relativePath), [
+    "public/assets/prop-dot.png",
+    "src/assets/openrender-manifest.ts",
+    "src/openrender/three/prop-dot.ts"
+  ]);
+  assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), true);
+  assert.equal(await fileExists(path.join(root, "src/assets/openrender-manifest.ts")), true);
+  assert.equal(await fileExists(path.join(root, "src/openrender/three/prop-dot.ts")), true);
+
+  const helperSource = await fs.readFile(path.join(root, "src/openrender/three/prop-dot.ts"), "utf8");
+  assert.match(helperSource, /TextureLoader/);
+  assert.match(helperSource, /createPropDotSprite/);
+  assert.match(helperSource, /createPropDotPlane/);
+
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string; path?: string }>;
+  };
+  assert.equal(verifyResult.status, "passed");
+  assert.equal(verifyResult.checks.some((check) => check.name === "engine_load_path_shape" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "three_texture_load_path_ready" && check.status === "passed"), true);
+
+  const report = await execFileAsync(process.execPath, [cliPath, "report", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const reportResult = JSON.parse(report.stdout) as { htmlPath: string };
+  const reportHtml = await fs.readFile(path.join(root, reportResult.htmlPath), "utf8");
+  assert.match(reportHtml, /Three\.js Load Note/);
+
+  const rollback = await execFileAsync(process.execPath, [cliPath, "rollback", compileResult.run.runId, "--json"], {
+    cwd: root
+  });
+  const rollbackResult = JSON.parse(rollback.stdout) as {
+    actions: Array<{ action: string; path: string }>;
+  };
+  assert.deepEqual(rollbackResult.actions.map((action) => action.path), [
+    "public/assets/prop-dot.png",
+    "src/assets/openrender-manifest.ts",
+    "src/openrender/three/prop-dot.ts"
+  ]);
+  assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), false);
+  assert.equal(await fileExists(path.join(root, "src/assets/openrender-manifest.ts")), false);
+  assert.equal(await fileExists(path.join(root, "src/openrender/three/prop-dot.ts")), false);
 });
 
 test("manifest merge keeps multiple entries and updates same asset id without force", async () => {

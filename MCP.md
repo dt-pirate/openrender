@@ -25,7 +25,7 @@ Resources:
 - `openrender://runs/latest`
 - `openrender://reports/{runId}`
 
-Prompts are available for Phaser, Godot, LOVE2D, PixiJS, Canvas, and Unity handoff workflows.
+Prompts are available for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity handoff workflows.
 
 Recommended MCP sequence is `context`, `compile --dry-run`, install only after reviewing `installPlan.files`, then `verify`, `report`, `explain`, and `rollback` when needed. `compile` covers sprite image handoff plus `audio`, `atlas`, and `ui` media pipelines.
 

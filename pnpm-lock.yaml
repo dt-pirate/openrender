@@ -45,6 +45,12 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/adapters/three:
+    dependencies:
+      '@openrender/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/adapters/unity:
     dependencies:
       '@openrender/core':
@@ -68,6 +74,9 @@ importers:
       '@openrender/adapter-pixi':
         specifier: workspace:*
         version: link:../adapters/pixi
+      '@openrender/adapter-three':
+        specifier: workspace:*
+        version: link:../adapters/three
       '@openrender/adapter-unity':
         specifier: workspace:*
         version: link:../adapters/unity

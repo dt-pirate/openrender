@@ -1,13 +1,13 @@
 {
-  "name": "@openrender/core",
+  "name": "@openrender/adapter-three",
   "version": "0.8.2",
-  "description": "Core config, contract, path, and run state models for openRender",
+  "description": "Three.js and Vite adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dt-pirate/openrender.git",
-    "directory": "packages/core"
+    "directory": "packages/adapters/three"
   },
   "bugs": {
     "url": "https://github.com/dt-pirate/openrender/issues"
@@ -15,10 +15,11 @@
   "homepage": "https://github.com/dt-pirate/openrender#readme",
   "keywords": [
     "game-dev",
-    "phaser",
-    "godot",
-    "love2d",
+    "three",
+    "threejs",
+    "vite",
     "assets",
+    "textures",
     "sprites"
   ],
   "engines": {
@@ -44,5 +45,8 @@
     "build": "tsc -b",
     "prepack": "pnpm build",
     "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@openrender/core": "workspace:*"
   }
 }

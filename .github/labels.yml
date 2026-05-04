@@ -18,6 +18,8 @@
   color: d4c5f9
 - name: pixi
   color: f9d0c4
+- name: three
+  color: 5319e7
 - name: canvas
   color: d93f0b
 - name: unity

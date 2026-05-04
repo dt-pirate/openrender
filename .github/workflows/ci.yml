@@ -47,6 +47,7 @@ jobs:
           pnpm --filter @openrender/adapter-love2d pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-pixi pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-canvas pack --pack-destination "$pack_dir"
+          pnpm --filter @openrender/adapter-three pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/adapter-unity pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/reporter pack --pack-destination "$pack_dir"
           pnpm --filter @openrender/doctor pack --pack-destination "$pack_dir"
@@ -71,6 +72,7 @@ jobs:
             "$pack_dir"/openrender-adapter-love2d-*.tgz \
             "$pack_dir"/openrender-adapter-pixi-*.tgz \
             "$pack_dir"/openrender-adapter-canvas-*.tgz \
+            "$pack_dir"/openrender-adapter-three-*.tgz \
             "$pack_dir"/openrender-adapter-unity-*.tgz \
             "$pack_dir"/openrender-reporter-*.tgz \
             "$pack_dir"/openrender-doctor-*.tgz \

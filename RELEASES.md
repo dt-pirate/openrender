@@ -1,6 +1,6 @@
 # Version History
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
 
@@ -8,20 +8,50 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.8.0 Unity Support` |
-| Package/CLI version | `0.8.0` |
+| Current docs baseline | `0.8.2 Three.js Support` |
+| Package/CLI version | `0.8.2` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release `v0.8.0` |
-| Release timestamp | 2026-05-04 22:00 KST (2026-05-04 13:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.0` |
+| Release channel | Git tag `v0.8.2` |
+| Release timestamp | 2026-05-05 |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.2` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
+
+## 0.8.2 Three.js Support
+
+`0.8.2` is the current implemented package and CLI version.
+
+Released: 2026-05-05.
+
+### Added
+
+- Three.js target support across shared target types, config defaults, project scanning, validation, CLI flags, schemas, MCP prompts, fixtures, and CI package verification.
+- `@openrender/adapter-three` for Vite + Three.js sprite handoff: public PNG URLs, TypeScript manifest output, and generated `TextureLoader`, `Sprite`, and `PlaneGeometry` helpers.
+- Three.js read-only wire maps that detect scene, renderer, texture loader, sprite, and mesh setup candidates without editing game code.
+- Three.js readiness verification for static Vite texture load paths and generated manifest/helper path shape.
+- Three.js install/verify/report/rollback regression coverage and golden fixtures.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.8.2
+```
 
 ## 0.8.0 Unity Support
 
-`0.8.0` is the current implemented package and CLI version.
+`0.8.0` was the Unity Support package and CLI version.
 
 Released: 2026-05-04 22:00 KST (2026-05-04 13:00 UTC).
 

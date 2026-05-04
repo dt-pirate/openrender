@@ -34,6 +34,12 @@ import {
   generateCanvasManifestSource
 } from "@openrender/adapter-canvas";
 import {
+  createThreeAssetDescriptor,
+  createThreeInstallPlan,
+  generateThreeHelperSource,
+  generateThreeManifestSource
+} from "@openrender/adapter-three";
+import {
   createUnityAssetDescriptor,
   createUnityInstallPlan,
   generateUnityAnimationHelperSource,
@@ -91,7 +97,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.8.0";
+const CLI_VERSION = "0.8.2";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -99,6 +105,7 @@ type EngineAssetDescriptor =
   | ReturnType<typeof createLove2DAssetDescriptor>
   | ReturnType<typeof createPixiAssetDescriptor>
   | ReturnType<typeof createCanvasAssetDescriptor>
+  | ReturnType<typeof createThreeAssetDescriptor>
   | ReturnType<typeof createUnityAssetDescriptor>;
 
 type EngineInstallPlan =
@@ -107,6 +114,7 @@ type EngineInstallPlan =
   | ReturnType<typeof createLove2DInstallPlan>
   | ReturnType<typeof createPixiInstallPlan>
   | ReturnType<typeof createCanvasInstallPlan>
+  | ReturnType<typeof createThreeInstallPlan>
   | ReturnType<typeof createUnityInstallPlan>;
 type EngineInstallPlanFile = EngineInstallPlan["files"][number];
 
@@ -274,6 +282,31 @@ const SPRITE_ADAPTER_REGISTRY: Record<TargetEngine, SpriteAdapter> = {
     },
     verify: (descriptor) => descriptor.engine === "canvas" && descriptor.publicUrl.startsWith("/") && descriptor.publicUrl.endsWith(".png")
   },
+  three: {
+    id: "three",
+    framework: "vite",
+    detect: (scan) => scan.engine === "three",
+    describe: (contract) => {
+      assertSpriteCompileContract(contract);
+      return createThreeAssetDescriptor(contract);
+    },
+    plan: (input) => {
+      assertSpriteCompileContract(input.contract);
+      return createThreeInstallPlan({
+        contract: input.contract,
+        compiledAssetPath: input.compiledAssetPath,
+        frameSlices: input.frameSlices
+      });
+    },
+    generateSources: (contract, frameSlices) => {
+      assertSpriteCompileContract(contract);
+      return {
+        manifest: generateThreeManifestSource([contract]),
+        animationHelper: generateThreeHelperSource(contract, frameSlices)
+      };
+    },
+    verify: (descriptor) => descriptor.engine === "three" && descriptor.publicUrl.startsWith("/") && descriptor.publicUrl.endsWith(".png")
+  },
   unity: {
     id: "unity",
     framework: "unity",
@@ -311,35 +344,35 @@ const CORE_RECIPES = [
     id: "core.transparent-sprite",
     packId: CORE_PACK_ID,
     mediaType: "visual.transparent_sprite",
-    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
     summary: "Normalize one local PNG into an engine-ready transparent sprite asset."
   },
   {
     id: "core.sprite-frame-set",
     packId: CORE_PACK_ID,
     mediaType: "visual.sprite_frame_set",
-    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
     summary: "Compile a local sprite sheet into frame metadata, helper code, reports, and rollback-safe install plans."
   },
   {
     id: "core.audio",
     packId: CORE_PACK_ID,
     mediaType: "audio.sound_effect",
-    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
     summary: "Install local audio assets with engine paths, metadata manifests, verification, reports, and rollback."
   },
   {
     id: "core.atlas",
     packId: CORE_PACK_ID,
     mediaType: "visual.atlas",
-    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
     summary: "Install local atlas or tileset images with tile metadata, manifests, verification, reports, and rollback."
   },
   {
     id: "core.ui",
     packId: CORE_PACK_ID,
     mediaType: "visual.ui_button",
-    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"],
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
     summary: "Install local UI image assets with state metadata, manifests, verification, reports, and rollback."
   }
 ] as const;
@@ -384,7 +417,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
         type: "object",
         required: ["engine", "framework", "projectRoot"],
         properties: {
-          engine: { enum: ["phaser", "godot", "love2d", "pixi", "canvas", "unity"] },
+          engine: { enum: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"] },
           framework: { enum: ["vite", "godot", "love2d", "unity"] },
           projectRoot: { type: "string" }
         }
@@ -498,7 +531,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   "media-p4": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.8.0 Media Contracts",
+    title: "openRender 0.8.2 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -916,7 +949,7 @@ function requirePathArgument(parsed: ParsedFlags, commandName: string): string {
 
 function readTargetFlag(parsed: ParsedFlags, fallback: TargetEngine): TargetEngine {
   const value = readStringFlag(parsed, "target", fallback);
-  if (value === "phaser" || value === "godot" || value === "love2d" || value === "pixi" || value === "canvas" || value === "unity") return value;
+  if (value === "phaser" || value === "godot" || value === "love2d" || value === "pixi" || value === "canvas" || value === "three" || value === "unity") return value;
   throw new Error(`Unsupported target for Developer Kit: ${value}`);
 }
 
@@ -938,7 +971,7 @@ function defaultAssetRootForTarget(target: TargetEngine): string {
 }
 
 function assertTargetFrameworkPair(target: TargetEngine, framework: TargetFramework): void {
-  if ((target === "phaser" || target === "pixi" || target === "canvas") && framework !== "vite") {
+  if ((target === "phaser" || target === "pixi" || target === "canvas" || target === "three") && framework !== "vite") {
     throw new Error(`${target} target requires the vite framework.`);
   }
 
@@ -1176,7 +1209,7 @@ function readAudioFormat(sourcePath: string): "wav" | "ogg" | "mp3" {
 function runtimeBinaryForTarget(target: TargetEngine): string | null {
   if (target === "godot") return "godot";
   if (target === "love2d") return "love";
-  if (target === "phaser" || target === "pixi" || target === "canvas") return null;
+  if (target === "phaser" || target === "pixi" || target === "canvas" || target === "three") return null;
   return null;
 }
 
@@ -1600,7 +1633,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
 
   const recommendedNextActions = new Set<string>();
   if (scan.engine === "unknown") {
-    recommendedNextActions.add("Run openrender init --target <engine> --json after choosing phaser, godot, love2d, pixi, canvas, or unity.");
+    recommendedNextActions.add("Run openrender init --target <engine> --json after choosing phaser, godot, love2d, pixi, canvas, three, or unity.");
   }
   recommendedNextActions.add("Run openrender compile sprite --dry-run --json and inspect installPlan.files before install.");
   if (scan.manifestExists) {
@@ -1784,6 +1817,26 @@ async function createWireMap(scan: ProjectScan, latestRecord: OpenRenderCompileR
           suggestedAction: file.endsWith(".cs")
             ? "Reference generated OpenRender C# manifest or helper constants from this MonoBehaviour."
             : "Inspect this Unity scene/prefab in the editor and wire generated Assets/OpenRender assets manually."
+        });
+      }
+    }
+  } else if (scan.engine === "three") {
+    const files = await listProjectTextFiles(projectRoot, ["src"], [".ts", ".tsx", ".js", ".jsx"]);
+    for (const file of files) {
+      const contents = await readSmallTextFile(resolveInsideProject(projectRoot, file));
+      const signals = collectSignals(contents, [
+        ["three_scene", /new\s+Scene|THREE\.Scene/],
+        ["three_renderer", /WebGLRenderer|THREE\.WebGLRenderer/],
+        ["three_texture_loader", /TextureLoader|loadAsync\s*\(/],
+        ["three_sprite", /SpriteMaterial|new\s+Sprite/],
+        ["three_mesh", /PlaneGeometry|MeshBasicMaterial|new\s+Mesh/]
+      ]);
+      if (signals.length > 0) {
+        candidates.push({
+          file,
+          kind: "entry",
+          signals,
+          suggestedAction: "Use generated Three.js TextureLoader, Sprite, or Plane helpers near the detected scene setup."
         });
       }
     }
@@ -2036,6 +2089,30 @@ function createWireMapSnippets(record: OpenRenderCompileRecord): WireMapLatestAs
     ];
   }
 
+  if (record.contract.target.engine === "three") {
+    return [
+      {
+        label: "Three.js texture helper example",
+        language: "ts",
+        code: [
+          "import { Sprite, SpriteMaterial, TextureLoader } from \"three\";",
+          `import { ${viteManifestExport} } from ${JSON.stringify(manifestModule)};`,
+          `const asset = ${viteManifestExport}[${JSON.stringify(assetId)}];`,
+          "const texture = await new TextureLoader().loadAsync(asset.url);",
+          "const material = new SpriteMaterial({ map: texture, transparent: true });",
+          "scene.add(new Sprite(material));"
+        ].join("\n")
+      },
+      ...(codegenPath && !isP4CompileRecord(record)
+        ? [{
+            label: "Three.js generated helper example",
+            language: "ts",
+            code: `import { load${assetIdToPascalCase(assetId)}Texture, create${assetIdToPascalCase(assetId)}Sprite, create${assetIdToPascalCase(assetId)}Plane } from ${JSON.stringify(codegenPath.replace(/^src\//, "@/").replace(/\.ts$/, ""))};`
+          }]
+        : [])
+    ];
+  }
+
   return [
     {
       label: "Canvas image load example",
@@ -2158,7 +2235,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.8.0: phaser, godot, love2d, pixi, canvas, unity.
+- Supported targets in 0.8.2: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -2171,7 +2248,7 @@ async function createAdapterScaffold(parsed: ParsedFlags): Promise<AdapterCreate
   const projectRoot = process.cwd();
   const name = requireStringFlag(parsed, "name");
   if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error("--name must use lowercase letters, numbers, and dashes.");
-  if (["phaser", "godot", "love2d", "pixi", "canvas", "unity"].includes(name)) {
+  if (["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"].includes(name)) {
     throw new Error(`Adapter ${name} already exists.`);
   }
 
@@ -3336,7 +3413,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         enabled: parsed.flags.get("install") === true,
         assetRoot,
         writeManifest: true,
-        writeCodegen: false,
+        writeCodegen: target === "three",
         snapshotBeforeInstall: true
       },
       verify: {
@@ -3777,6 +3854,7 @@ function generateManifestSourceForContracts(
   if (target === "love2d") return generateLove2DManifestSource(contracts);
   if (target === "pixi") return generatePixiManifestSource(contracts);
   if (target === "canvas") return generateCanvasManifestSource(contracts);
+  if (target === "three") return generateThreeManifestSource(contracts);
   if (target === "unity") return generateUnityManifestSource(contracts);
   throw new Error(`Unsupported manifest target: ${target}`);
 }
@@ -4370,6 +4448,13 @@ async function createEngineReadinessChecks(
       path: record.outputPlan.loadPath,
       message: "static Vite public URL can be used by Image, Audio, fetch, or createImageBitmap"
     });
+  } else if (target === "three") {
+    checks.push({
+      name: "three_texture_load_path_ready",
+      status: record.outputPlan.loadPath.startsWith("/") ? "passed" : "failed",
+      path: record.outputPlan.loadPath,
+      message: "static Vite public URL can be passed to Three.js TextureLoader"
+    });
   } else if (target === "godot") {
     const projectFileExists = await pathExists(resolveInsideProject(projectRoot, "project.godot"));
     checks.push({
@@ -4491,6 +4576,12 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
         ? [{
             heading: "LOVE2D Load Note",
             body: "openRender installs source PNG assets and Lua helper modules only. Require the generated Lua module from openrender/ and load images through love.graphics.newImage at runtime."
+          }]
+        : []),
+      ...(record.contract.target.engine === "three"
+        ? [{
+            heading: "Three.js Load Note",
+            body: "openRender installs source PNG assets plus TypeScript manifest and helper files for Three.js. Use the generated TextureLoader, Sprite, or Plane helpers from your own scene setup; openRender does not modify scene, renderer, camera, or animation-loop code."
           }]
         : []),
       ...(record.contract.target.engine === "unity"
@@ -5141,7 +5232,7 @@ function printHelp(): void {
 
 Usage:
   openrender --version
-  openrender init [--target phaser|godot|love2d|pixi|canvas|unity] [--framework vite|godot|love2d|unity] [--force] [--json]
+  openrender init [--target phaser|godot|love2d|pixi|canvas|three|unity] [--framework vite|godot|love2d|unity] [--force] [--json]
   openrender agent init --codex|--cursor|--claude [--force] [--json]
   openrender install-agent [--platform codex|cursor|claude|all] [--dry-run] [--force] [--json]
   openrender adapter create --name <id> [--force] [--json]
@@ -5152,15 +5243,15 @@ Usage:
   openrender schema contract|output|report|install-plan|pack-manifest|media-p4
   openrender pack list|inspect [packId] [--json]
   openrender recipe list|inspect|validate [recipeId] [--json]
-  openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|unity] [--frames n --frame-size WxH] [--json]
+  openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
   openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
-  openrender smoke [--target phaser|godot|love2d|pixi|canvas|unity] [--run latest] [--timeout seconds] [--screenshot] [--json]
-  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|unity] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
-  openrender compile audio --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|unity] [--media-type audio.sound_effect|audio.music_loop] [--loop] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
-  openrender compile atlas --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|unity] [--media-type visual.atlas|visual.tileset] [--tile-size WxH] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
-  openrender compile ui --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|unity] [--media-type visual.ui_button|visual.ui_panel|visual.icon_set] [--states default,hover,pressed] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
+  openrender smoke [--target phaser|godot|love2d|pixi|canvas|three|unity] [--run latest] [--timeout seconds] [--screenshot] [--json]
+  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
+  openrender compile audio --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type audio.sound_effect|audio.music_loop] [--loop] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
+  openrender compile atlas --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type visual.atlas|visual.tileset] [--tile-size WxH] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
+  openrender compile ui --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type visual.ui_button|visual.ui_panel|visual.icon_set] [--states default,hover,pressed] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--strict-visual] [--quality prototype|default|strict] [--json] [--compact]
   openrender report [runId|--run latest] [--open] [--json] [--compact]

@@ -23,7 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.2-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `0.8.0` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Plain Canvas + Vite、Unity 项目的 sprite 图片交接，以及 audio、atlas/tileset、UI 资产管线。
+当前 `0.8.2` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的 sprite 图片交接，以及 audio、atlas/tileset、UI 资产管线。
 
 ## 快速开始
 
@@ -133,7 +133,7 @@ node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --c
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-可使用 `--target phaser`、`--target godot`、`--target love2d`、`--target pixi` 或 `--target canvas`。
+可使用 `--target phaser`、`--target godot`、`--target love2d`、`--target pixi`、`--target three`、`--target canvas` 或 `--target unity`。
 
 ## 工作流程
 
@@ -159,7 +159,7 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 - 面向 context、验证、报告、explain、diff 的紧凑 agent 输出。
 - 指向可能代码连接位置的只读 wiring map。
 - alpha 诊断、安全默认背景 cutout、edge-flood 背景移除、帧检测、normalize presets、sprite invariants 和帧预览图。
-- Phaser、Godot、LOVE2D、PixiJS、Canvas、Unity 适配器。
+- Phaser、Godot、LOVE2D、PixiJS、Three.js、Canvas、Unity 适配器。
 - JSON schemas、精简 agent summaries、recipes、fixture capture 和 golden fixtures。
 - 面向支持目标的本地 JSON-only MCP 元数据辅助能力。
 
@@ -171,6 +171,7 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 | Godot 4 | PNG 资源、GDScript 资源辅助代码、动画辅助代码、`res://` 路径 |
 | LOVE2D | PNG 资源、Lua 资源模块、动画元数据、load/draw snippets |
 | PixiJS + Vite | PNG 资源、可选 spritesheet JSON、TypeScript Pixi 辅助代码 |
+| Three.js + Vite | PNG 资源、TypeScript manifest、`TextureLoader`、`Sprite`、`PlaneGeometry` 辅助代码 |
 | Canvas + Vite | PNG 资源、TypeScript manifest、图片加载和帧绘制辅助代码 |
 | Unity | `Assets/OpenRender` 下的 PNG/audio 资源、C# manifest、sprite/media 辅助类 |
 

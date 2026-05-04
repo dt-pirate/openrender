@@ -23,7 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.2-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.8.0` core supports sprite image handoff plus audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, plain Canvas + Vite, and Unity projects.
+The current `0.8.2` core supports sprite image handoff plus audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -134,7 +134,7 @@ Rollback the latest openRender install:
 node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
 ```
 
-Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`, or `--target unity`.
+Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`, `--target three`, or `--target unity`.
 
 ## How It Works
 
@@ -163,7 +163,7 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Quality gates with `--quality prototype|default|strict` and `verify --strict-visual` for likely visual problems.
 - Manifest strategies with default `merge`, explicit `replace`, and `isolated` mode for no shared manifest write.
 - Runtime smoke checks for Godot and LOVE2D when the local runtime is available.
-- Engine adapters for Phaser, Godot, LOVE2D, PixiJS, Canvas, and Unity.
+- Engine adapters for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
 - Local JSON-only MCP metadata helpers for supported targets.
 
@@ -175,6 +175,7 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 | Godot 4 | PNG assets, GDScript asset helpers, animation helpers, `res://` paths |
 | LOVE2D | PNG assets, Lua asset module, animation metadata, draw/load snippets |
 | PixiJS + Vite | PNG assets, optional spritesheet JSON, TypeScript Pixi helpers |
+| Three.js + Vite | PNG assets, TypeScript manifest, `TextureLoader`, `Sprite`, and `PlaneGeometry` helpers |
 | Canvas + Vite | PNG assets, TypeScript manifest, image loading and frame drawing helpers |
 | Unity | PNG/audio assets under `Assets/OpenRender`, C# manifests, sprite/media helper classes |
 

@@ -1,6 +1,6 @@
 {
   "name": "@openrender/cli",
-  "version": "0.8.0",
+  "version": "0.8.2",
   "description": "Command-line interface for openRender",
   "license": "Apache-2.0",
   "type": "module",
@@ -18,6 +18,10 @@
     "phaser",
     "godot",
     "love2d",
+    "pixi",
+    "canvas",
+    "three",
+    "unity",
     "assets",
     "sprites",
     "cli"
@@ -55,6 +59,7 @@
     "@openrender/adapter-love2d": "workspace:*",
     "@openrender/adapter-phaser": "workspace:*",
     "@openrender/adapter-pixi": "workspace:*",
+    "@openrender/adapter-three": "workspace:*",
     "@openrender/adapter-unity": "workspace:*",
     "@openrender/core": "workspace:*",
     "@openrender/doctor": "workspace:*",

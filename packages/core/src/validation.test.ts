@@ -194,8 +194,8 @@ test("validateMediaContract accepts a Unity transparent sprite contract", () => 
   assert.equal(result.ok, true);
 });
 
-test("validateMediaContract accepts Pixi and Canvas Vite targets", () => {
-  for (const engine of ["pixi", "canvas"] as const) {
+test("validateMediaContract accepts Pixi, Canvas, and Three.js Vite targets", () => {
+  for (const engine of ["pixi", "canvas", "three"] as const) {
     const contract: MediaContract = {
       schemaVersion: OPENRENDER_DEVKIT_VERSION,
       mediaType: "visual.transparent_sprite",
