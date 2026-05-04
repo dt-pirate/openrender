@@ -11,4 +11,4 @@ openrender recipe inspect core.sprite-frame-set --json
 openrender recipe validate --json
 ```
 
-The 0.7.1 repo includes target recipes for Phaser, Godot, LOVE2D, PixiJS, and Canvas sprite frame sets.
+The 0.7.2 repo includes target recipes for Phaser, Godot, LOVE2D, PixiJS, and Canvas sprite frame sets.

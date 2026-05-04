@@ -8,10 +8,13 @@ import {
   cleanupAlphaEdgesToPng,
   createFramePreviewSheet,
   cropAlphaBoundsToPng,
+  decideBackgroundRemoval,
   detectAlphaBounds,
+  analyzeAlphaDiagnostics,
   loadImageMetadata,
   normalizeImageToPng,
   planFrameSlices,
+  removeBackgroundInPlaceToPng,
   removeSolidBackgroundToPng,
   validateGridFrameSet,
   validateHorizontalFrameSet
@@ -202,6 +205,251 @@ test("removeSolidBackgroundToPng clears pixels matching the top-left background"
   assert.equal(data[3], 0);
   assert.equal(data[7], 255);
   assert.equal(data[11], 0);
+});
+
+test("decideBackgroundRemoval auto removes safe opaque generated sprite backgrounds", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bg-decision-"));
+  const sourcePath = path.join(root, "sprite.png");
+
+  await sharp({
+    create: {
+      width: 5,
+      height: 5,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 3,
+            height: 3,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        }).png().toBuffer(),
+        left: 1,
+        top: 1
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const decision = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: "visual.transparent_sprite",
+    policy: "auto",
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0
+  });
+
+  assert.equal(decision.action, "removed");
+  assert.equal(decision.confidence, "high");
+  assert.equal(decision.inputTransparentPixelRatio, 0);
+  assert.equal((decision.outputTransparentPixelRatio ?? 0) > 0.5, true);
+});
+
+test("edge-flood cutout preserves interior pixels matching the background color", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bg-interior-"));
+  const sourcePath = path.join(root, "sprite.png");
+  const outputPath = path.join(root, "out", "sprite.png");
+
+  const red = await sharp({
+    create: {
+      width: 1,
+      height: 1,
+      channels: 4,
+      background: { r: 255, g: 0, b: 0, alpha: 1 }
+    }
+  })
+    .png()
+    .toBuffer();
+  await sharp({
+    create: {
+      width: 5,
+      height: 5,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      { input: red, left: 1, top: 1 },
+      { input: red, left: 2, top: 1 },
+      { input: red, left: 3, top: 1 },
+      { input: red, left: 1, top: 2 },
+      { input: red, left: 3, top: 2 },
+      { input: red, left: 1, top: 3 },
+      { input: red, left: 2, top: 3 },
+      { input: red, left: 3, top: 3 }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  await removeBackgroundInPlaceToPng({
+    sourcePath,
+    outputPath,
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0
+  });
+
+  const { data } = await sharp(outputPath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  assert.equal(data[(2 * 5 + 2) * 4 + 3], 255);
+  assert.equal(data[3], 0);
+});
+
+test("decideBackgroundRemoval auto preserves already transparent sources", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bg-transparent-"));
+  const sourcePath = path.join(root, "sprite.png");
+
+  await sharp({
+    create: {
+      width: 4,
+      height: 4,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 2,
+            height: 2,
+            channels: 4,
+            background: { r: 0, g: 255, b: 0, alpha: 1 }
+          }
+        }).png().toBuffer(),
+        left: 1,
+        top: 1
+      }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const decision = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: "visual.transparent_sprite",
+    policy: "auto",
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0
+  });
+
+  assert.equal(decision.action, "preserved");
+  assert.match(decision.reason, /already has meaningful transparency/);
+});
+
+test("removeBackgroundInPlaceToPng preserves sprite strip dimensions", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bg-strip-"));
+  const sourcePath = path.join(root, "strip.png");
+  const outputPath = path.join(root, "out", "strip.png");
+
+  const frame = await sharp({
+    create: {
+      width: 2,
+      height: 2,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: {
+            width: 1,
+            height: 1,
+            channels: 4,
+            background: { r: 0, g: 0, b: 255, alpha: 1 }
+          }
+        }).png().toBuffer(),
+        left: 1,
+        top: 1
+      }
+    ])
+    .png()
+    .toBuffer();
+
+  await sharp({
+    create: {
+      width: 8,
+      height: 2,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .composite([
+      { input: frame, left: 0, top: 0 },
+      { input: frame, left: 2, top: 0 },
+      { input: frame, left: 4, top: 0 },
+      { input: frame, left: 6, top: 0 }
+    ])
+    .png()
+    .toFile(sourcePath);
+
+  const slices = planFrameSlices({
+    layout: "horizontal_strip",
+    imageWidth: 8,
+    frames: 4,
+    frameWidth: 2,
+    frameHeight: 2
+  });
+  const decision = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: "visual.sprite_frame_set",
+    policy: "auto",
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0,
+    frameSlices: slices
+  });
+  const output = await removeBackgroundInPlaceToPng({
+    sourcePath,
+    outputPath,
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0
+  });
+  const diagnostics = await analyzeAlphaDiagnostics({ sourcePath: output.path });
+
+  assert.equal(decision.action, "removed");
+  assert.equal(output.metadata.width, 8);
+  assert.equal(output.metadata.height, 2);
+  assert.equal(diagnostics.transparentPixelRatio > 0, true);
+});
+
+test("decideBackgroundRemoval auto skips low-confidence background masks", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-bg-low-confidence-"));
+  const sourcePath = path.join(root, "sprite.png");
+
+  await sharp({
+    create: {
+      width: 4,
+      height: 4,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  })
+    .png()
+    .toFile(sourcePath);
+
+  const decision = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: "visual.transparent_sprite",
+    policy: "auto",
+    mode: "edge-flood",
+    tolerance: 48,
+    feather: 0
+  });
+
+  assert.equal(decision.action, "skipped");
+  assert.equal(decision.confidence, "low");
 });
 
 test("detectAlphaBounds finds non-transparent pixels", async () => {

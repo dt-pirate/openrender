@@ -23,7 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.1"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.1-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.2-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.7.1` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+The current `0.7.2` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
 
 ## Quick Start
 
@@ -158,7 +158,7 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
-- Alpha diagnostics, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
+- Alpha diagnostics, safe default background cutout, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
 - Quality gates with `--quality prototype|default|strict` and `verify --strict-visual` for likely visual problems.
 - Manifest strategies with default `merge`, explicit `replace`, and `isolated` mode for no shared manifest write.
 - Runtime smoke checks for Godot and LOVE2D when the local runtime is available.
@@ -186,7 +186,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Inspect `installPlan.files` before installing.
 - Do not pass `--force` unless the user accepts overwriting destination files.
 - Use default manifest merge for cumulative entries; choose `--manifest-strategy replace` or `--manifest-strategy isolated` when a one-entry or no-shared-manifest workflow is intended.
-- Use `--remove-background --background-mode edge-flood` for generated sprites with a flat opaque background.
+- Generated sprite handoff uses safe `--background-policy auto` cutout by default.
+- Use `--background-policy preserve` to keep the original background, or `--background-policy remove` / `--remove-background` to force cutout.
 - Use `--quality strict` or `verify --strict-visual` when visual transparency mistakes should fail the run.
 - After install, run `verify --run latest --json`.
 - Use `report`, `explain`, and `diff` with `--compact` when the agent only needs status, next actions, and compact tables.

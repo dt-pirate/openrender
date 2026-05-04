@@ -1,6 +1,6 @@
 # Version History
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
 
@@ -8,20 +8,50 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.7.1 Agent Asset Readiness` |
-| Package/CLI version | `0.7.1` |
+| Current docs baseline | `0.7.2 Default Cutout` |
+| Package/CLI version | `0.7.2` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release `v0.7.1` |
-| Release timestamp | 2026-05-03 20:05:45 KST (2026-05-03 11:05:45 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.1` |
+| Release channel | GitHub release `v0.7.2` |
+| Release timestamp | 2026-05-04 16:34:05 KST (2026-05-04 07:34:05 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.2` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
+
+## 0.7.2 Default Cutout
+
+`0.7.2` is the current implemented package and CLI version.
+
+Released: 2026-05-04 16:34:05 KST (2026-05-04 07:34:05 UTC).
+
+### Added
+
+- Safe automatic generated-sprite background cutout through default `--background-policy auto`.
+- Explicit `--background-policy preserve|auto|remove` control, while keeping `--remove-background` as a compatibility shortcut for forced cutout.
+- Edge-connected cutout for opaque generated sprites that preserves sprite-sheet dimensions instead of cropping or repacking frames.
+- Background decision reporting in compile/normalize JSON, reports, explanations, verification checks, and compact agent summaries.
+- Post-cutout alpha and frame-invariant checks so skipped or unsafe cutout decisions remain visible to agents.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.7.2
+```
 
 ## 0.7.1 Agent Asset Readiness
 
-`0.7.1` is the current implemented package and CLI version.
+`0.7.1` was the Agent Asset Readiness package and CLI version.
 
 Released: 2026-05-03 20:05:45 KST (2026-05-03 11:05:45 UTC).
 

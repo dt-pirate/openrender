@@ -60,15 +60,19 @@ import {
   analyzeSpriteInvariants,
   createFramePreviewSheet,
   cropAlphaBoundsToPng,
+  decideBackgroundRemoval,
   detectFrameGrid,
   loadImageMetadata,
+  removeBackgroundInPlaceToPng,
   normalizeImageToPng,
   normalizeWithPreset,
   planFrameSlices,
   validateGridFrameSet,
   validateHorizontalFrameSet,
   type AlphaDiagnostics,
+  type BackgroundDecision,
   type BackgroundRemovalMode,
+  type BackgroundPolicy,
   type FramePreviewSheetOutput,
   type FrameSlice,
   type FrameValidationResult,
@@ -78,7 +82,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.7.1";
+const CLI_VERSION = "0.7.2";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -428,7 +432,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   "media-p4": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.7.1 P4 Media Contracts",
+    title: "openRender 0.7.2 P4 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -909,26 +913,46 @@ async function normalizeCommand(parsed: ParsedFlags): Promise<NormalizeCommandRe
   const projectRoot = process.cwd();
   const sourcePath = resolveInsideProject(projectRoot, requirePathArgument(parsed, "normalize"));
   const preset = readNormalizePreset(parsed);
+  const backgroundMode = readBackgroundModeFlag(parsed);
+  const backgroundTolerance = readIntegerFlag(parsed, "background-tolerance", 48);
+  const backgroundPolicy = readBackgroundPolicyFlag(parsed);
+  const feather = readNonNegativeIntegerFlag(parsed, "feather", 0);
   const outputPath = resolveInsideProject(projectRoot, readStringFlag(
     parsed,
     "out",
     path.posix.join(".openrender", "artifacts", "normalized", `${path.parse(sourcePath).name}-${preset}.png`)
   ));
+  const background = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: preset === "transparent-sprite" || preset === "ui-icon"
+      ? "visual.transparent_sprite"
+      : "visual.sprite_frame_set",
+    policy: backgroundPolicy,
+    preset,
+    tolerance: backgroundTolerance,
+    mode: backgroundMode,
+    feather
+  });
   const output = await normalizeWithPreset({
     sourcePath,
     outputPath,
     preset,
     frameWidth: readOptionalIntegerFlag(parsed, "frame-width"),
     frameHeight: readOptionalIntegerFlag(parsed, "frame-height"),
-    removeSolidBackground: parsed.flags.get("remove-background") === true,
-    backgroundMode: readBackgroundModeFlag(parsed),
-    backgroundTolerance: readIntegerFlag(parsed, "background-tolerance", 48),
-    feather: readNonNegativeIntegerFlag(parsed, "feather", 0)
+    removeSolidBackground: background.action === "removed",
+    backgroundMode,
+    backgroundTolerance,
+    feather
   });
+  const outputAlpha = await analyzeAlphaDiagnostics({ sourcePath: output.path });
 
   return {
     ok: true,
     preset,
+    background: {
+      ...background,
+      outputTransparentPixelRatio: outputAlpha.transparentPixelRatio
+    },
     outputPath: path.relative(projectRoot, output.path),
     output
   };
@@ -1153,6 +1177,7 @@ async function explainRun(parsed: ParsedFlags): Promise<ExplainCommandResult> {
     ok: record.validation?.ok !== false && record.run.verification?.status !== "failed",
     runId: record.run.runId,
     agentSummary: createAgentSummary(record),
+    backgroundSummary: createBackgroundSummary(record),
     nextActions: nextActionText
       ? nextActionText.split("\n").filter((line) => line.startsWith("- ")).map((line) => line.slice(2))
       : createSuccessNextActions(record)
@@ -1245,6 +1270,7 @@ function compactReportResult(result: ReportCommandResult): CompactReportCommandR
     reportPath: result.htmlPath,
     previewPath: result.previewHtmlPath,
     rollbackCommand: result.rollbackCommand,
+    background: result.background,
     tables: {
       outputs: {
         columns: ["kind", "path"],
@@ -1269,6 +1295,7 @@ function compactExplainResult(result: ExplainCommandResult): CompactExplainComma
     ok: result.ok,
     runId: result.runId,
     agentSummary: result.agentSummary,
+    backgroundSummary: result.backgroundSummary,
     tables: {
       nextActions: {
         columns: ["index", "action"],
@@ -1342,6 +1369,26 @@ function readBackgroundModeFlag(parsed: ParsedFlags): BackgroundRemovalMode {
   const value = readStringFlag(parsed, "background-mode", "edge-flood");
   if (value === "top-left" || value === "edge-flood") return value;
   throw new Error(`Unsupported background mode: ${value}`);
+}
+
+function readBackgroundPolicyFlag(parsed: ParsedFlags): BackgroundPolicy {
+  const rawValue = parsed.flags.get("background-policy");
+  const removeBackground = parsed.flags.get("remove-background") === true;
+
+  if (rawValue === true) {
+    throw new Error("--background-policy requires auto, preserve, or remove.");
+  }
+
+  const value = typeof rawValue === "string" ? rawValue : "auto";
+  if (value !== "auto" && value !== "preserve" && value !== "remove") {
+    throw new Error(`Unsupported background policy: ${value}`);
+  }
+
+  if (removeBackground && value === "preserve") {
+    throw new Error("Conflicting background options: --remove-background cannot be used with --background-policy preserve.");
+  }
+
+  return removeBackground ? "remove" : value;
 }
 
 function readManifestStrategyFlag(parsed: ParsedFlags): ManifestStrategy {
@@ -1962,7 +2009,8 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use openrender context --json --wire-map to find read-only asset wiring candidates before editing game code.
 - Prefer JSON commands: context, scan, doctor, plan, compile, install, verify, report, explain, diff, rollback.
 - Before installing, run openrender compile sprite --dry-run --json and inspect installPlan.files.
-- Use --remove-background --background-mode edge-flood when a generated sprite has a flat opaque background that should become transparent.
+- Generated sprite handoff uses --background-policy auto by default for safe opaque-background cutout.
+- Use --background-policy preserve to keep the original background, or --background-policy remove / --remove-background to force cutout.
 - Use --manifest-strategy merge for cumulative generated manifests; use replace or isolated only when that write policy is intended.
 - Use --quality strict or verify --strict-visual when likely visual transparency problems should fail the run.
 - By default, installs refuse unrelated destination overwrites. Use --force only after the user accepts helper or asset overwrite risk.
@@ -1970,7 +2018,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.7.1: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.7.2: phaser, godot, love2d, pixi, canvas.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
@@ -2266,7 +2314,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
   const assetRoot = readStringFlag(parsed, "asset-root", defaultAssetRootForTarget(target));
   const layout = readStringFlag(parsed, "layout", "horizontal");
   const padding = readIntegerFlag(parsed, "padding", 0);
-  const removeBackground = parsed.flags.get("remove-background") === true;
+  const backgroundPolicy = readBackgroundPolicyFlag(parsed);
   const backgroundMode = readBackgroundModeFlag(parsed);
   const backgroundTolerance = readIntegerFlag(parsed, "background-tolerance", 48);
   const feather = readNonNegativeIntegerFlag(parsed, "feather", 0);
@@ -2310,7 +2358,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         frameHeight: frameSize.height,
         fps: readIntegerFlag(parsed, "fps", 8),
         padding,
-        background: metadata.hasAlpha || removeBackground ? "transparent" : "solid",
+        background: metadata.hasAlpha || alpha.transparentPixelRatio > 0 ? "transparent" : "solid",
         outputFormat: "png"
       },
       install: {
@@ -2376,7 +2424,7 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         outputWidth: size.width,
         outputHeight: size.height,
         padding,
-        background: metadata.hasAlpha || removeBackground ? "transparent" : "solid",
+        background: metadata.hasAlpha || alpha.transparentPixelRatio > 0 ? "transparent" : "solid",
         outputFormat: "png"
       },
       install: {
@@ -2393,6 +2441,17 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
       }
     };
   }
+
+  let background = await decideBackgroundRemoval({
+    sourcePath,
+    mediaType: contract.mediaType,
+    policy: backgroundPolicy,
+    frameSlices,
+    tolerance: backgroundTolerance,
+    mode: backgroundMode,
+    feather
+  });
+  contract = materializeBackgroundDecision(contract, background, alpha);
 
   let descriptor = createEngineAssetDescriptor(contract);
   const run = createInitialRun({ id, mediaType: contract.mediaType });
@@ -2411,39 +2470,39 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     { kind: "manifest", path: descriptor.manifestPath },
     ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : [])
   ];
-  run.verification = validation
-    ? {
-        status: validation.ok && invariants?.ok !== false ? "passed" : "failed",
-        checks: [
-          {
-            name: "frame_count_match",
-            status: validation.ok ? "passed" : "failed",
-            message: validation.reason
-          },
-          ...(invariants?.checks.map((check) => ({
-            name: check.name,
-            status: check.status,
-            message: check.message
-          })) ?? [])
-        ]
-      }
-    : undefined;
+  run.verification = createRunVerification(validation, invariants);
 
   if (!dryRun && validation?.ok === false) {
     run.status = "failed_harness";
   } else if (!dryRun) {
     const absoluteArtifactPath = resolveInsideProject(projectRoot, artifactPath);
     if (contract.mediaType === "visual.sprite_frame_set") {
-      artifact = await normalizeImageToPng({
-        sourcePath,
-        outputPath: absoluteArtifactPath
+      artifact = background.action === "removed"
+        ? await removeBackgroundInPlaceToPng({
+            sourcePath,
+            outputPath: absoluteArtifactPath,
+            mode: backgroundMode,
+            tolerance: backgroundTolerance,
+            feather
+          })
+        : await normalizeImageToPng({
+            sourcePath,
+            outputPath: absoluteArtifactPath
+          });
+      invariants = await analyzeSpriteInvariants({
+        sourcePath: absoluteArtifactPath,
+        layout: contract.visual.layout,
+        frames: contract.visual.frames,
+        frameWidth: contract.visual.frameWidth,
+        frameHeight: contract.visual.frameHeight
       });
+      run.verification = createRunVerification(validation, invariants);
     } else {
       artifact = await cropAlphaBoundsToPng({
         sourcePath,
         outputPath: absoluteArtifactPath,
         padding,
-        removeSolidBackground: removeBackground,
+        removeSolidBackground: background.action === "removed",
         backgroundMode,
         backgroundTolerance,
         feather,
@@ -2476,9 +2535,13 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
         inputAlpha: alpha,
         artifactPath,
         sourcePath: absoluteArtifactPath,
-        removeBackground,
+        background,
         strict: quality === "strict"
       });
+      background = {
+        ...background,
+        outputTransparentPixelRatio: visualQuality.diagnostics.transparentPixelRatio
+      };
     }
   }
 
@@ -2519,8 +2582,11 @@ async function compileSprite(parsed: ParsedFlags): Promise<CompileSpriteResult> 
     outputPlan: descriptor,
     installPlan,
     artifact,
+    background,
     processing: {
-      removeBackground,
+      removeBackground: background.action === "removed",
+      backgroundPolicy: background.policy,
+      backgroundAction: background.action,
       backgroundMode,
       backgroundTolerance,
       feather,
@@ -2587,6 +2653,45 @@ function materializeTransparentSpriteArtifactDimensions(
       outputWidth: artifactMetadata.width,
       outputHeight: artifactMetadata.height
     }
+  };
+}
+
+function materializeBackgroundDecision(
+  contract: SpriteCompileContract,
+  background: BackgroundDecision,
+  inputAlpha: AlphaDiagnostics
+): SpriteCompileContract {
+  const shouldBeTransparent = background.action === "removed" || inputAlpha.transparentPixelRatio > 0.001;
+
+  return {
+    ...contract,
+    visual: {
+      ...contract.visual,
+      background: shouldBeTransparent ? "transparent" : "solid"
+    }
+  } as SpriteCompileContract;
+}
+
+function createRunVerification(
+  validation?: FrameValidationResult,
+  invariants?: SpriteInvariantDiagnostics
+): NonNullable<OpenRenderRun["verification"]> | undefined {
+  if (!validation) return undefined;
+
+  return {
+    status: validation.ok && invariants?.ok !== false ? "passed" : "failed",
+    checks: [
+      {
+        name: "frame_count_match",
+        status: validation.ok ? "passed" : "failed",
+        message: validation.reason
+      },
+      ...(invariants?.checks.map((check) => ({
+        name: check.name,
+        status: check.status,
+        message: check.message
+      })) ?? [])
+    ]
   };
 }
 
@@ -2954,6 +3059,23 @@ async function readInstallResultIfAvailable(projectRoot: string, runId: string):
   }
 }
 
+function createLegacyBackgroundDecision(record: CompileSpriteResult): BackgroundDecision {
+  const removed = record.processing?.removeBackground === true;
+  return {
+    policy: removed ? "remove" : "preserve",
+    action: removed ? "removed" : "preserved",
+    reason: removed
+      ? "legacy run used removeBackground processing"
+      : "legacy run did not record background policy",
+    confidence: removed ? "high" : "medium",
+    mode: record.processing?.backgroundMode,
+    tolerance: record.processing?.backgroundTolerance,
+    feather: record.processing?.feather,
+    inputTransparentPixelRatio: record.alpha.transparentPixelRatio,
+    outputTransparentPixelRatio: record.visualQuality?.diagnostics.transparentPixelRatio
+  };
+}
+
 async function createVisualQualityResult(input: {
   projectRoot: string;
   contract: SpriteCompileContract;
@@ -2961,39 +3083,54 @@ async function createVisualQualityResult(input: {
   inputAlpha: AlphaDiagnostics;
   artifactPath: string;
   sourcePath: string;
-  removeBackground: boolean;
+  background: BackgroundDecision;
   strict: boolean;
 }): Promise<VisualQualityResult> {
   const diagnostics = await analyzeAlphaDiagnostics({ sourcePath: input.sourcePath });
   const checks: VisualQualityResult["checks"] = [];
   const metadata = await loadImageMetadata(input.sourcePath);
   const inputPixels = Math.max(input.input.width * input.input.height, 1);
-  const likelyOpaqueGeneratedSprite = inputPixels >= 16 && input.inputAlpha.transparentPixelRatio === 0 && !input.removeBackground;
+  const sourceWasOpaque = inputPixels >= 16 && input.inputAlpha.transparentPixelRatio === 0;
+  const autoSkippedOpaqueTarget = sourceWasOpaque && input.background.policy === "auto" && input.background.action === "skipped";
+  const preservedOpaqueTarget = sourceWasOpaque && input.background.policy === "preserve" && input.background.action === "preserved";
+  const expectedTransparent = input.contract.mediaType === "visual.transparent_sprite" || input.contract.mediaType === "visual.sprite_frame_set";
   const assetPath = input.artifactPath;
 
-  if (input.contract.mediaType === "visual.transparent_sprite") {
+  if (expectedTransparent) {
     checks.push(createVisualCheck({
-      name: "alpha_presence",
-      warning: likelyOpaqueGeneratedSprite && diagnostics.transparentPixelRatio === 0,
+      name: "background_policy_decision",
+      warning: autoSkippedOpaqueTarget,
+      strict: input.strict,
+      path: assetPath,
+      message: `${input.background.policy}:${input.background.action} - ${input.background.reason}`
+    }));
+    checks.push(createVisualCheck({
+      name: "auto_cutout_confidence",
+      warning: input.background.policy === "auto" && input.background.confidence === "low",
+      strict: input.strict,
+      path: assetPath,
+      message: `auto cutout confidence ${input.background.confidence}`
+    }));
+  }
+
+  if (expectedTransparent) {
+    checks.push(createVisualCheck({
+      name: "post_cutout_alpha_presence",
+      warning:
+        diagnostics.transparentPixelRatio === 0 &&
+        sourceWasOpaque &&
+        (autoSkippedOpaqueTarget || (preservedOpaqueTarget && input.strict)),
       strict: input.strict,
       path: assetPath,
       message: diagnostics.transparentPixelRatio === 0
-        ? "transparent sprite output has no transparent pixels"
+        ? "transparent target output has no transparent pixels"
         : `transparent pixels ${diagnostics.transparentPixelRatio}`,
       metric: diagnostics.transparentPixelRatio
     }));
     checks.push(createVisualCheck({
-      name: "opaque_canvas_warning",
-      warning: likelyOpaqueGeneratedSprite && diagnostics.transparentPixelRatio === 0,
-      strict: input.strict,
-      path: assetPath,
-      message: "source had no alpha channel; use --remove-background for generated sprites on flat backgrounds",
-      metric: diagnostics.transparentPixelRatio
-    }));
-    checks.push(createVisualCheck({
-      name: "alpha_bounds_not_full_canvas",
+      name: "post_cutout_subject_bounds",
       warning:
-        likelyOpaqueGeneratedSprite &&
+        autoSkippedOpaqueTarget &&
         diagnostics.transparentPixelRatio < 0.01 &&
         boundsCoversImage(diagnostics.nonTransparentBounds, metadata.width, metadata.height),
       strict: input.strict,
@@ -3005,9 +3142,35 @@ async function createVisualQualityResult(input: {
     }));
   }
 
+  if (input.contract.mediaType === "visual.sprite_frame_set") {
+    const frameDiagnostics = await analyzeSpriteInvariants({
+      sourcePath: input.sourcePath,
+      layout: input.contract.visual.layout,
+      frames: input.contract.visual.frames,
+      frameWidth: input.contract.visual.frameWidth,
+      frameHeight: input.contract.visual.frameHeight
+    });
+    const emptyFrame = frameDiagnostics.checks.find((check) => check.name === "emptyFrame");
+    const alphaConsistency = frameDiagnostics.checks.find((check) => check.name === "alphaConsistency");
+    checks.push(createVisualCheck({
+      name: "sprite_frame_post_cutout_empty_frame",
+      warning: emptyFrame?.status === "failed",
+      strict: true,
+      path: assetPath,
+      message: emptyFrame?.message ?? "no empty frames after cutout"
+    }));
+    checks.push(createVisualCheck({
+      name: "sprite_frame_post_cutout_alpha_consistency",
+      warning: alphaConsistency?.status === "failed",
+      strict: input.strict,
+      path: assetPath,
+      message: alphaConsistency?.message ?? "frame alpha coverage is consistent"
+    }));
+  }
+
   checks.push(createVisualCheck({
     name: "edge_alpha_bleed_risk",
-    warning: input.input.hasAlpha && diagnostics.transparentPixelRatio > 0 && diagnostics.edgeAlphaBleedRisk === "high",
+    warning: input.inputAlpha.transparentPixelRatio > 0.001 && diagnostics.transparentPixelRatio > 0 && diagnostics.edgeAlphaBleedRisk === "high",
     strict: input.strict,
     path: assetPath,
     message: `edge alpha bleed risk ${diagnostics.edgeAlphaBleedRisk}`,
@@ -3147,7 +3310,7 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
       inputAlpha: record.alpha,
       artifactPath: visualSource.relativePath,
       sourcePath: visualSource.absolutePath,
-      removeBackground: record.processing?.removeBackground === true,
+      background: record.background ?? createLegacyBackgroundDecision(record),
       strict: strictVisual
     });
     checks.push(...visualQuality.checks.map((check) => ({
@@ -3206,6 +3369,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Contract", body: JSON.stringify(record.contract, null, 2) },
       { heading: "Input", body: JSON.stringify(record.input, null, 2) },
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
+      ...(record.background ? [{ heading: "Background Policy", body: createBackgroundReportText(record) }] : []),
       { heading: "Agent Summary", body: record.agentSummary },
       { heading: "Core Recipe", body: JSON.stringify(record.recipe, null, 2) },
       ...(framePreviewPath ? [{ heading: "Frame Preview Sheet", body: framePreviewPath }] : []),
@@ -3289,7 +3453,8 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     opened: false,
     visualQuality: record.visualQuality,
     qualityGate: record.qualityGate,
-    manifest: record.manifest
+    manifest: record.manifest,
+    background: record.background
   };
 
   if (parsed.flags.get("open") === true) {
@@ -3385,7 +3550,7 @@ function createNextActionText(record: CompileSpriteResult): string | null {
       "",
       "Suggested next action:",
       "- inspect the preview and installed asset before wiring game code",
-      "- re-run with --remove-background or --quality strict if the asset should have transparency"
+      "- re-run with --background-policy remove or --quality strict if the asset should have transparency"
     ].join("\n");
   }
 
@@ -3399,7 +3564,39 @@ function createAgentSummary(record: CompileSpriteResult): string {
     ? `Installed ${asset} for ${target} and wrote ${record.installResult.writes.length} file(s).`
     : `Prepared ${asset} for ${target} with ${record.installPlan.files.length} planned file(s).`;
   const report = record.run.outputs.find((output) => output.kind === "report")?.path ?? ".openrender/reports/latest.html";
-  return `${installed} Review ${report} before wiring game code.`;
+  const background = record.background ? `${createBackgroundSummary(record)} ` : "";
+  return `${installed} ${background}Review ${report} before wiring game code.`;
+}
+
+function createBackgroundSummary(record: CompileSpriteResult): string {
+  const decision = record.background ?? createLegacyBackgroundDecision(record);
+  if (decision.action === "removed") {
+    const frameText = record.contract.mediaType === "visual.sprite_frame_set"
+      ? ` Frame geometry stayed ${record.contract.visual.frames} x ${record.contract.visual.frameWidth}x${record.contract.visual.frameHeight}.`
+      : "";
+    return `openRender removed an edge-connected background before installing ${record.contract.id}.${frameText}`;
+  }
+
+  if (decision.action === "skipped") {
+    return `openRender kept the original background for ${record.contract.id} because ${decision.reason}.`;
+  }
+
+  return `openRender preserved the source background for ${record.contract.id} because ${decision.reason}.`;
+}
+
+function createBackgroundReportText(record: CompileSpriteResult): string {
+  const decision = record.background ?? createLegacyBackgroundDecision(record);
+  return [
+    `Background policy: ${decision.policy}`,
+    `Decision: ${decision.action}`,
+    `Reason: ${decision.reason}`,
+    `Confidence: ${decision.confidence}`,
+    `Mode: ${decision.mode ?? "n/a"}`,
+    `Tolerance: ${decision.tolerance ?? "n/a"}`,
+    `Feather: ${decision.feather ?? "n/a"}`,
+    `Input alpha: transparent pixels ${decision.inputTransparentPixelRatio ?? record.alpha.transparentPixelRatio}`,
+    `Output alpha: transparent pixels ${decision.outputTransparentPixelRatio ?? record.visualQuality?.diagnostics.transparentPixelRatio ?? "n/a"}`
+  ].join("\n");
 }
 
 function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): CompileSpriteResult["recipe"] {
@@ -3441,6 +3638,9 @@ function createSuccessNextActions(record: CompileSpriteResult): string[] {
     `Use asset path ${record.outputPlan.assetPath}.`,
     `Inspect ${record.run.runId} with openrender report --run ${record.run.runId} --json.`
   ];
+  if (record.background) {
+    actions.unshift(createBackgroundSummary(record));
+  }
   if (record.outputPlan.codegenPath) {
     actions.unshift(`Import or require generated helper ${record.outputPlan.codegenPath}.`);
   }
@@ -3605,6 +3805,7 @@ function printCompileSprite(result: CompileSpriteResult): void {
   console.log(`Manifest: ${result.outputPlan.manifestPath}`);
   if (result.manifest) console.log(`Manifest strategy: ${result.manifest.strategy} (${result.manifest.entryChange})`);
   if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
+  if (result.background) console.log(`Background: ${result.background.policy} ${result.background.action} (${result.background.confidence})`);
   console.log(`Install plan files: ${result.installPlan.files.length}`);
   if (result.qualityGate) console.log(`Quality: ${result.qualityGate.quality} ${result.qualityGate.status}`);
   if (result.installResult) {
@@ -3644,6 +3845,7 @@ function printNormalizeResult(result: NormalizeCommandResult): void {
   console.log("openRender normalize");
   console.log("");
   console.log(`Preset: ${result.preset}`);
+  console.log(`Background: ${result.background.policy} ${result.background.action} (${result.background.confidence})`);
   console.log(`Output: ${result.outputPath}`);
 }
 
@@ -3708,6 +3910,7 @@ function printReportResult(result: ReportCommandResult): void {
   console.log(`HTML: ${result.htmlPath}`);
   console.log(`JSON: ${result.jsonPath}`);
   console.log(`Preview: ${result.previewHtmlPath}`);
+  if (result.background) console.log(`Background: ${result.background.policy} ${result.background.action}`);
   if (result.framePreviewPath) console.log(`Frame preview: ${result.framePreviewPath}`);
 }
 
@@ -3725,6 +3928,7 @@ function printExplainResult(result: ExplainCommandResult): void {
   console.log("");
   console.log(`Run: ${result.runId}`);
   console.log(result.agentSummary);
+  if (result.backgroundSummary) console.log(result.backgroundSummary);
   for (const action of result.nextActions) console.log(`Next: ${action}`);
 }
 
@@ -3766,10 +3970,10 @@ Usage:
   openrender recipe list|inspect|validate [recipeId] [--json]
   openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
-  openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
+  openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
   openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--run latest] [--timeout seconds] [--screenshot] [--json]
-  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
+  openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--strict-visual] [--quality prototype|default|strict] [--json] [--compact]
   openrender report [runId|--run latest] [--open] [--json] [--compact]
@@ -3833,6 +4037,7 @@ interface ReportCommandResult {
   visualQuality?: VisualQualityResult;
   qualityGate?: QualityGateResult;
   manifest?: ManifestStrategyResult;
+  background?: BackgroundDecision;
 }
 
 interface RollbackCommandResult {
@@ -3975,6 +4180,7 @@ interface CompactReportCommandResult {
   reportPath: string;
   previewPath: string;
   rollbackCommand: string | null;
+  background?: BackgroundDecision;
   tables: {
     outputs: CompactTable;
     visualQuality: CompactTable;
@@ -3986,6 +4192,7 @@ interface CompactExplainCommandResult {
   ok: boolean;
   runId: string;
   agentSummary: string;
+  backgroundSummary?: string;
   tables: {
     nextActions: CompactTable;
   };
@@ -4087,6 +4294,7 @@ interface NotImplementedCommandResult {
 interface NormalizeCommandResult {
   ok: true;
   preset: NormalizePreset;
+  background: BackgroundDecision;
   outputPath: string;
   output: Awaited<ReturnType<typeof normalizeWithPreset>>;
 }
@@ -4095,6 +4303,7 @@ interface ExplainCommandResult {
   ok: boolean;
   runId: string;
   agentSummary: string;
+  backgroundSummary?: string;
   nextActions: string[];
 }
 
@@ -4187,8 +4396,11 @@ interface CompileSpriteResult {
     path: string;
     metadata: ImageMetadata;
   };
+  background?: BackgroundDecision;
   processing?: {
     removeBackground: boolean;
+    backgroundPolicy?: BackgroundPolicy;
+    backgroundAction?: BackgroundDecision["action"];
     backgroundMode: BackgroundRemovalMode;
     backgroundTolerance: number;
     feather: number;

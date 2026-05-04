@@ -90,6 +90,19 @@ export type NormalizePreset =
   | "sprite-grid";
 
 export type BackgroundRemovalMode = "top-left" | "edge-flood";
+export type BackgroundPolicy = "auto" | "preserve" | "remove";
+
+export interface BackgroundDecision {
+  policy: BackgroundPolicy;
+  action: "preserved" | "removed" | "skipped";
+  reason: string;
+  confidence: "high" | "medium" | "low";
+  mode?: BackgroundRemovalMode;
+  tolerance?: number;
+  feather?: number;
+  inputTransparentPixelRatio?: number;
+  outputTransparentPixelRatio?: number;
+}
 
 export interface VisualHarnessPlan {
   contractId: string;
@@ -250,6 +263,22 @@ export async function removeSolidBackgroundToPng(input: {
   };
 }
 
+export async function removeBackgroundInPlaceToPng(input: {
+  sourcePath: string;
+  outputPath: string;
+  mode: BackgroundRemovalMode;
+  tolerance: number;
+  feather: number;
+}): Promise<NormalizedImageOutput> {
+  return removeSolidBackgroundToPng({
+    sourcePath: input.sourcePath,
+    outputPath: input.outputPath,
+    tolerance: input.tolerance,
+    backgroundMode: input.mode,
+    feather: input.feather
+  });
+}
+
 export async function detectAlphaBounds(input: {
   sourcePath: string;
   alphaThreshold?: number;
@@ -364,6 +393,127 @@ export async function analyzeAlphaDiagnostics(input: {
     emptyFrameDetected: nonTransparentPixels === 0,
     oversizedCanvasDetected: subjectAreaRatio > 0 && subjectAreaRatio < 0.25,
     subjectTooSmallRisk: subjectAreaRatio > 0 && subjectAreaRatio < 0.08
+  };
+}
+
+export async function decideBackgroundRemoval(input: {
+  sourcePath: string;
+  mediaType: "visual.transparent_sprite" | "visual.sprite_frame_set";
+  policy: BackgroundPolicy;
+  preset?: NormalizePreset;
+  frameSlices?: FrameSlice[];
+  tolerance: number;
+  mode: BackgroundRemovalMode;
+  feather: number;
+}): Promise<BackgroundDecision> {
+  const inputAlpha = await analyzeAlphaDiagnostics({ sourcePath: input.sourcePath });
+  const baseDecision = {
+    policy: input.policy,
+    mode: input.mode,
+    tolerance: input.tolerance,
+    feather: input.feather,
+    inputTransparentPixelRatio: inputAlpha.transparentPixelRatio
+  };
+
+  if (input.policy === "remove") {
+    return {
+      ...baseDecision,
+      action: "removed",
+      reason: "background removal was requested explicitly",
+      confidence: "high"
+    };
+  }
+
+  if (input.policy === "preserve") {
+    return {
+      ...baseDecision,
+      action: "preserved",
+      reason: "background preservation was requested explicitly",
+      confidence: "high",
+      outputTransparentPixelRatio: inputAlpha.transparentPixelRatio
+    };
+  }
+
+  if (inputAlpha.transparentPixelRatio > 0.001) {
+    return {
+      ...baseDecision,
+      action: "preserved",
+      reason: "source already has meaningful transparency",
+      confidence: "high",
+      outputTransparentPixelRatio: inputAlpha.transparentPixelRatio
+    };
+  }
+
+  const { data, info } = await sharp(input.sourcePath, { failOn: "error" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const cleaned = cleanupAlphaEdges(
+    removeSolidBackground(data, {
+      width: info.width,
+      height: info.height,
+      channels: info.channels
+    }, input.tolerance, input.mode, input.feather),
+    2
+  );
+  const stats = readAlphaStats(cleaned, {
+    width: info.width,
+    height: info.height,
+    channels: 4
+  }, input.frameSlices);
+
+  const outputTransparentPixelRatio = roundRatio(stats.transparentPixelRatio);
+  const removedRatio = outputTransparentPixelRatio - inputAlpha.transparentPixelRatio;
+  const minRemovedRatio = Math.max(0.015, 1 / Math.max(info.width * info.height, 1));
+
+  if (removedRatio < minRemovedRatio) {
+    return {
+      ...baseDecision,
+      action: "skipped",
+      reason: "edge-connected background mask was too small to be safe",
+      confidence: "low",
+      outputTransparentPixelRatio
+    };
+  }
+
+  if (outputTransparentPixelRatio > 0.98 || stats.nonTransparentPixels === 0) {
+    return {
+      ...baseDecision,
+      action: "skipped",
+      reason: "background removal would erase too much of the image",
+      confidence: "low",
+      outputTransparentPixelRatio
+    };
+  }
+
+  if (input.frameSlices?.length) {
+    if (stats.emptyFrameIndexes.length > 0) {
+      return {
+        ...baseDecision,
+        action: "skipped",
+        reason: `background removal would leave empty frame indexes: ${stats.emptyFrameIndexes.join(", ")}`,
+        confidence: "low",
+        outputTransparentPixelRatio
+      };
+    }
+
+    if (stats.frameAlphaRange > 0.7) {
+      return {
+        ...baseDecision,
+        action: "skipped",
+        reason: `post-cutout frame alpha coverage range ${roundRatio(stats.frameAlphaRange)} is too high`,
+        confidence: "low",
+        outputTransparentPixelRatio
+      };
+    }
+  }
+
+  return {
+    ...baseDecision,
+    action: "removed",
+    reason: "source had no alpha and edge-connected background removal passed safety checks",
+    confidence: removedRatio > 0.15 ? "high" : "medium",
+    outputTransparentPixelRatio
   };
 }
 
@@ -576,6 +726,16 @@ export async function normalizeWithPreset(input: {
       backgroundTolerance: input.backgroundTolerance,
       feather: input.feather,
       outputSize: { width: 64, height: 64 }
+    });
+  }
+
+  if (input.removeSolidBackground) {
+    return removeBackgroundInPlaceToPng({
+      sourcePath: input.sourcePath,
+      outputPath: input.outputPath,
+      mode: input.backgroundMode ?? "edge-flood",
+      tolerance: input.backgroundTolerance ?? 48,
+      feather: input.feather ?? 0
     });
   }
 
@@ -1059,6 +1219,40 @@ function readFrameStats(
           width: maxX - minX + 1,
           height: maxY - minY + 1
         }
+  };
+}
+
+function readAlphaStats(
+  data: Buffer,
+  info: { width: number; height: number; channels: number },
+  frameSlices?: FrameSlice[]
+): {
+  transparentPixelRatio: number;
+  nonTransparentPixels: number;
+  emptyFrameIndexes: number[];
+  frameAlphaRange: number;
+} {
+  let transparentPixels = 0;
+  let nonTransparentPixels = 0;
+  const totalPixels = Math.max(info.width * info.height, 1);
+
+  for (let pixelIndex = 0; pixelIndex < info.width * info.height; pixelIndex += 1) {
+    const alpha = data[pixelIndex * info.channels + 3] ?? 0;
+    if (alpha === 0) {
+      transparentPixels += 1;
+    } else {
+      nonTransparentPixels += 1;
+    }
+  }
+
+  const frameStats = frameSlices?.map((slice) => readFrameStats(data, info, slice)) ?? [];
+  const alphaRatios = frameStats.map((stat) => stat.alphaRatio);
+
+  return {
+    transparentPixelRatio: transparentPixels / totalPixels,
+    nonTransparentPixels,
+    emptyFrameIndexes: frameStats.filter((stat) => stat.alphaPixels === 0).map((stat) => stat.index),
+    frameAlphaRange: range(alphaRatios)
   };
 }
 

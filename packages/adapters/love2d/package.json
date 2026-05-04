@@ -1,6 +1,6 @@
 {
   "name": "@openrender/adapter-love2d",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "LOVE2D adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",

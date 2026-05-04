@@ -14,6 +14,7 @@ const cliPath = path.join(currentDir, "index.js");
 const onePixelPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 const transparentBorderPng = "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFUlEQVR4nGNgIAT+MzD8B2HiJdABAI7jB/l+kPXlAAAAAElFTkSuQmCC";
 const opaqueWhiteRedPng = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFUlEQVR4nGP4jwYYICQDBOMWQNICAGk9N8lGG0z3AAAAAElFTkSuQmCC";
+const opaqueWhiteColorStripPng = "iVBORw0KGgoAAAANSUhEUgAAAAgAAAACCAYAAABllJ3tAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFElEQVR4nGP4TwAwQEgohcoFiwAAxN84yAPOARcAAAAASUVORK5CYII=";
 
 test("version prints the npm package version", async () => {
   const { stdout } = await execFileAsync(process.execPath, [
@@ -21,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.7.1");
+  assert.equal(stdout.trim(), "0.7.2");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -30,12 +31,13 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.7\.1/m);
+  assert.match(stdout, /^openRender 0\.7\.2/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
+  assert.match(stdout, /--background-policy auto\|preserve\|remove/);
   assert.match(stdout, /--remove-background/);
   assert.match(stdout, /--manifest-strategy merge\|replace\|isolated/);
   assert.match(stdout, /--quality prototype\|default\|strict/);
@@ -54,7 +56,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.7.1");
+  assert.equal(schema.properties.schemaVersion.const, "0.7.2");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -63,7 +65,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.7.1 P4 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.7.2 P4 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -187,10 +189,13 @@ test("normalize can remove edge-connected solid backgrounds", async () => {
     cwd: root
   });
   const result = JSON.parse(stdout) as {
+    background: { policy: string; action: string };
     outputPath: string;
     output: { metadata: { width: number; height: number }; removedSolidBackground: boolean; backgroundMode: string };
   };
 
+  assert.equal(result.background.policy, "remove");
+  assert.equal(result.background.action, "removed");
   assert.equal(result.output.removedSolidBackground, true);
   assert.equal(result.output.backgroundMode, "edge-flood");
   assert.equal(result.output.metadata.width, 2);
@@ -611,7 +616,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.7.1");
+  assert.equal(result.version, "0.7.2");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -967,6 +972,159 @@ test("compile sprite writes artifact and run JSON without install", async () => 
   assert.equal(await fileExists(path.join(root, ".openrender/runs/latest.json")), true);
 });
 
+test("compile sprite auto removes safe opaque transparent sprite backgrounds", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-auto-bg-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.auto",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    background: { policy: string; action: string; inputTransparentPixelRatio: number };
+    processing: { removeBackground: boolean; backgroundPolicy: string; backgroundAction: string };
+    visualQuality: { status: string };
+    artifact: { path: string; metadata: { width: number; height: number } };
+  };
+
+  assert.equal(result.background.policy, "auto");
+  assert.equal(result.background.action, "removed");
+  assert.equal(result.processing.removeBackground, true);
+  assert.equal(result.processing.backgroundPolicy, "auto");
+  assert.equal(result.processing.backgroundAction, "removed");
+  assert.equal(result.background.inputTransparentPixelRatio, 0);
+  assert.equal(result.artifact.metadata.width, 2);
+  assert.equal(result.artifact.metadata.height, 2);
+  assert.equal(result.visualQuality.status, "passed");
+});
+
+test("compile sprite auto cutout preserves sprite strip dimensions", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-auto-strip-bg-"));
+  await fs.writeFile(path.join(root, "strip.png"), Buffer.from(opaqueWhiteColorStripPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "strip.png",
+    "--id",
+    "actor.runner",
+    "--frames",
+    "4",
+    "--frame-size",
+    "2x2",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    background: { policy: string; action: string };
+    artifact: { metadata: { width: number; height: number } };
+    framePreview: { path: string };
+    invariants: { ok: boolean };
+  };
+
+  assert.equal(result.background.policy, "auto");
+  assert.equal(result.background.action, "removed");
+  assert.equal(result.artifact.metadata.width, 8);
+  assert.equal(result.artifact.metadata.height, 2);
+  assert.equal(result.invariants.ok, true);
+  assert.equal(await fileExists(result.framePreview.path), true);
+});
+
+test("compile sprite background-policy preserve opts out of auto cutout", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-preserve-bg-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.preserved",
+    "--background-policy",
+    "preserve",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    background: { policy: string; action: string; reason: string };
+    processing: { removeBackground: boolean };
+    visualQuality: { status: string };
+  };
+
+  assert.equal(result.background.policy, "preserve");
+  assert.equal(result.background.action, "preserved");
+  assert.match(result.background.reason, /preservation was requested/);
+  assert.equal(result.processing.removeBackground, false);
+  assert.equal(result.visualQuality.status, "passed");
+});
+
+test("--remove-background maps to background-policy remove", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-force-bg-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "sprite",
+    "--from",
+    "sprite.png",
+    "--id",
+    "prop.force",
+    "--remove-background",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as { background: { policy: string; action: string }; processing: { backgroundPolicy: string } };
+
+  assert.equal(result.background.policy, "remove");
+  assert.equal(result.background.action, "removed");
+  assert.equal(result.processing.backgroundPolicy, "remove");
+});
+
+test("conflicting background flags fail clearly", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-conflict-bg-"));
+  await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
+
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [
+      cliPath,
+      "compile",
+      "sprite",
+      "--from",
+      "sprite.png",
+      "--id",
+      "prop.conflict",
+      "--remove-background",
+      "--background-policy",
+      "preserve",
+      "--json"
+    ], {
+      cwd: root
+    }),
+    (error: unknown) => {
+      const stdout = error instanceof Error && "stdout" in error ? String(error.stdout) : "";
+      const result = JSON.parse(stdout) as { message: string };
+      assert.match(result.message, /Conflicting background options/);
+      return true;
+    }
+  );
+});
+
 test("strict visual quality fails likely opaque transparent sprites", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-strict-visual-"));
   await fs.writeFile(path.join(root, "sprite.png"), Buffer.from(opaqueWhiteRedPng, "base64"));
@@ -980,6 +1138,8 @@ test("strict visual quality fails likely opaque transparent sprites", async () =
       "sprite.png",
       "--id",
       "prop.opaque",
+      "--background-policy",
+      "preserve",
       "--quality",
       "strict",
       "--json"
@@ -994,7 +1154,7 @@ test("strict visual quality fails likely opaque transparent sprites", async () =
       };
       assert.equal(result.qualityGate.status, "failed");
       assert.equal(result.visualQuality.status, "failed");
-      assert.equal(result.visualQuality.checks.some((check) => check.name === "opaque_canvas_warning" && check.status === "failed"), true);
+      assert.equal(result.visualQuality.checks.some((check) => check.name === "post_cutout_alpha_presence" && check.status === "failed"), true);
       return true;
     }
   );
@@ -1088,6 +1248,8 @@ test("compile sprite can install, verify, report, and rollback a Godot run", asy
     "prop.dot",
     "--output-size",
     "8x8",
+    "--background-policy",
+    "preserve",
     "--install",
     "--json"
   ], {
@@ -1157,6 +1319,8 @@ test("compile sprite can install, verify, report, and rollback a LOVE2D run", as
     "prop.dot",
     "--output-size",
     "8x8",
+    "--background-policy",
+    "preserve",
     "--install",
     "--json"
   ], {
@@ -1372,6 +1536,8 @@ test("verify latest run passes after install", async () => {
     "sprite.png",
     "--id",
     "prop.dot",
+    "--background-policy",
+    "preserve",
     "--json"
   ], {
     cwd: root
@@ -1409,6 +1575,8 @@ test("verify --strict-visual fails opaque transparent sprite warnings", async ()
     "sprite.png",
     "--id",
     "prop.opaque",
+    "--background-policy",
+    "preserve",
     "--install",
     "--json"
   ], {
@@ -1438,7 +1606,7 @@ test("verify --strict-visual fails opaque transparent sprite warnings", async ()
       assert.equal(result.ok, false);
       assert.equal(result.status, "failed");
       assert.equal(result.summary.failed > 0, true);
-      assert.equal(result.tables.checks.rows.some((row) => row[0] === "opaque_canvas_warning" && row[1] === "failed"), true);
+      assert.equal(result.tables.checks.rows.some((row) => row[0] === "post_cutout_alpha_presence" && row[1] === "failed"), true);
       return true;
     }
   );

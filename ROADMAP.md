@@ -1,16 +1,18 @@
 # openRender Roadmap
 
-## 0.7.1 Agent Asset Readiness
+## 0.7.2 Default Cutout
 
-- Documentation baseline and package version: openRender `0.7.1 Agent Asset Readiness`.
+- Documentation baseline and package version: openRender `0.7.2 Default Cutout`.
 - Local sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, and Canvas.
 - Adapter registry surface through shared target types, adapter packages, and CLI dispatch for describe, install-plan, helper generation, and load-path verification.
 - Built-in recipe metadata under `recipes/`.
 - Compact `context --json` handoff for target/path/latest-run/overwrite-risk summaries.
 - Compact agent views for context, verify, report, explain, and diff.
 - Read-only `context --json --wire-map` wiring candidates plus latest asset path, manifest module, and example snippets for supported targets.
-- Visual quality warnings, `verify --strict-visual`, and `--quality prototype|default|strict`.
-- Edge-flood background removal via `--remove-background --background-mode edge-flood`.
+- Safe automatic generated-sprite cutout through default `--background-policy auto`.
+- Edge-flood background removal with explicit `--background-policy preserve|auto|remove` control and legacy `--remove-background` compatibility.
+- Sprite-frame-set cutout that preserves sheet dimensions and validates processed frame invariants.
+- Visual quality warnings, background decision reporting, `verify --strict-visual`, and `--quality prototype|default|strict`.
 - Manifest strategies: default `merge`, explicit `replace`, and `isolated`.
 - Runtime smoke semantics for explicit local Godot/LOVE2D launch checks.
 - Safe `install-agent --platform codex|cursor|claude|all --dry-run --json` planning for local agent instruction files.
