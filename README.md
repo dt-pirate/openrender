@@ -23,7 +23,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.7.3"><img alt="Release" src="https://img.shields.io/badge/release-v0.7.3-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.7.2` core supports image asset handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
+The current `0.7.3` core supports sprite image handoff plus P4 audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, and plain Canvas + Vite.
 
 ## Quick Start
 
@@ -156,6 +156,7 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 
 - Project scanning and doctor checks.
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
+- P4 audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same local run-state pipeline.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
 - Alpha diagnostics, safe default background cutout, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
@@ -175,6 +176,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 | LOVE2D | PNG assets, Lua asset module, animation metadata, draw/load snippets |
 | PixiJS + Vite | PNG assets, optional spritesheet JSON, TypeScript Pixi helpers |
 | Canvas + Vite | PNG assets, TypeScript manifest, image loading and frame drawing helpers |
+
+P4 media assets use sibling media manifests and helpers, such as `src/assets/openrender-media-manifest.ts`, `scripts/openrender/openrender_media_assets.gd`, or `openrender/openrender_media_assets.lua`, depending on the target.
 
 ## Agent Rules
 

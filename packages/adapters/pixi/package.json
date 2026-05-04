@@ -1,6 +1,6 @@
 {
   "name": "@openrender/adapter-pixi",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "PixiJS and Vite adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",

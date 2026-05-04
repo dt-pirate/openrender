@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.7.2");
+  assert.equal(stdout.trim(), "0.7.3");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,12 +31,15 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.7\.2/m);
+  assert.match(stdout, /^openRender 0\.7\.3/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
+  assert.match(stdout, /compile audio .*--media-type audio\.sound_effect\|audio\.music_loop/);
+  assert.match(stdout, /compile atlas .*--media-type visual\.atlas\|visual\.tileset/);
+  assert.match(stdout, /compile ui .*--media-type visual\.ui_button\|visual\.ui_panel\|visual\.icon_set/);
   assert.match(stdout, /--background-policy auto\|preserve\|remove/);
   assert.match(stdout, /--remove-background/);
   assert.match(stdout, /--manifest-strategy merge\|replace\|isolated/);
@@ -56,7 +59,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.7.2");
+  assert.equal(schema.properties.schemaVersion.const, "0.7.3");
 
   const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -65,7 +68,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.7.2 P4 Media Contracts");
+  assert.equal(p4Schema.title, "openRender 0.7.3 P4 Media Contracts");
   assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -92,6 +95,9 @@ test("pack and recipe commands expose built-in local core metadata", async () =>
 
   assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.transparent-sprite"));
   assert.ok(recipeResult.recipes.some((recipe) => recipe.mediaType === "visual.sprite_frame_set"));
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.audio"));
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.atlas"));
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.ui"));
 });
 
 test("plan sprite emits a compact install plan", async () => {
@@ -240,6 +246,138 @@ test("metadata and smoke commands return local deterministic JSON", async () => 
   assert.equal(smokeResult.ok, true);
   assert.equal(smokeResult.status, "skipped");
   assert.equal(smokeResult.command, null);
+});
+
+test("compile audio installs, verifies, reports, and rolls back through the P4 pipeline", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-audio-"));
+  await fs.writeFile(path.join(root, "sound.wav"), Buffer.from("RIFF0000WAVE", "ascii"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "audio",
+    "--from",
+    "sound.wav",
+    "--target",
+    "canvas",
+    "--id",
+    "sfx.hit",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    contract: { mediaType: string };
+    outputPlan: { assetPath: string; manifestPath: string; codegenPath: string };
+    installResult: { writes: Array<{ relativePath: string }> };
+  };
+
+  assert.equal(result.contract.mediaType, "audio.sound_effect");
+  assert.equal(result.outputPlan.assetPath, "public/assets/sfx-hit.wav");
+  assert.deepEqual(result.installResult.writes.map((write) => write.relativePath), [
+    "public/assets/sfx-hit.wav",
+    "src/assets/openrender-media-manifest.ts",
+    "src/openrender/media/sfx-hit.ts"
+  ]);
+
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const verifyResult = JSON.parse(verify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string }>;
+  };
+  assert.equal(verifyResult.status, "passed");
+  assert.equal(verifyResult.checks.some((check) => check.name === "audio_format_supported" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "engine_manifest_path_shape" && check.status === "passed"), true);
+
+  const report = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const reportResult = JSON.parse(report.stdout) as { htmlPath: string };
+  const reportHtml = await fs.readFile(path.join(root, reportResult.htmlPath), "utf8");
+  assert.match(reportHtml, /P4 Media Pipeline/);
+
+  const rollback = await execFileAsync(process.execPath, [cliPath, "rollback", "--run", "latest", "--json"], {
+    cwd: root
+  });
+  const rollbackResult = JSON.parse(rollback.stdout) as { actions: Array<{ path: string }> };
+  assert.deepEqual(rollbackResult.actions.map((action) => action.path), [
+    "public/assets/sfx-hit.wav",
+    "src/assets/openrender-media-manifest.ts",
+    "src/openrender/media/sfx-hit.ts"
+  ]);
+  assert.equal(await fileExists(path.join(root, "public/assets/sfx-hit.wav")), false);
+});
+
+test("compile atlas and ui assets promote P4 metadata into installable verified runs", async () => {
+  const atlasRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-atlas-"));
+  await fs.writeFile(path.join(atlasRoot, "atlas.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(atlasRoot, "main.lua"), "function love.load() end\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "atlas",
+    "--from",
+    "atlas.png",
+    "--target",
+    "love2d",
+    "--id",
+    "tiles.floor",
+    "--media-type",
+    "visual.tileset",
+    "--tile-size",
+    "1x1",
+    "--install",
+    "--json"
+  ], {
+    cwd: atlasRoot
+  });
+  const atlasVerify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json"], {
+    cwd: atlasRoot
+  });
+  const atlasVerifyResult = JSON.parse(atlasVerify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string }>;
+  };
+  assert.equal(atlasVerifyResult.status, "passed");
+  assert.equal(atlasVerifyResult.checks.some((check) => check.name === "atlas_tile_grid_divisible" && check.status === "passed"), true);
+  assert.equal(await fileExists(path.join(atlasRoot, "openrender/openrender_media_assets.lua")), true);
+
+  const uiRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-ui-"));
+  await fs.writeFile(path.join(uiRoot, "button.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(uiRoot, "project.godot"), "[application]\nconfig/name=\"Sample\"\n", "utf8");
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "ui",
+    "--from",
+    "button.png",
+    "--target",
+    "godot",
+    "--id",
+    "ui.start",
+    "--states",
+    "default,hover,pressed",
+    "--install",
+    "--json"
+  ], {
+    cwd: uiRoot
+  });
+  const uiVerify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json"], {
+    cwd: uiRoot
+  });
+  const uiVerifyResult = JSON.parse(uiVerify.stdout) as {
+    status: string;
+    checks: Array<{ name: string; status: string }>;
+  };
+  assert.equal(uiVerifyResult.status, "passed");
+  assert.equal(uiVerifyResult.checks.some((check) => check.name === "ui_states_declared" && check.status === "passed"), true);
+  assert.equal(uiVerifyResult.checks.some((check) => check.name === "godot_import_cache_boundary" && check.status === "passed"), true);
+  assert.equal(await fileExists(path.join(uiRoot, "scripts/openrender/openrender_media_assets.gd")), true);
 });
 
 test("init emits JSON when requested", async () => {
@@ -616,7 +754,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.7.2");
+  assert.equal(result.version, "0.7.3");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -1279,6 +1417,7 @@ test("compile sprite can install, verify, report, and rollback a Godot run", asy
   };
   assert.equal(verifyResult.status, "passed");
   assert.equal(verifyResult.checks.some((check) => check.name === "engine_load_path_shape" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "godot_import_cache_boundary" && check.status === "passed"), true);
 
   const report = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json"], {
     cwd: root
@@ -1349,6 +1488,7 @@ test("compile sprite can install, verify, report, and rollback a LOVE2D run", as
   };
   assert.equal(verifyResult.status, "passed");
   assert.equal(verifyResult.checks.some((check) => check.name === "engine_load_path_shape" && check.status === "passed"), true);
+  assert.equal(verifyResult.checks.some((check) => check.name === "love2d_entry_file_detected" && check.status === "passed"), true);
 
   const report = await execFileAsync(process.execPath, [cliPath, "report", compileResult.run.runId, "--json"], {
     cwd: root

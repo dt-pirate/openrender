@@ -49,7 +49,10 @@ import {
   type OpenRenderAdapter,
   type OpenRenderRun,
   type ProjectScan,
+  type AudioContract,
+  type AtlasContract,
   type SpriteFrameSetContract,
+  type UiAssetContract,
   type TransparentSpriteContract,
   type TargetEngine,
   type TargetFramework
@@ -82,7 +85,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.7.2";
+const CLI_VERSION = "0.7.3";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -100,6 +103,11 @@ type EngineInstallPlan =
 type EngineInstallPlanFile = EngineInstallPlan["files"][number];
 
 type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
+type P4CompileContract = AudioContract | AtlasContract | UiAssetContract;
+type OpenRenderCompileRecord = CompileSpriteResult | CompileP4Result;
+type OpenRenderInstallPlan = EngineInstallPlan | P4InstallPlan;
+type OpenRenderInstallPlanFile = EngineInstallPlanFile | P4InstallPlanFile;
+type ManifestStateDescriptor = Pick<EngineAssetDescriptor | P4AssetDescriptor, "assetPath" | "loadPath">;
 type SpriteAdapter = OpenRenderAdapter<EngineAssetDescriptor, EngineInstallPlan>;
 type CompactTableCell = string | number | boolean | null;
 type VerificationStatus = NonNullable<OpenRenderRun["verification"]>["status"];
@@ -275,6 +283,27 @@ const CORE_RECIPES = [
     mediaType: "visual.sprite_frame_set",
     targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
     summary: "Compile a local sprite sheet into frame metadata, helper code, reports, and rollback-safe install plans."
+  },
+  {
+    id: "core.audio",
+    packId: CORE_PACK_ID,
+    mediaType: "audio.sound_effect",
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
+    summary: "Install local audio assets with engine paths, metadata manifests, verification, reports, and rollback."
+  },
+  {
+    id: "core.atlas",
+    packId: CORE_PACK_ID,
+    mediaType: "visual.atlas",
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
+    summary: "Install local atlas or tileset images with tile metadata, manifests, verification, reports, and rollback."
+  },
+  {
+    id: "core.ui",
+    packId: CORE_PACK_ID,
+    mediaType: "visual.ui_button",
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas"],
+    summary: "Install local UI image assets with state metadata, manifests, verification, reports, and rollback."
   }
 ] as const;
 const CORE_PACKS = [
@@ -432,7 +461,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   "media-p4": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.7.2 P4 Media Contracts",
+    title: "openRender 0.7.3 P4 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -678,6 +707,16 @@ async function main(argv: string[]): Promise<number> {
     const result = await runtimeSmoke(parsed);
     console.log(JSON.stringify(result, null, 2));
     return result.status === "failed" ? 2 : 0;
+  }
+
+  if (command === "compile" && (subcommand === "audio" || subcommand === "atlas" || subcommand === "ui")) {
+    const result = await compileP4Media(subcommand, parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printCompileP4(result);
+    }
+    return result.validation?.status === "failed" ? 1 : 0;
   }
 
   if (command === "compile" && subcommand === "sprite") {
@@ -1174,10 +1213,10 @@ async function explainRun(parsed: ParsedFlags): Promise<ExplainCommandResult> {
   const record = await readCompileRecord(process.cwd(), readRunId(parsed));
   const nextActionText = createNextActionText(record);
   return {
-    ok: record.validation?.ok !== false && record.run.verification?.status !== "failed",
+    ok: (isSpriteCompileRecord(record) ? record.validation?.ok !== false : record.validation.status !== "failed") && record.run.verification?.status !== "failed",
     runId: record.run.runId,
     agentSummary: createAgentSummary(record),
-    backgroundSummary: createBackgroundSummary(record),
+    backgroundSummary: isSpriteCompileRecord(record) ? createBackgroundSummary(record) : undefined,
     nextActions: nextActionText
       ? nextActionText.split("\n").filter((line) => line.startsWith("- ")).map((line) => line.slice(2))
       : createSuccessNextActions(record)
@@ -1570,7 +1609,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
   };
 }
 
-async function readLatestCompileRecordIfAvailable(projectRoot: string): Promise<CompileSpriteResult | null> {
+async function readLatestCompileRecordIfAvailable(projectRoot: string): Promise<OpenRenderCompileRecord | null> {
   try {
     if (!await pathExists(resolveInsideProject(projectRoot, ".openrender/runs/latest.json"))) return null;
     return await readCompileRecord(projectRoot, "latest");
@@ -1598,7 +1637,7 @@ async function readLatestRunSummary(projectRoot: string): Promise<AgentContextCo
   }
 }
 
-async function createWireMap(scan: ProjectScan, latestRecord: CompileSpriteResult | null = null): Promise<WireMapResult> {
+async function createWireMap(scan: ProjectScan, latestRecord: OpenRenderCompileRecord | null = null): Promise<WireMapResult> {
   const projectRoot = scan.projectRoot;
   const candidates: WireMapResult["candidates"] = [];
   const notes: string[] = ["Read-only scan; openRender does not patch game code."];
@@ -1792,7 +1831,7 @@ function createWireMapTable(candidates: WireMapResult["candidates"]): CompactTab
   };
 }
 
-function createWireMapLatestAsset(record: CompileSpriteResult): WireMapLatestAsset {
+function createWireMapLatestAsset(record: OpenRenderCompileRecord): WireMapLatestAsset {
   return {
     assetId: record.contract.id,
     mediaType: record.contract.mediaType,
@@ -1806,7 +1845,7 @@ function createWireMapLatestAsset(record: CompileSpriteResult): WireMapLatestAss
   };
 }
 
-function createManifestModuleName(record: CompileSpriteResult): string {
+function createManifestModuleName(record: OpenRenderCompileRecord): string {
   const manifestPath = record.outputPlan.manifestPath;
   if (record.contract.target.engine === "love2d") {
     return manifestPath.replace(/\.lua$/, "").replace(/\//g, ".");
@@ -1817,16 +1856,18 @@ function createManifestModuleName(record: CompileSpriteResult): string {
   return manifestPath.replace(/^src\//, "@/").replace(/\.[tj]s$/, "");
 }
 
-function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset["snippets"] {
+function createWireMapSnippets(record: OpenRenderCompileRecord): WireMapLatestAsset["snippets"] {
   const assetId = record.contract.id;
   const loadPath = record.outputPlan.loadPath;
   const manifestModule = createManifestModuleName(record);
   const codegenPath = record.outputPlan.codegenPath;
+  const viteManifestExport = isP4CompileRecord(record) ? "openRenderMediaAssets" : "openRenderAssets";
+  const p4EntryPath = isP4CompileRecord(record) ? "path" : "url";
 
   if (record.contract.target.engine === "love2d") {
     return [
       {
-        label: "LOVE2D manifest load example",
+        label: isP4CompileRecord(record) ? "LOVE2D media manifest example" : "LOVE2D manifest load example",
         language: "lua",
         code: [
           `local openrender_assets = require(${JSON.stringify(manifestModule)})`,
@@ -1855,7 +1896,7 @@ function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset[
   if (record.contract.target.engine === "godot") {
     return [
       {
-        label: "Godot manifest preload example",
+        label: isP4CompileRecord(record) ? "Godot media manifest preload example" : "Godot manifest preload example",
         language: "gdscript",
         code: [
           `const OpenRenderAssets = preload(${JSON.stringify(manifestModule)})`,
@@ -1872,10 +1913,10 @@ function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset[
         label: "Phaser scene example",
         language: "ts",
         code: [
-          `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
-          `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
+          `import { ${viteManifestExport} } from ${JSON.stringify(manifestModule)};`,
+          `const asset = ${viteManifestExport}[${JSON.stringify(assetId)}];`,
           "preload() {",
-          "  this.load.image(asset.key ?? asset.url, asset.url);",
+          `  this.load.image(${JSON.stringify(assetId)}, asset.${p4EntryPath});`,
           "}"
         ].join("\n")
       }
@@ -1888,9 +1929,9 @@ function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset[
         label: "Pixi asset load example",
         language: "ts",
         code: [
-          `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
-          `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
-          "await Assets.load(asset.url);"
+          `import { ${viteManifestExport} } from ${JSON.stringify(manifestModule)};`,
+          `const asset = ${viteManifestExport}[${JSON.stringify(assetId)}];`,
+          `await Assets.load(asset.${p4EntryPath});`
         ].join("\n")
       }
     ];
@@ -1901,10 +1942,10 @@ function createWireMapSnippets(record: CompileSpriteResult): WireMapLatestAsset[
       label: "Canvas image load example",
       language: "ts",
       code: [
-        `import { openRenderAssets } from ${JSON.stringify(manifestModule)};`,
-        `const asset = openRenderAssets[${JSON.stringify(assetId)}];`,
+        `import { ${viteManifestExport} } from ${JSON.stringify(manifestModule)};`,
+        `const asset = ${viteManifestExport}[${JSON.stringify(assetId)}];`,
         "const image = new Image();",
-        "image.src = asset.url;"
+        `image.src = asset.${p4EntryPath};`
       ].join("\n")
     }
   ];
@@ -2018,7 +2059,8 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.7.2: phaser, godot, love2d, pixi, canvas.
+- Supported targets in 0.7.3: phaser, godot, love2d, pixi, canvas.
+- P4 media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
   if (agent === "codex") return { relativePath: "AGENTS.md", contents: body };
@@ -2291,6 +2333,32 @@ function assetIdToPascalCase(value: string): string {
   return assetIdToKebabCaseLocal(value).split("-").map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`).join("");
 }
 
+function assetIdToCamelCaseLocal(value: string): string {
+  const pascal = assetIdToPascalCase(value);
+  return `${pascal.charAt(0).toLowerCase()}${pascal.slice(1)}`;
+}
+
+function normalizeProjectRelativePathLocal(value: string): string {
+  const normalized = path.posix.normalize(value.replaceAll("\\", "/"));
+  if (normalized === "." || normalized.startsWith("../") || path.posix.isAbsolute(normalized)) {
+    throw new Error(`Path must stay inside the project: ${value}`);
+  }
+  return normalized;
+}
+
+function toLuaLiteral(value: unknown): string {
+  if (value === null) return "nil";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return `{ ${value.map((entry) => toLuaLiteral(entry)).join(", ")} }`;
+  }
+  if (typeof value === "object") {
+    return `{ ${Object.entries(value as Record<string, unknown>).map(([key, entry]) => `[${JSON.stringify(key)}] = ${toLuaLiteral(entry)}`).join(", ")} }`;
+  }
+  return "nil";
+}
+
 function notImplementedIn031(commandName: string): NotImplementedCommandResult {
   return {
     ok: false,
@@ -2301,6 +2369,624 @@ function notImplementedIn031(commandName: string): NotImplementedCommandResult {
       "Use the built-in core recipes with openrender recipe list --json.",
       "Run local compile, verify, report, explain, diff, and rollback commands without an account."
     ]
+  };
+}
+
+async function compileP4Media(
+  kind: "audio" | "atlas" | "ui",
+  parsed: ParsedFlags
+): Promise<CompileP4Result> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requireSourcePathFlag(parsed));
+  const sourcePathRelative = path.relative(projectRoot, sourcePath);
+  const id = requireStringFlag(parsed, "id");
+  const target = readTargetFlag(parsed, "phaser");
+  const framework = readFrameworkFlag(parsed, defaultFrameworkForTarget(target));
+  assertTargetFrameworkPair(target, framework);
+  const assetRoot = readStringFlag(parsed, "asset-root", defaultAssetRootForTarget(target));
+  const dryRun = parsed.flags.get("dry-run") === true;
+  const manifestStrategy = readManifestStrategyFlag(parsed);
+  const metadata = await inspectP4Metadata(kind, sourcePath, sourcePathRelative, parsed);
+  const contract = createP4Contract({
+    kind,
+    id,
+    sourcePath: sourcePathRelative,
+    target,
+    framework,
+    projectRoot,
+    assetRoot,
+    parsed,
+    metadata
+  });
+  const contractValidation = validateMediaContract(contract);
+  if (!contractValidation.ok) {
+    throw new Error(`Invalid P4 media contract: ${contractValidation.issues.map((issue) => `${issue.path} ${issue.message}`).join("; ")}`);
+  }
+
+  const descriptor = createP4AssetDescriptor(contract);
+  const run = createInitialRun({ id, mediaType: contract.mediaType });
+  const artifactPath = path.posix.join(".openrender", "artifacts", run.runId, path.posix.basename(descriptor.assetPath));
+  let installPlan = createP4InstallPlan({
+    contract,
+    descriptor,
+    compiledAssetPath: artifactPath
+  });
+  const manifestPlan = await applyP4ManifestStrategy({
+    projectRoot,
+    contract,
+    descriptor,
+    installPlan,
+    strategy: manifestStrategy,
+    runId: run.runId
+  });
+  installPlan = manifestPlan.installPlan;
+  const generatedSources = manifestPlan.generatedSources;
+  const manifest = manifestPlan.manifest;
+  let artifact: CompileP4Result["artifact"];
+
+  run.status = dryRun ? "harness_ready" : "completed";
+  run.outputs = [
+    { kind: "compiled_asset", path: artifactPath },
+    ...(manifest.strategy === "isolated" ? [] : [{ kind: "manifest" as const, path: descriptor.manifestPath }]),
+    ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : [])
+  ];
+
+  if (!dryRun) {
+    const absoluteArtifactPath = resolveInsideProject(projectRoot, artifactPath);
+    await fs.mkdir(path.dirname(absoluteArtifactPath), { recursive: true });
+    await fs.copyFile(sourcePath, absoluteArtifactPath);
+    artifact = {
+      path: artifactPath,
+      metadata: metadata.kind === "audio"
+        ? { bytes: metadata.bytes, outputFormat: metadata.outputFormat }
+        : {
+            width: metadata.width,
+            height: metadata.height,
+            format: "png",
+            bytes: metadata.bytes
+          }
+    };
+  }
+
+  const validation = createP4Validation({
+    contract,
+    metadata,
+    artifactPath,
+    artifactExists: !dryRun
+  });
+  run.verification = validation;
+  if (validation.status === "failed") {
+    run.status = "failed_verify";
+  }
+
+  const result: CompileP4Result = {
+    dryRun,
+    projectRoot,
+    input: metadata,
+    contract,
+    outputPlan: descriptor,
+    installPlan,
+    artifact,
+    processing: {
+      pipeline: "p4-media",
+      copiedSource: !dryRun,
+      manifestStrategy
+    },
+    recipe: createCoreRecipeReference(contract.mediaType),
+    agentSummary: createCompileP4AgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: 0,
+      validationOk: validation.status !== "failed"
+    }),
+    generatedSources,
+    manifest,
+    validation,
+    run
+  };
+
+  if (!dryRun) {
+    await writeCompileRecord(projectRoot, result);
+  }
+
+  if (!dryRun && parsed.flags.get("install") === true && validation.status !== "failed") {
+    result.installResult = await installCompiledRecord({
+      projectRoot,
+      record: result,
+      force: parsed.flags.get("force") === true
+    });
+    result.agentSummary = createCompileP4AgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: result.installResult.writes.length,
+      validationOk: true
+    });
+    await writeCompileRecord(projectRoot, result, true);
+  }
+
+  return result;
+}
+
+async function inspectP4Metadata(
+  kind: "audio" | "atlas" | "ui",
+  sourcePath: string,
+  sourcePathRelative: string,
+  parsed: ParsedFlags
+): Promise<P4InputMetadata> {
+  const stat = await fs.stat(sourcePath);
+
+  if (kind === "audio") {
+    const outputFormat = readAudioFormat(sourcePath);
+    return {
+      kind,
+      sourcePath: sourcePathRelative,
+      bytes: stat.size,
+      outputFormat,
+      loop: parsed.flags.get("loop") === true || parsed.flags.get("music-loop") === true || outputFormat === "ogg"
+    };
+  }
+
+  const image = await loadImageMetadata(sourcePath);
+  if (kind === "atlas") {
+    const tileSize = readOptionalSizeFlag(parsed, "tile-size") ?? { width: 16, height: 16 };
+    return {
+      kind,
+      sourcePath: sourcePathRelative,
+      bytes: stat.size,
+      width: image.width,
+      height: image.height,
+      tileWidth: tileSize.width,
+      tileHeight: tileSize.height,
+      columns: Math.floor(image.width / tileSize.width),
+      rows: Math.floor(image.height / tileSize.height),
+      outputFormat: "png"
+    };
+  }
+
+  const states = readStringFlag(parsed, "states", "default").split(",").map((state) => state.trim()).filter(Boolean);
+  return {
+    kind,
+    sourcePath: sourcePathRelative,
+    bytes: stat.size,
+    width: image.width,
+    height: image.height,
+    states,
+    outputFormat: "png"
+  };
+}
+
+function createP4Contract(input: {
+  kind: "audio" | "atlas" | "ui";
+  id: string;
+  sourcePath: string;
+  target: TargetEngine;
+  framework: TargetFramework;
+  projectRoot: string;
+  assetRoot: string;
+  parsed: ParsedFlags;
+  metadata: P4InputMetadata;
+}): P4CompileContract {
+  const base = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    sourcePath: input.sourcePath,
+    target: {
+      engine: input.target,
+      framework: input.framework,
+      projectRoot: input.projectRoot
+    },
+    id: input.id,
+    install: {
+      enabled: input.parsed.flags.get("install") === true,
+      assetRoot: input.assetRoot,
+      writeManifest: true,
+      writeCodegen: true,
+      snapshotBeforeInstall: true
+    },
+    verify: {
+      preview: input.kind !== "audio",
+      checkFrameCount: false,
+      checkLoadPath: true
+    }
+  } as const;
+
+  if (input.kind === "audio" && input.metadata.kind === "audio") {
+    const requested = readStringFlag(input.parsed, "media-type", input.parsed.flags.get("music-loop") === true ? "audio.music_loop" : "audio.sound_effect");
+    const mediaType = requested === "audio.music_loop" || requested === "audio.sound_effect" ? requested : "audio.sound_effect";
+    return {
+      ...base,
+      mediaType,
+      audio: {
+        loop: mediaType === "audio.music_loop" || input.metadata.loop,
+        outputFormat: input.metadata.outputFormat
+      }
+    };
+  }
+
+  if (input.kind === "atlas" && input.metadata.kind === "atlas") {
+    const requested = readStringFlag(input.parsed, "media-type", input.parsed.flags.get("tileset") === true ? "visual.tileset" : "visual.atlas");
+    const mediaType = requested === "visual.tileset" || requested === "visual.atlas" ? requested : "visual.atlas";
+    return {
+      ...base,
+      mediaType,
+      visual: {
+        tileWidth: input.metadata.tileWidth,
+        tileHeight: input.metadata.tileHeight,
+        columns: input.metadata.columns,
+        rows: input.metadata.rows,
+        outputFormat: "png"
+      }
+    };
+  }
+
+  if (input.kind === "ui" && input.metadata.kind === "ui") {
+    const requested = readStringFlag(input.parsed, "media-type", "visual.ui_button");
+    const mediaType =
+      requested === "visual.ui_panel" || requested === "visual.icon_set" || requested === "visual.ui_button"
+        ? requested
+        : "visual.ui_button";
+    return {
+      ...base,
+      mediaType,
+      ui: {
+        states: input.metadata.states,
+        outputFormat: "png"
+      }
+    };
+  }
+
+  throw new Error(`P4 metadata mismatch for ${input.kind}.`);
+}
+
+function createP4AssetDescriptor(contract: P4CompileContract): P4AssetDescriptor {
+  const assetRoot = normalizeProjectRelativePathLocal(contract.install.assetRoot);
+  const fileStem = assetIdToKebabCaseLocal(contract.id);
+  const extension =
+    contract.mediaType === "audio.sound_effect" || contract.mediaType === "audio.music_loop"
+      ? contract.audio.outputFormat
+      : "png";
+  const assetPath = path.posix.join(assetRoot, `${fileStem}.${extension}`);
+  const loadPath = contract.target.engine === "godot"
+    ? `res://${assetPath}`
+    : contract.target.engine === "love2d"
+      ? assetPath
+      : assetPath.startsWith("public/")
+        ? `/${assetPath.slice("public/".length)}`
+        : `/${assetPath}`;
+  const sourceRoot = contract.target.engine === "godot"
+    ? "scripts/openrender"
+    : contract.target.engine === "love2d"
+      ? "openrender"
+      : "src";
+  const helperRoot = contract.target.engine === "godot"
+    ? "scripts/openrender"
+    : contract.target.engine === "love2d"
+      ? "openrender"
+      : "src/openrender";
+  const helperExt = contract.target.engine === "godot"
+    ? "gd"
+    : contract.target.engine === "love2d"
+      ? "lua"
+      : "ts";
+  const manifestPath = contract.target.engine === "godot"
+    ? path.posix.join(sourceRoot, "openrender_media_assets.gd")
+    : contract.target.engine === "love2d"
+      ? path.posix.join(sourceRoot, "openrender_media_assets.lua")
+      : path.posix.join(sourceRoot, "assets", "openrender-media-manifest.ts");
+  const codegenPath = contract.install.writeCodegen
+    ? path.posix.join(helperRoot, "media", `${fileStem}.${helperExt}`)
+    : null;
+
+  return {
+    id: contract.id,
+    engine: contract.target.engine,
+    mediaType: contract.mediaType,
+    assetPath,
+    loadPath,
+    manifestPath,
+    codegenPath
+  };
+}
+
+function createP4InstallPlan(input: {
+  contract: P4CompileContract;
+  descriptor: P4AssetDescriptor;
+  compiledAssetPath: string;
+}): P4InstallPlan {
+  const files: P4InstallPlanFile[] = [
+    {
+      kind: "compiled_asset",
+      action: "copy",
+      from: input.compiledAssetPath,
+      to: input.descriptor.assetPath
+    }
+  ];
+
+  if (input.contract.install.writeManifest) {
+    files.push({
+      kind: "manifest",
+      action: "write",
+      to: input.descriptor.manifestPath,
+      contents: generateP4ManifestSource(input.contract.target.engine, [input.contract])
+    });
+  }
+
+  if (input.descriptor.codegenPath) {
+    files.push({
+      kind: "codegen",
+      action: "write",
+      to: input.descriptor.codegenPath,
+      contents: generateP4HelperSource(input.contract, input.descriptor)
+    });
+  }
+
+  return {
+    id: input.contract.id,
+    enabled: input.contract.install.enabled,
+    files
+  };
+}
+
+async function applyP4ManifestStrategy(input: {
+  projectRoot: string;
+  contract: P4CompileContract;
+  descriptor: P4AssetDescriptor;
+  installPlan: P4InstallPlan;
+  strategy: ManifestStrategy;
+  runId: string;
+}): Promise<{
+  installPlan: P4InstallPlan;
+  generatedSources: CompileP4Result["generatedSources"];
+  manifest: ManifestStrategyResult;
+}> {
+  const generatedSources = createP4GeneratedSources(input.contract, input.descriptor);
+  const state = await readManifestState(input.projectRoot, input.contract.target.engine, input.descriptor.manifestPath);
+  const previousEntries = state?.entries ?? {};
+  const previousEntry = previousEntries[input.contract.id];
+  const previousCount = Object.keys(previousEntries).length;
+  const statePath = createManifestStateRelativePath(input.contract.target.engine, input.descriptor.manifestPath);
+
+  if (input.strategy === "isolated") {
+    return {
+      installPlan: patchP4InstallPlanManifest(input.installPlan, input.descriptor.manifestPath, {
+        strategy: "isolated"
+      }),
+      generatedSources,
+      manifest: {
+        strategy: input.strategy,
+        manifestPath: input.descriptor.manifestPath,
+        statePath,
+        entryId: input.contract.id,
+        entryChange: "isolated",
+        previousCount,
+        nextCount: previousCount,
+        removedEntryIds: [],
+        isolated: true
+      }
+    };
+  }
+
+  const nextEntries = input.strategy === "merge"
+    ? {
+        ...previousEntries,
+        [input.contract.id]: createManifestStateEntry(input.contract, input.descriptor, input.runId)
+      }
+    : {
+        [input.contract.id]: createManifestStateEntry(input.contract, input.descriptor, input.runId)
+      };
+  const contracts = Object.values(nextEntries)
+    .map((entry) => entry.contract)
+    .filter(isP4CompileContract)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const manifestSource = generateP4ManifestSource(input.contract.target.engine, contracts);
+  const entryChange: ManifestEntryChange = input.strategy === "replace"
+    ? (previousEntry ? "replaced" : "added")
+    : (previousEntry ? "updated" : "added");
+  const removedEntryIds = input.strategy === "replace"
+    ? Object.keys(previousEntries).filter((entryId) => entryId !== input.contract.id)
+    : [];
+
+  return {
+    installPlan: patchP4InstallPlanManifest(input.installPlan, input.descriptor.manifestPath, {
+      strategy: input.strategy,
+      contents: manifestSource
+    }),
+    generatedSources: {
+      ...generatedSources,
+      manifest: manifestSource
+    },
+    manifest: {
+      strategy: input.strategy,
+      manifestPath: input.descriptor.manifestPath,
+      statePath,
+      entryId: input.contract.id,
+      entryChange,
+      previousCount,
+      nextCount: contracts.length,
+      removedEntryIds,
+      isolated: false
+    }
+  };
+}
+
+function patchP4InstallPlanManifest(
+  installPlan: P4InstallPlan,
+  manifestPath: string,
+  input: { strategy: ManifestStrategy; contents?: string }
+): P4InstallPlan {
+  return {
+    ...installPlan,
+    files: installPlan.files
+      .filter((file) => input.strategy !== "isolated" || file.to !== manifestPath)
+      .map((file) => {
+        if (file.kind !== "manifest" || file.to !== manifestPath || input.contents === undefined) return file;
+        return {
+          ...file,
+          contents: input.contents
+        };
+      })
+  };
+}
+
+function createP4GeneratedSources(
+  contract: P4CompileContract,
+  descriptor: P4AssetDescriptor
+): CompileP4Result["generatedSources"] {
+  return {
+    manifest: generateP4ManifestSource(contract.target.engine, [contract]),
+    helper: descriptor.codegenPath ? generateP4HelperSource(contract, descriptor) : undefined
+  };
+}
+
+function generateP4ManifestSource(target: TargetEngine, contracts: P4CompileContract[]): string {
+  const entries = Object.fromEntries(contracts.map((contract) => {
+    const descriptor = createP4AssetDescriptor(contract);
+    return [contract.id, createP4ManifestEntry(contract, descriptor)];
+  }));
+
+  if (target === "godot") {
+    return `extends RefCounted
+
+const OPENRENDER_MEDIA_ASSETS := ${JSON.stringify(entries, null, 2)}
+
+static func get_asset(asset_id: String) -> Dictionary:
+  return OPENRENDER_MEDIA_ASSETS.get(asset_id, {})
+`;
+  }
+
+  if (target === "love2d") {
+    return `local assets = ${toLuaLiteral(entries)}
+
+return assets
+`;
+  }
+
+  return `export const openRenderMediaAssets = ${JSON.stringify(entries, null, 2)} as const;
+
+export type OpenRenderMediaAssetId = keyof typeof openRenderMediaAssets;
+`;
+}
+
+function createP4ManifestEntry(contract: P4CompileContract, descriptor: P4AssetDescriptor): Record<string, unknown> {
+  const base = {
+    mediaType: contract.mediaType,
+    engine: contract.target.engine,
+    path: descriptor.loadPath,
+    assetPath: descriptor.assetPath
+  };
+
+  if (contract.mediaType === "audio.sound_effect" || contract.mediaType === "audio.music_loop") {
+    return {
+      ...base,
+      loop: contract.audio.loop,
+      outputFormat: contract.audio.outputFormat
+    };
+  }
+
+  if (contract.mediaType === "visual.atlas" || contract.mediaType === "visual.tileset") {
+    return {
+      ...base,
+      tileWidth: contract.visual.tileWidth,
+      tileHeight: contract.visual.tileHeight,
+      columns: contract.visual.columns,
+      rows: contract.visual.rows,
+      outputFormat: contract.visual.outputFormat
+    };
+  }
+
+  if (contract.mediaType === "visual.ui_button" || contract.mediaType === "visual.ui_panel" || contract.mediaType === "visual.icon_set") {
+    return {
+      ...base,
+      states: contract.ui.states,
+      outputFormat: contract.ui.outputFormat
+    };
+  }
+
+  return base;
+}
+
+function generateP4HelperSource(contract: P4CompileContract, descriptor: P4AssetDescriptor): string {
+  const symbolName = assetIdToCamelCaseLocal(contract.id);
+  const entry = createP4ManifestEntry(contract, descriptor);
+
+  if (contract.target.engine === "godot") {
+    return `const ${symbolName.toUpperCase()} = ${JSON.stringify(entry, null, 2)}
+
+func get_asset():
+  return ${symbolName.toUpperCase()}
+`;
+  }
+
+  if (contract.target.engine === "love2d") {
+    return `local M = {}
+
+M.asset = ${toLuaLiteral(entry)}
+
+return M
+`;
+  }
+
+  return `export const ${symbolName}Asset = ${JSON.stringify(entry, null, 2)} as const;
+
+export function get${assetIdToPascalCase(contract.id)}Asset() {
+  return ${symbolName}Asset;
+}
+`;
+}
+
+function createP4Validation(input: {
+  contract: P4CompileContract;
+  metadata: P4InputMetadata;
+  artifactPath: string;
+  artifactExists: boolean;
+}): P4ValidationResult {
+  const checks: P4ValidationResult["checks"] = [
+    {
+      name: "p4_contract_pipeline",
+      status: "passed",
+      path: input.contract.sourcePath,
+      message: `${input.contract.mediaType} uses compile/install/verify/report/rollback pipeline`
+    },
+    {
+      name: "compiled_artifact_ready",
+      status: input.artifactExists ? "passed" : "skipped",
+      path: input.artifactPath,
+      message: input.artifactExists ? "artifact was copied from local source" : "dry-run only"
+    }
+  ];
+
+  if (input.contract.mediaType === "audio.sound_effect" || input.contract.mediaType === "audio.music_loop") {
+    checks.push({
+      name: "audio_format_supported",
+      status: ["wav", "ogg", "mp3"].includes(input.contract.audio.outputFormat) ? "passed" : "failed",
+      path: input.contract.sourcePath,
+      message: input.contract.audio.outputFormat
+    });
+  }
+
+  if ((input.contract.mediaType === "visual.atlas" || input.contract.mediaType === "visual.tileset") && input.metadata.kind === "atlas") {
+    const divisible = input.metadata.width % input.metadata.tileWidth === 0 && input.metadata.height % input.metadata.tileHeight === 0;
+    checks.push({
+      name: "atlas_tile_grid_divisible",
+      status: divisible ? "passed" : "failed",
+      path: input.contract.sourcePath,
+      message: `${input.metadata.width}x${input.metadata.height} / ${input.metadata.tileWidth}x${input.metadata.tileHeight}`
+    });
+  }
+
+  if ((input.contract.mediaType === "visual.ui_button" || input.contract.mediaType === "visual.ui_panel" || input.contract.mediaType === "visual.icon_set") && input.metadata.kind === "ui") {
+    checks.push({
+      name: "ui_states_declared",
+      status: input.metadata.states.length > 0 ? "passed" : "failed",
+      path: input.contract.sourcePath,
+      message: input.metadata.states.join(",")
+    });
+  }
+
+  return {
+    status: createVerificationStatus(checks),
+    checks
   };
 }
 
@@ -2695,7 +3381,7 @@ function createRunVerification(
   };
 }
 
-async function writeCompileRecord(projectRoot: string, result: CompileSpriteResult, allowOverwrite = false): Promise<void> {
+async function writeCompileRecord(projectRoot: string, result: OpenRenderCompileRecord, allowOverwrite = false): Promise<void> {
   await safeWriteProjectFile({
     projectRoot,
     relativePath: path.posix.join(".openrender", "runs", `${result.run.runId}.json`),
@@ -2809,6 +3495,7 @@ async function applyManifestStrategy(input: {
       };
   const contracts = Object.values(nextEntries)
     .map((entry) => entry.contract)
+    .filter(isSpriteCompileContract)
     .sort((left, right) => left.id.localeCompare(right.id));
   const manifestSource = generateManifestSourceForContracts(input.contract.target.engine, contracts);
   const entryChange: ManifestEntryChange = input.strategy === "replace"
@@ -2875,8 +3562,8 @@ function generateManifestSourceForContracts(
 }
 
 function createManifestStateEntry(
-  contract: SpriteCompileContract,
-  descriptor: EngineAssetDescriptor,
+  contract: MediaContract,
+  descriptor: ManifestStateDescriptor,
   runId: string
 ): ManifestStateEntry {
   return {
@@ -2901,7 +3588,7 @@ async function readManifestState(
   }
 }
 
-async function writeManifestStateFromRecord(projectRoot: string, record: CompileSpriteResult): Promise<void> {
+async function writeManifestStateFromRecord(projectRoot: string, record: OpenRenderCompileRecord): Promise<void> {
   if (!record.manifest || record.manifest.strategy === "isolated") return;
 
   const state = await readManifestState(projectRoot, record.contract.target.engine, record.manifest.manifestPath);
@@ -2931,7 +3618,13 @@ function createManifestStateRelativePath(target: TargetEngine, manifestPath: str
   return path.posix.join(".openrender", "manifest-state", `${target}-${normalizedManifestPath}.json`);
 }
 
-function isLoadPathValid(outputPlan: EngineAssetDescriptor): boolean {
+function isLoadPathValid(outputPlan: EngineAssetDescriptor | P4AssetDescriptor): boolean {
+  if ("mediaType" in outputPlan) {
+    const extensionOk = /\.(png|wav|ogg|mp3)$/.test(outputPlan.loadPath);
+    if (outputPlan.engine === "godot") return extensionOk && outputPlan.loadPath.startsWith("res://");
+    if (outputPlan.engine === "love2d") return extensionOk && !outputPlan.loadPath.startsWith("/") && !outputPlan.loadPath.includes("..");
+    return extensionOk && outputPlan.loadPath.startsWith("/");
+  }
   return getSpriteAdapter(outputPlan.engine).verify(outputPlan);
 }
 
@@ -2945,6 +3638,22 @@ function assertSpriteCompileContract(contract: MediaContract): asserts contract 
   }
 }
 
+function isSpriteCompileContract(contract: MediaContract): contract is SpriteCompileContract {
+  return contract.mediaType === "visual.transparent_sprite" || contract.mediaType === "visual.sprite_frame_set";
+}
+
+function isP4CompileContract(contract: MediaContract): contract is P4CompileContract {
+  return !isSpriteCompileContract(contract);
+}
+
+function isSpriteCompileRecord(record: OpenRenderCompileRecord): record is CompileSpriteResult {
+  return isSpriteCompileContract(record.contract);
+}
+
+function isP4CompileRecord(record: OpenRenderCompileRecord): record is CompileP4Result {
+  return isP4CompileContract(record.contract);
+}
+
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
   const projectRoot = process.cwd();
   const runId = readRunId(parsed);
@@ -2955,7 +3664,7 @@ async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
 
 async function installCompiledRecord(input: {
   projectRoot: string;
-  record: CompileSpriteResult;
+  record: OpenRenderCompileRecord;
   force: boolean;
 }): Promise<InstallCommandResult> {
   const { projectRoot, record, force } = input;
@@ -3016,20 +3725,20 @@ async function installCompiledRecord(input: {
   return result;
 }
 
-function canOverwriteWithoutForce(record: CompileSpriteResult, file: EngineInstallPlanFile): boolean {
+function canOverwriteWithoutForce(record: OpenRenderCompileRecord, file: OpenRenderInstallPlanFile): boolean {
   if (!record.manifest || record.manifest.strategy !== "merge") return false;
   if (file.kind === "manifest" && file.to === record.manifest.manifestPath) return true;
   if (file.kind === "compiled_asset" && record.manifest.entryChange === "updated") return true;
   return false;
 }
 
-async function readCompileRecord(projectRoot: string, runId: string): Promise<CompileSpriteResult> {
+async function readCompileRecord(projectRoot: string, runId: string): Promise<OpenRenderCompileRecord> {
   const recordPath = runId === "latest"
     ? ".openrender/runs/latest.json"
     : path.posix.join(".openrender", "runs", `${runId}.json`);
   const record = JSON.parse(
     await fs.readFile(resolveInsideProject(projectRoot, recordPath), "utf8")
-  ) as CompileSpriteResult;
+  ) as OpenRenderCompileRecord;
   const contractValidation = validateMediaContract(record.contract);
   const runValidation = validateOpenRenderRun(record.run);
   const issues = [
@@ -3272,26 +3981,53 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   const installedAsset = record.installPlan.files.find((file) => file.kind === "compiled_asset");
   let visualSource: { relativePath: string; absolutePath: string } | null = null;
   if (installedAsset && await pathExists(resolveInsideProject(projectRoot, installedAsset.to))) {
-    visualSource = {
-      relativePath: installedAsset.to,
-      absolutePath: resolveInsideProject(projectRoot, installedAsset.to)
-    };
-    const metadata = await loadImageMetadata(resolveInsideProject(projectRoot, installedAsset.to));
-    checks.push({
-      name: "installed_asset_dimensions",
-      status:
-        metadata.width === record.artifact?.metadata.width &&
-        metadata.height === record.artifact?.metadata.height
-          ? "passed"
-          : "failed",
-      path: installedAsset.to,
-      message: `${metadata.width}x${metadata.height}`
-    });
+    const installedAssetAbsolutePath = resolveInsideProject(projectRoot, installedAsset.to);
+    if (isSpriteCompileRecord(record)) {
+      visualSource = {
+        relativePath: installedAsset.to,
+        absolutePath: installedAssetAbsolutePath
+      };
+      const metadata = await loadImageMetadata(installedAssetAbsolutePath);
+      checks.push({
+        name: "installed_asset_dimensions",
+        status:
+          metadata.width === record.artifact?.metadata.width &&
+          metadata.height === record.artifact?.metadata.height
+            ? "passed"
+            : "failed",
+        path: installedAsset.to,
+        message: `${metadata.width}x${metadata.height}`
+      });
+    } else if (record.contract.mediaType.startsWith("audio.")) {
+      const stat = await fs.stat(installedAssetAbsolutePath);
+      checks.push({
+        name: "installed_audio_bytes",
+        status: stat.size > 0 && stat.size === record.input.bytes ? "passed" : "failed",
+        path: installedAsset.to,
+        message: `${stat.size} bytes`
+      });
+    } else {
+      const metadata = await loadImageMetadata(installedAssetAbsolutePath);
+      const inputMetadata = record.input.kind === "audio" ? null : record.input;
+      checks.push({
+        name: "installed_media_dimensions",
+        status:
+          inputMetadata !== null &&
+          metadata.width === inputMetadata.width &&
+          metadata.height === inputMetadata.height
+            ? "passed"
+            : "failed",
+        path: installedAsset.to,
+        message: `${metadata.width}x${metadata.height}`
+      });
+    }
   } else if (artifactPath && artifactExists) {
-    visualSource = {
-      relativePath: artifactPath,
-      absolutePath: resolveInsideProject(projectRoot, artifactPath)
-    };
+    if (isSpriteCompileRecord(record)) {
+      visualSource = {
+        relativePath: artifactPath,
+        absolutePath: resolveInsideProject(projectRoot, artifactPath)
+      };
+    }
   }
 
   checks.push({
@@ -3300,9 +4036,20 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
     path: record.outputPlan.loadPath ?? ("publicUrl" in record.outputPlan ? record.outputPlan.publicUrl : undefined),
     message: record.outputPlan.engine
   });
+  checks.push(...await createEngineReadinessChecks(record, projectRoot));
+
+  if (isP4CompileRecord(record)) {
+    const p4Validation = createP4Validation({
+      contract: record.contract,
+      metadata: record.input,
+      artifactPath: artifactPath ?? record.outputPlan.assetPath,
+      artifactExists
+    });
+    checks.push(...p4Validation.checks.filter((check) => check.name !== "compiled_artifact_ready"));
+  }
 
   let visualQuality: VisualQualityResult | undefined;
-  if (visualSource) {
+  if (visualSource && isSpriteCompileRecord(record)) {
     visualQuality = await createVisualQualityResult({
       projectRoot,
       contract: record.contract,
@@ -3329,13 +4076,20 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   };
   record.run.status = result.status === "failed" ? "failed_verify" : "verified";
   record.run.verification = result;
-  record.visualQuality = visualQuality ?? record.visualQuality;
-  record.qualityGate = createQualityGateResult({
-    quality,
-    validation: record.validation,
-    invariants: record.invariants,
-    visualQuality: record.visualQuality
-  });
+  if (isSpriteCompileRecord(record)) {
+    record.visualQuality = visualQuality ?? record.visualQuality;
+    record.qualityGate = createQualityGateResult({
+      quality,
+      validation: record.validation,
+      invariants: record.invariants,
+      visualQuality: record.visualQuality
+    });
+  } else {
+    record.validation = {
+      status: result.status,
+      checks: result.checks.filter((check) => check.name.startsWith("p4_") || check.name === "atlas_tile_grid_divisible" || check.name === "ui_states_declared" || check.name === "audio_format_supported")
+    };
+  }
   await writeCompileRecord(projectRoot, record, true);
 
   return result;
@@ -3345,6 +4099,100 @@ function createVerificationStatus(checks: VerifyCommandResult["checks"]): Verifi
   if (checks.some((check) => check.status === "failed")) return "failed";
   if (checks.some((check) => check.status === "warning")) return "warning";
   return "passed";
+}
+
+async function createEngineReadinessChecks(
+  record: OpenRenderCompileRecord,
+  projectRoot: string
+): Promise<VerifyCommandResult["checks"]> {
+  const checks: VerifyCommandResult["checks"] = [];
+  const target = record.contract.target.engine;
+  const manifestFile = record.installPlan.files.find((file) => file.kind === "manifest");
+  const codegenFile = record.installPlan.files.find((file) => file.kind === "codegen");
+
+  if (manifestFile) {
+    checks.push({
+      name: "engine_manifest_path_shape",
+      status: manifestPathMatchesTarget(target, manifestFile.to) ? "passed" : "failed",
+      path: manifestFile.to,
+      message: target
+    });
+  }
+
+  if (codegenFile) {
+    checks.push({
+      name: "engine_helper_path_shape",
+      status: helperPathMatchesTarget(target, codegenFile.to) ? "passed" : "failed",
+      path: codegenFile.to,
+      message: target
+    });
+  }
+
+  if (target === "phaser") {
+    checks.push({
+      name: "phaser_loader_path_ready",
+      status: record.outputPlan.loadPath.startsWith("/") ? "passed" : "failed",
+      path: record.outputPlan.loadPath,
+      message: "static Vite public URL can be passed to Phaser loader"
+    });
+  } else if (target === "pixi") {
+    checks.push({
+      name: "pixi_asset_load_path_ready",
+      status: record.outputPlan.loadPath.startsWith("/") ? "passed" : "failed",
+      path: record.outputPlan.loadPath,
+      message: "static Vite public URL can be passed to Pixi Assets.load"
+    });
+  } else if (target === "canvas") {
+    checks.push({
+      name: "canvas_media_load_path_ready",
+      status: record.outputPlan.loadPath.startsWith("/") ? "passed" : "failed",
+      path: record.outputPlan.loadPath,
+      message: "static Vite public URL can be used by Image, Audio, fetch, or createImageBitmap"
+    });
+  } else if (target === "godot") {
+    const projectFileExists = await pathExists(resolveInsideProject(projectRoot, "project.godot"));
+    checks.push({
+      name: "godot_project_file_detected",
+      status: projectFileExists ? "passed" : "skipped",
+      path: "project.godot",
+      message: projectFileExists ? "Godot project file found" : "project.godot not present in fixture"
+    });
+    checks.push({
+      name: "godot_import_cache_boundary",
+      status: "passed",
+      path: record.outputPlan.assetPath,
+      message: "openRender installs source assets only; Godot owns .import and .godot cache generation"
+    });
+  } else if (target === "love2d") {
+    const hasMain = await pathExists(resolveInsideProject(projectRoot, "main.lua"));
+    const hasConf = await pathExists(resolveInsideProject(projectRoot, "conf.lua"));
+    checks.push({
+      name: "love2d_entry_file_detected",
+      status: hasMain || hasConf ? "passed" : "skipped",
+      path: hasMain ? "main.lua" : "conf.lua",
+      message: hasMain || hasConf ? "LOVE2D entry/config file found" : "main.lua or conf.lua not present in fixture"
+    });
+    checks.push({
+      name: "love2d_relative_load_path_ready",
+      status: !record.outputPlan.loadPath.startsWith("/") && !record.outputPlan.loadPath.includes("..") ? "passed" : "failed",
+      path: record.outputPlan.loadPath,
+      message: "path can be passed to love.graphics.newImage or love.audio.newSource"
+    });
+  }
+
+  return checks;
+}
+
+function manifestPathMatchesTarget(target: TargetEngine, manifestPath: string): boolean {
+  if (target === "godot") return manifestPath.startsWith("scripts/openrender/") && manifestPath.endsWith(".gd");
+  if (target === "love2d") return manifestPath.startsWith("openrender/") && manifestPath.endsWith(".lua");
+  return manifestPath.startsWith("src/assets/") && manifestPath.endsWith(".ts");
+}
+
+function helperPathMatchesTarget(target: TargetEngine, helperPath: string): boolean {
+  if (target === "godot") return helperPath.startsWith("scripts/openrender/") && helperPath.endsWith(".gd");
+  if (target === "love2d") return helperPath.startsWith("openrender/") && helperPath.endsWith(".lua");
+  return helperPath.startsWith("src/openrender/") && helperPath.endsWith(".ts");
 }
 
 async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
@@ -3369,17 +4217,23 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Contract", body: JSON.stringify(record.contract, null, 2) },
       { heading: "Input", body: JSON.stringify(record.input, null, 2) },
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
-      ...(record.background ? [{ heading: "Background Policy", body: createBackgroundReportText(record) }] : []),
+      ...(isSpriteCompileRecord(record) && record.background ? [{ heading: "Background Policy", body: createBackgroundReportText(record) }] : []),
       { heading: "Agent Summary", body: record.agentSummary },
       { heading: "Core Recipe", body: JSON.stringify(record.recipe, null, 2) },
       ...(framePreviewPath ? [{ heading: "Frame Preview Sheet", body: framePreviewPath }] : []),
       ...(visualOverlayHtml ? [{ heading: "Visual Overlay", trustedHtml: visualOverlayHtml }] : []),
-      ...(record.visualQuality ? [{ heading: "Visual Quality", body: JSON.stringify(record.visualQuality, null, 2) }] : []),
-      ...(record.qualityGate ? [{ heading: "Quality Gate", body: JSON.stringify(record.qualityGate, null, 2) }] : []),
+      ...(isSpriteCompileRecord(record) && record.visualQuality ? [{ heading: "Visual Quality", body: JSON.stringify(record.visualQuality, null, 2) }] : []),
+      ...(isSpriteCompileRecord(record) && record.qualityGate ? [{ heading: "Quality Gate", body: JSON.stringify(record.qualityGate, null, 2) }] : []),
       { heading: "Install Plan", body: JSON.stringify(record.installPlan, null, 2) },
       ...(record.manifest ? [{ heading: "Manifest Strategy", body: JSON.stringify(record.manifest, null, 2) }] : []),
       { heading: "Validation", body: JSON.stringify(record.validation ?? null, null, 2) },
       { heading: "Run Verification", body: JSON.stringify(record.run.verification ?? null, null, 2) },
+      ...(isP4CompileRecord(record)
+        ? [{
+            heading: "P4 Media Pipeline",
+            body: "Audio, atlas/tileset, and UI assets use the same local compile/install/verify/report/rollback pipeline as sprite assets. openRender installs files and helper metadata only; game code remains read-only until the developer or agent wires the generated paths."
+          }]
+        : []),
       ...(record.contract.target.engine === "godot"
         ? [{
             heading: "Godot Import Note",
@@ -3451,10 +4305,10 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
     latestHtmlPath: ".openrender/reports/latest.html",
     latestPreviewHtmlPath: ".openrender/previews/latest.html",
     opened: false,
-    visualQuality: record.visualQuality,
-    qualityGate: record.qualityGate,
+    visualQuality: isSpriteCompileRecord(record) ? record.visualQuality : undefined,
+    qualityGate: isSpriteCompileRecord(record) ? record.qualityGate : undefined,
     manifest: record.manifest,
-    background: record.background
+    background: isSpriteCompileRecord(record) ? record.background : undefined
   };
 
   if (parsed.flags.get("open") === true) {
@@ -3488,7 +4342,8 @@ async function openLocalFile(filePath: string): Promise<void> {
   });
 }
 
-function createPreviewAssetUrl(record: CompileSpriteResult): string | undefined {
+function createPreviewAssetUrl(record: OpenRenderCompileRecord): string | undefined {
+  if (isP4CompileRecord(record) && record.contract.mediaType.startsWith("audio.")) return undefined;
   if ("publicUrl" in record.outputPlan) return record.outputPlan.publicUrl;
 
   const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
@@ -3496,7 +4351,8 @@ function createPreviewAssetUrl(record: CompileSpriteResult): string | undefined 
   return path.posix.relative(".openrender/previews", artifactPath);
 }
 
-function createVisualOverlayHtml(record: CompileSpriteResult): string | null {
+function createVisualOverlayHtml(record: OpenRenderCompileRecord): string | null {
+  if (!isSpriteCompileRecord(record)) return null;
   const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
   const artifact = record.artifact;
   if (!artifactPath || !artifact) return null;
@@ -3517,13 +4373,26 @@ function createVisualOverlayHtml(record: CompileSpriteResult): string | null {
 </figure>`;
 }
 
-function createNextActionText(record: CompileSpriteResult): string | null {
-  if (record.validation?.ok === false) {
+function createNextActionText(record: OpenRenderCompileRecord): string | null {
+  if (isSpriteCompileRecord(record) && record.validation?.ok === false) {
     return [
       `Failure: ${record.validation.reason ?? "frame validation failed"}`,
       "",
       "Suggested next action:",
       ...createFrameValidationSuggestions(record).map((suggestion) => `- ${suggestion}`)
+    ].join("\n");
+  }
+
+  if (isP4CompileRecord(record) && record.validation.status === "failed") {
+    const failedChecks = record.validation.checks.filter((check) => check.status === "failed");
+    return [
+      "Failure: P4 media validation failed",
+      "",
+      "Failed checks:",
+      ...failedChecks.map((check) => `- ${check.name}${check.path ? `: ${check.path}` : ""}`),
+      "",
+      "Suggested next action:",
+      ...createVerifySuggestions(record, failedChecks).map((suggestion) => `- ${suggestion}`)
     ].join("\n");
   }
 
@@ -3540,7 +4409,7 @@ function createNextActionText(record: CompileSpriteResult): string | null {
     ].join("\n");
   }
 
-  if (record.qualityGate?.status === "warning" || record.run.verification?.status === "warning") {
+  if (isSpriteCompileRecord(record) && (record.qualityGate?.status === "warning" || record.run.verification?.status === "warning")) {
     const warningChecks = record.visualQuality?.checks.filter((check) => check.status === "warning") ?? [];
     return [
       "Warning: visual quality checks need review",
@@ -3557,15 +4426,16 @@ function createNextActionText(record: CompileSpriteResult): string | null {
   return null;
 }
 
-function createAgentSummary(record: CompileSpriteResult): string {
+function createAgentSummary(record: OpenRenderCompileRecord): string {
   const target = record.contract.target.engine;
   const asset = record.contract.id;
   const installed = record.installResult
     ? `Installed ${asset} for ${target} and wrote ${record.installResult.writes.length} file(s).`
     : `Prepared ${asset} for ${target} with ${record.installPlan.files.length} planned file(s).`;
   const report = record.run.outputs.find((output) => output.kind === "report")?.path ?? ".openrender/reports/latest.html";
-  const background = record.background ? `${createBackgroundSummary(record)} ` : "";
-  return `${installed} ${background}Review ${report} before wiring game code.`;
+  const background = isSpriteCompileRecord(record) && record.background ? `${createBackgroundSummary(record)} ` : "";
+  const media = isP4CompileRecord(record) ? `${record.contract.mediaType} ` : "";
+  return `${installed} ${background}Review ${report} before wiring ${media}asset code.`;
 }
 
 function createBackgroundSummary(record: CompileSpriteResult): string {
@@ -3600,7 +4470,15 @@ function createBackgroundReportText(record: CompileSpriteResult): string {
 }
 
 function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): CompileSpriteResult["recipe"] {
-  const recipe = CORE_RECIPES.find((candidate) => candidate.mediaType === mediaType);
+  const normalizedMediaType =
+    mediaType === "audio.music_loop"
+      ? "audio.sound_effect"
+      : mediaType === "visual.tileset"
+        ? "visual.atlas"
+        : mediaType === "visual.ui_panel" || mediaType === "visual.icon_set"
+          ? "visual.ui_button"
+          : mediaType;
+  const recipe = CORE_RECIPES.find((candidate) => candidate.mediaType === normalizedMediaType);
   if (!recipe) throw new Error(`No built-in core recipe for ${mediaType}.`);
 
   return {
@@ -3633,12 +4511,34 @@ function createCompileAgentSummary(input: {
   return `Compiled ${input.contract.id} for ${input.contract.target.engine}; install when the plan is acceptable.`;
 }
 
-function createSuccessNextActions(record: CompileSpriteResult): string[] {
+function createCompileP4AgentSummary(input: {
+  contract: P4CompileContract;
+  installPlan: P4InstallPlan;
+  dryRun: boolean;
+  installedWrites: number;
+  validationOk: boolean;
+}): string {
+  if (!input.validationOk) {
+    return `Blocked ${input.contract.id} for ${input.contract.target.engine}; fix P4 media metadata before installing.`;
+  }
+
+  if (input.dryRun) {
+    return `Planned ${input.contract.mediaType} ${input.contract.id} for ${input.contract.target.engine}; review ${input.installPlan.files.length} file(s) before install.`;
+  }
+
+  if (input.installedWrites > 0) {
+    return `Installed ${input.contract.mediaType} ${input.contract.id} for ${input.contract.target.engine}; wrote ${input.installedWrites} file(s) with rollback available.`;
+  }
+
+  return `Compiled ${input.contract.mediaType} ${input.contract.id} for ${input.contract.target.engine}; install when the plan is acceptable.`;
+}
+
+function createSuccessNextActions(record: OpenRenderCompileRecord): string[] {
   const actions = [
     `Use asset path ${record.outputPlan.assetPath}.`,
     `Inspect ${record.run.runId} with openrender report --run ${record.run.runId} --json.`
   ];
-  if (record.background) {
+  if (isSpriteCompileRecord(record) && record.background) {
     actions.unshift(createBackgroundSummary(record));
   }
   if (record.outputPlan.codegenPath) {
@@ -3678,17 +4578,21 @@ function createFrameValidationSuggestions(record: CompileSpriteResult): string[]
 }
 
 function createVerifySuggestions(
-  record: CompileSpriteResult,
-  failedChecks: NonNullable<CompileSpriteResult["run"]["verification"]>["checks"]
+  record: OpenRenderCompileRecord,
+  failedChecks: NonNullable<OpenRenderCompileRecord["run"]["verification"]>["checks"]
 ): string[] {
   const suggestions = new Set<string>();
   for (const check of failedChecks) {
     if (check.name === "compiled_artifact_exists") {
-      suggestions.add("re-run openrender compile sprite for the source image");
+      suggestions.add(`re-run openrender compile ${isP4CompileRecord(record) ? p4CommandKindForContract(record.contract) : "sprite"} for the source asset`);
     } else if (check.name.endsWith("_installed")) {
       suggestions.add(`run openrender install --run ${record.run.runId}`);
     } else if (check.name === "installed_asset_dimensions") {
       suggestions.add(`re-run openrender install --run ${record.run.runId} --force after recompiling`);
+    } else if (check.name === "atlas_tile_grid_divisible") {
+      suggestions.add("adjust --tile-size or regenerate the atlas image with divisible dimensions");
+    } else if (check.name === "ui_states_declared") {
+      suggestions.add("pass --states default,hover,pressed or another non-empty UI state list");
     }
   }
 
@@ -3697,6 +4601,12 @@ function createVerifySuggestions(
   }
 
   return [...suggestions];
+}
+
+function p4CommandKindForContract(contract: P4CompileContract): "audio" | "atlas" | "ui" {
+  if (contract.mediaType.startsWith("audio.")) return "audio";
+  if (contract.mediaType === "visual.atlas" || contract.mediaType === "visual.tileset") return "atlas";
+  return "ui";
 }
 
 function escapeHtmlAttribute(value: string): string {
@@ -3817,6 +4727,27 @@ function printCompileSprite(result: CompileSpriteResult): void {
     console.log(`Frame validation: ${result.validation.ok ? "passed" : "failed"}`);
     if (result.frameSlices) console.log(`Frame slices: ${result.frameSlices.length}`);
     if (result.validation.reason) console.log(`Reason: ${result.validation.reason}`);
+  }
+}
+
+function printCompileP4(result: CompileP4Result): void {
+  console.log(`openRender compile ${p4CommandKindForContract(result.contract)}${result.dryRun ? " --dry-run" : ""}`);
+  console.log("");
+  console.log(`Project root: ${result.projectRoot}`);
+  console.log(`Input: ${result.contract.sourcePath}`);
+  console.log(`Asset id: ${result.contract.id}`);
+  console.log(`Media type: ${result.contract.mediaType}`);
+  console.log(`Output asset: ${result.outputPlan.assetPath}`);
+  console.log(`Load path: ${result.outputPlan.loadPath}`);
+  if (result.artifact) console.log(`Compiled artifact: ${result.artifact.path}`);
+  console.log(`Manifest: ${result.outputPlan.manifestPath}`);
+  if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
+  if (result.manifest) console.log(`Manifest strategy: ${result.manifest.strategy} (${result.manifest.entryChange})`);
+  console.log(`Install plan files: ${result.installPlan.files.length}`);
+  console.log(`Validation: ${result.validation.status}`);
+  if (result.installResult) {
+    console.log(`Installed files: ${result.installResult.writes.length}`);
+    console.log(`Snapshot: ${result.installResult.snapshotRoot}`);
   }
 }
 
@@ -3974,6 +4905,9 @@ Usage:
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
   openrender smoke [--target phaser|godot|love2d|pixi|canvas] [--run latest] [--timeout seconds] [--screenshot] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
+  openrender compile audio --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--media-type audio.sound_effect|audio.music_loop] [--loop] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
+  openrender compile atlas --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--media-type visual.atlas|visual.tileset] [--tile-size WxH] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
+  openrender compile ui --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas] [--media-type visual.ui_button|visual.ui_panel|visual.icon_set] [--states default,hover,pressed] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
   openrender install [runId|--run latest] [--force] [--json]
   openrender verify [runId|--run latest] [--strict-visual] [--quality prototype|default|strict] [--json] [--compact]
   openrender report [runId|--run latest] [--open] [--json] [--compact]
@@ -4118,10 +5052,10 @@ interface AgentContextCommandResult {
   latestRun: {
     runId: string;
     createdAt: string;
-    status: CompileSpriteResult["run"]["status"];
-    mediaType: CompileSpriteResult["run"]["contract"]["mediaType"];
+    status: OpenRenderCompileRecord["run"]["status"];
+    mediaType: OpenRenderCompileRecord["run"]["contract"]["mediaType"];
     assetId: string;
-    verification: NonNullable<CompileSpriteResult["run"]["verification"]>["status"] | null;
+    verification: NonNullable<OpenRenderCompileRecord["run"]["verification"]>["status"] | null;
     installRecorded: boolean;
   } | null;
   overwriteRisks: Array<{
@@ -4320,7 +5254,7 @@ interface DiffCommandResult {
 }
 
 interface ManifestStateEntry {
-  contract: SpriteCompileContract;
+  contract: MediaContract;
   runId: string;
   assetPath: string;
   loadPath: string;
@@ -4382,6 +5316,104 @@ interface WireMapLatestAsset {
     language: string;
     code: string;
   }>;
+}
+
+type P4InputMetadata =
+  | {
+      kind: "audio";
+      sourcePath: string;
+      bytes: number;
+      outputFormat: "wav" | "ogg" | "mp3";
+      loop: boolean;
+    }
+  | {
+      kind: "atlas";
+      sourcePath: string;
+      bytes: number;
+      width: number;
+      height: number;
+      tileWidth: number;
+      tileHeight: number;
+      columns: number;
+      rows: number;
+      outputFormat: "png";
+    }
+  | {
+      kind: "ui";
+      sourcePath: string;
+      bytes: number;
+      width: number;
+      height: number;
+      states: string[];
+      outputFormat: "png";
+    };
+
+interface P4AssetDescriptor {
+  id: string;
+  engine: TargetEngine;
+  mediaType: P4CompileContract["mediaType"];
+  assetPath: string;
+  loadPath: string;
+  manifestPath: string;
+  codegenPath: string | null;
+}
+
+type P4InstallPlanFile =
+  | {
+      kind: "compiled_asset";
+      action: "copy";
+      from: string;
+      to: string;
+    }
+  | {
+      kind: "manifest" | "codegen";
+      action: "write";
+      to: string;
+      contents: string;
+    };
+
+interface P4InstallPlan {
+  id: string;
+  enabled: boolean;
+  files: P4InstallPlanFile[];
+}
+
+interface P4ValidationResult {
+  status: VerificationStatus;
+  checks: VerifyCommandResult["checks"];
+}
+
+interface CompileP4Result {
+  dryRun: boolean;
+  projectRoot: string;
+  input: P4InputMetadata;
+  contract: P4CompileContract;
+  outputPlan: P4AssetDescriptor;
+  installPlan: P4InstallPlan;
+  artifact?: {
+    path: string;
+    metadata: Record<string, unknown>;
+  };
+  processing: {
+    pipeline: "p4-media";
+    copiedSource: boolean;
+    manifestStrategy: ManifestStrategy;
+  };
+  recipe: {
+    packId: string;
+    packVersion: string;
+    recipeId: string;
+    localOnly: true;
+  };
+  agentSummary: string;
+  generatedSources: {
+    manifest: string;
+    helper?: string;
+  };
+  manifest?: ManifestStrategyResult;
+  validation: P4ValidationResult;
+  run: ReturnType<typeof createInitialRun>;
+  installResult?: InstallCommandResult;
 }
 
 interface CompileSpriteResult {

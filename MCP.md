@@ -27,7 +27,7 @@ Resources:
 
 Prompts are available for Phaser, Godot, LOVE2D, PixiJS, and Canvas handoff workflows.
 
-Recommended MCP sequence is `context`, `compile --dry-run`, install only after reviewing `installPlan.files`, then `verify`, `report`, `explain`, and `rollback` when needed.
+Recommended MCP sequence is `context`, `compile --dry-run`, install only after reviewing `installPlan.files`, then `verify`, `report`, `explain`, and `rollback` when needed. `compile` covers sprite image handoff plus P4 `audio`, `atlas`, and `ui` media pipelines.
 
 For shorter agent handoff, call CLI-backed tools with `--compact` where supported: `context`, `verify`, `report`, `explain`, and `diff`. Use `context --wire-map` when an agent needs read-only wiring candidates before editing game code.
 

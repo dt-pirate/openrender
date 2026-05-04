@@ -8,30 +8,30 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.7.2 Default Cutout` |
-| Package/CLI version | `0.7.2` |
+| Current docs baseline | `0.7.3 Stabilized P4 Pipeline` |
+| Package/CLI version | `0.7.3` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release `v0.7.2` |
-| Release timestamp | 2026-05-04 16:42:00 KST (2026-05-04 07:42:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.2` |
+| Release channel | GitHub release `v0.7.3` |
+| Release timestamp | 2026-05-04 20:00 KST (2026-05-04 11:00 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.7.3` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
-## 0.7.2 Default Cutout
+## 0.7.3 Stabilized P4 Pipeline
 
-`0.7.2` is the current implemented package and CLI version.
+`0.7.3` is the current implemented package and CLI version.
 
-Released: 2026-05-04 16:42:00 KST (2026-05-04 07:42:00 UTC).
+Released: 2026-05-04 20:00 KST (2026-05-04 11:00 UTC).
 
 ### Added
 
-- Safe automatic generated-sprite background cutout through default `--background-policy auto`.
-- Explicit `--background-policy preserve|auto|remove` control, while keeping `--remove-background` as a compatibility shortcut for forced cutout.
-- Edge-connected cutout for opaque generated sprites that preserves sprite-sheet dimensions instead of cropping or repacking frames.
-- Background decision reporting in compile/normalize JSON, reports, explanations, verification checks, and compact agent summaries.
-- Post-cutout alpha and frame-invariant checks so skipped or unsafe cutout decisions remain visible to agents.
+- Stabilization coverage for the current `0.7.x` surface: `pnpm typecheck`, `pnpm test`, golden fixtures, compact output, wire-map, rollback, report, and local run records.
+- Engine readiness checks in `verify`: Phaser loader path shape, Pixi asset path shape, Canvas media path shape, Godot project/import-cache boundary, LOVE2D entry/load-path boundary, manifest path shape, and helper path shape.
+- P4 media compile pipeline for `compile audio`, `compile atlas`, and `compile ui`, promoting audio, atlas/tileset, and UI metadata contracts into installable local runs.
+- P4 media manifests and helper files for Phaser, Godot, LOVE2D, PixiJS, and Canvas, with the same install, verify, report, diff, explain, and rollback workflow used by sprite assets.
+- P4 regression tests covering audio install/verify/report/rollback plus atlas and UI verified install runs.
 
 ### Verification
 
@@ -46,8 +46,22 @@ node packages/cli/dist/index.js --version
 Expected CLI version:
 
 ```text
-0.7.2
+0.7.3
 ```
+
+## 0.7.2 Default Cutout
+
+`0.7.2` was the Default Cutout package and CLI version.
+
+Released: 2026-05-04 16:42:00 KST (2026-05-04 07:42:00 UTC).
+
+### Added
+
+- Safe automatic generated-sprite background cutout through default `--background-policy auto`.
+- Explicit `--background-policy preserve|auto|remove` control, while keeping `--remove-background` as a compatibility shortcut for forced cutout.
+- Edge-connected cutout for opaque generated sprites that preserves sprite-sheet dimensions instead of cropping or repacking frames.
+- Background decision reporting in compile/normalize JSON, reports, explanations, verification checks, and compact agent summaries.
+- Post-cutout alpha and frame-invariant checks so skipped or unsafe cutout decisions remain visible to agents.
 
 ## 0.7.1 Agent Asset Readiness
 

@@ -1,6 +1,6 @@
 {
   "name": "@openrender/core",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Core config, contract, path, and run state models for openRender",
   "license": "Apache-2.0",
   "type": "module",

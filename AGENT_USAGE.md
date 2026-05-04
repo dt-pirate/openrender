@@ -45,6 +45,9 @@ openrender install-agent --platform all --dry-run --json
 openrender plan sprite --from tmp/asset.png --target phaser --id asset.id --json
 openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --dry-run --json
 openrender compile sprite --from tmp/asset.png --target phaser --id asset.id --manifest-strategy merge --install --json
+openrender compile audio --from tmp/sfx.wav --target phaser --id sfx.hit --manifest-strategy merge --install --json
+openrender compile atlas --from tmp/tiles.png --target phaser --id tiles.floor --tile-size 16x16 --manifest-strategy merge --install --json
+openrender compile ui --from tmp/button.png --target phaser --id ui.start --states default,hover,pressed --manifest-strategy merge --install --json
 openrender verify --run latest --json --compact
 openrender report --run latest --json --compact
 openrender explain --run latest --json --compact
@@ -59,6 +62,7 @@ Rules:
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 - Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing local agent instructions.
 - Run a dry run before install and inspect `installPlan.files`.
+- Use `compile audio`, `compile atlas`, or `compile ui` when the source asset is P4 media rather than a sprite image; these commands now produce installable, verifiable, reportable, rollback-safe runs.
 - Generated sprite handoff uses safe `--background-policy auto` cutout by default.
 - Use `--background-policy preserve` to keep the original background, or `--background-policy remove` / `--remove-background` to force cutout.
 - Use default `--manifest-strategy merge` for cumulative manifests; use `replace` for one-entry manifests and `isolated` when no shared manifest should be written.
