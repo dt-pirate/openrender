@@ -1,32 +1,35 @@
 # openRender Roadmap
 
-## 0.8.2 Three.js Support
+## Current Baseline: 0.9.0 Animation Runtime Integration
 
-- Documentation baseline and package version: openRender `0.8.2 Three.js Support`.
+- Documentation baseline and package version: openRender `0.9.0 Animation Runtime Integration`.
 - Local sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
+- Visual reference records for sketches, UI mockups, concept art, video URLs, and local reference files. Remote URLs are provenance only and are not downloaded.
+- `detect-motion` analysis for video, GIF, PNG sequence directories, and sprite sheets before install.
+- `compile animation` for engine-ready animation sheets, target helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
+- Tiered runtime integration helpers across all supported engines: Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas.
 - Local audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
-- Adapter registry surface through shared target types, adapter packages, and CLI dispatch for describe, install-plan, helper generation, and load-path verification.
-- Built-in recipe metadata under `recipes/`.
-- Compact `context --json` handoff for target/path/latest-run/overwrite-risk summaries.
-- Compact agent views for context, verify, report, explain, and diff.
-- Read-only `context --json --wire-map` wiring candidates plus latest asset path, manifest module, and example snippets for supported targets.
+- Compact agent views for context, verify, report, explain, diff, and motion recommendations.
+- Read-only `context --json --wire-map` wiring candidates plus latest asset path, helper path, manifest module, suggested use, and example snippets.
 - Safe automatic generated-sprite cutout through default `--background-policy auto`.
-- Edge-flood background removal with explicit `--background-policy preserve|auto|remove` control and legacy `--remove-background` compatibility.
-- Sprite-frame-set cutout that preserves sheet dimensions and validates processed frame invariants.
-- Visual quality warnings, background decision reporting, `verify --strict-visual`, and `--quality prototype|default|strict`.
 - Manifest strategies: default `merge`, explicit `replace`, and `isolated`.
-- Engine readiness verification checks for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity, plus runtime smoke semantics for explicit local Godot/LOVE2D launch checks.
+- Engine readiness verification checks for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity, plus explicit local runtime smoke semantics for Godot/LOVE2D.
 - Safe `install-agent --platform codex|cursor|claude|all --dry-run --json` planning for local agent instruction files.
 - Local MCP metadata package for JSON-only agent tool/resource/prompt surfaces.
-- LLM reference documentation for dry-run, install plan, manifest, verification, and rollback behavior.
 - Contributor support through adapter scaffolding and fixture capture.
 - Local report export and local report gallery metadata.
-- Additional media pipeline surfaces for audio, atlas/tileset, UI assets, local manifests, helper files, verification, reports, and rollback.
-- Unity C# manifests, sprite helpers, media helpers, read-only wire maps, import-boundary verification, and golden fixtures.
-- Three.js TypeScript manifests, `TextureLoader`, `Sprite`, and `PlaneGeometry` helpers, read-only wire maps, load-path verification, and golden fixtures.
 
 ## Maintained Boundaries
 
 - Local compile/install does not require accounts, billing, telemetry, cloud APIs, model calls, or remote sync.
+- Remote reference URLs are never downloaded automatically.
 - Runtime smoke execution remains explicit and local-only.
-- openRender reports wiring candidates but does not auto-edit gameplay code.
+- Video/GIF frame extraction requires local ffmpeg tooling; PNG sequence analysis does not.
+- Godot `.import`, Unity `.meta`, Unity `Library/`, scenes, prefabs, and component wiring remain owned by the engine/editor.
+- openRender reports wiring candidates and generates helper files, but does not auto-edit gameplay code.
+
+## Next Product Direction
+
+- Deepen engine-specific helper quality with fixture-backed examples from real production patterns.
+- Expand visual verification for animation loops, contact sheets, and target-specific helper readiness.
+- Keep documentation focused on what users can run today, while keeping longer product planning outside public-facing docs.

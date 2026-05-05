@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.8.2` core supports sprite image handoff plus audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `0.9.0` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, and audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -105,6 +105,27 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
+Record visual references or inspect motion before installing animation assets:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js ingest reference \
+  --url https://example.com/reference.gif \
+  --role motion \
+  --intent "Match this timing and movement style." \
+  --json
+
+node /path/to/openrender/packages/cli/dist/index.js detect-motion tmp/slime_idle_frames --json --compact
+
+node /path/to/openrender/packages/cli/dist/index.js compile animation \
+  --from tmp/slime_idle_frames \
+  --target phaser \
+  --id enemy.slime.idle \
+  --fps 8 \
+  --layout horizontal_strip \
+  --dry-run \
+  --json
+```
+
 Install only after the plan is correct:
 
 ```bash
@@ -154,6 +175,9 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 
 - Project scanning and doctor checks.
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
+- Visual reference records for sketches, UI mockups, concept art, local files, or URLs; URLs are recorded as provenance and are not downloaded.
+- `detect-motion` for video/GIF/PNG sequence analysis before install, with clear ffmpeg guidance when video tooling is missing.
+- `compile animation` for engine-ready animation sheets, runtime helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same local run-state pipeline.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
@@ -177,6 +201,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 | Canvas + Vite | PNG assets, TypeScript manifest, image loading and frame drawing helpers |
 | Unity | PNG/audio assets under `Assets/OpenRender`, C# manifests, sprite/media helper classes |
 
+Animation compiles reuse the same target adapters. Tier-1 targets Phaser, Godot, LOVE2D, and Unity get deeper runtime helper scaffolds. PixiJS, Three.js, and Canvas get web render-loop helper paths and snippets. openRender still does not patch game code automatically.
+
 Additional media assets use sibling media manifests and helpers, such as `src/assets/openrender-media-manifest.ts`, `scripts/openrender/openrender_media_assets.gd`, `openrender/openrender_media_assets.lua`, or `Assets/OpenRender/OpenRenderMediaAssets.cs`, depending on the target.
 
 ## Agent Rules
@@ -186,6 +212,9 @@ Additional media assets use sibling media manifests and helpers, such as `src/as
 - Use `context --json --wire-map` before editing game code that should connect generated helpers.
 - Run `doctor --json` before writing into an unfamiliar project.
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
+- Use `ingest reference --json` when the user gives a sketch, mockup, concept image, video URL, or local reference file that the next agent should remember.
+- Use `detect-motion --json --compact` before choosing animation fps, frame count, layout, and loop settings.
+- Use `compile animation --dry-run --json` before installing animation assets.
 - Inspect `installPlan.files` before installing.
 - Do not pass `--force` unless the user accepts overwriting destination files.
 - Use default manifest merge for cumulative entries; choose `--manifest-strategy replace` or `--manifest-strategy isolated` when a one-entry or no-shared-manifest workflow is intended.

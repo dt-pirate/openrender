@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import path from "node:path";
 import {
@@ -63,20 +64,26 @@ import {
   type ProjectScan,
   type AudioContract,
   type AtlasContract,
+  type MotionContract,
+  type MotionLayout,
   type SpriteFrameSetContract,
   type UiAssetContract,
   type TransparentSpriteContract,
   type TargetEngine,
-  type TargetFramework
+  type TargetFramework,
+  type VisualReferenceRecord,
+  type VisualReferenceRole
 } from "@openrender/core";
 import { runDoctor, type DoctorResult } from "@openrender/doctor";
 import {
   analyzeAlphaDiagnostics,
   analyzeSpriteInvariants,
   createFramePreviewSheet,
+  composeFrameSequenceToSpriteSheet,
   cropAlphaBoundsToPng,
   decideBackgroundRemoval,
   detectFrameGrid,
+  detectPngSequence,
   loadImageMetadata,
   removeBackgroundInPlaceToPng,
   normalizeImageToPng,
@@ -93,11 +100,12 @@ import {
   type FrameValidationResult,
   type ImageMetadata,
   type NormalizePreset,
+  type PngSequenceDetectionResult,
   type SpriteInvariantDiagnostics
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.8.2";
+const CLI_VERSION = "0.9.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -119,8 +127,9 @@ type EngineInstallPlan =
 type EngineInstallPlanFile = EngineInstallPlan["files"][number];
 
 type SpriteCompileContract = SpriteFrameSetContract | TransparentSpriteContract;
+type MotionCompileContract = MotionContract;
 type P4CompileContract = AudioContract | AtlasContract | UiAssetContract;
-type OpenRenderCompileRecord = CompileSpriteResult | CompileP4Result;
+type OpenRenderCompileRecord = CompileSpriteResult | CompileP4Result | CompileAnimationResult;
 type OpenRenderInstallPlan = EngineInstallPlan | P4InstallPlan;
 type OpenRenderInstallPlanFile = EngineInstallPlanFile | P4InstallPlanFile;
 type ManifestStateDescriptor = Pick<EngineAssetDescriptor | P4AssetDescriptor, "assetPath" | "loadPath">;
@@ -355,6 +364,13 @@ const CORE_RECIPES = [
     summary: "Compile a local sprite sheet into frame metadata, helper code, reports, and rollback-safe install plans."
   },
   {
+    id: "core.animation",
+    packId: CORE_PACK_ID,
+    mediaType: "visual.animation_clip",
+    targets: ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"],
+    summary: "Compile motion inputs into engine-ready animation assets with runtime helper paths and rollback-safe installs."
+  },
+  {
     id: "core.audio",
     packId: CORE_PACK_ID,
     mediaType: "audio.sound_effect",
@@ -402,6 +418,11 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
         enum: [
           "visual.transparent_sprite",
           "visual.sprite_frame_set",
+          "visual.animation_clip",
+          "visual.sprite_sequence",
+          "visual.effect_loop",
+          "visual.ui_motion",
+          "visual.reference_video",
           "audio.sound_effect",
           "audio.music_loop",
           "visual.tileset",
@@ -528,10 +549,10 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
       summary: { type: "string" }
     }
   },
-  "media-p4": {
+  media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://openrender.dev/schemas/media-p4.schema.json",
-    title: "openRender 0.8.2 Media Contracts",
+    "$id": "https://openrender.dev/schemas/media.schema.json",
+    title: "openRender 0.9.0 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -557,6 +578,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
     }
   }
 };
+OPENRENDER_SCHEMAS["media-p4"] = OPENRENDER_SCHEMAS.media!;
 
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
@@ -653,6 +675,16 @@ async function main(argv: string[]): Promise<number> {
       console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactAgentContext(result) : result, null, 2));
     } else {
       printAgentContext(result);
+    }
+    return 0;
+  }
+
+  if (command === "ingest" && subcommand === "reference") {
+    const result = await ingestReference(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printIngestReferenceResult(result);
     }
     return 0;
   }
@@ -757,12 +789,25 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  if (command === "detect-motion") {
+    const result = await detectMotionCommand(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactDetectMotionResult(result) : result, null, 2));
+    } else {
+      printDetectMotionResult(result);
+    }
+    return result.ok ? 0 : 1;
+  }
+
   if (command === "normalize") {
-    const result = await normalizeCommand(parsed);
+    const result = subcommand === "motion"
+      ? await normalizeMotionCommand(parsed)
+      : await normalizeCommand(parsed);
     if (parsed.flags.get("json") === true) {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      printNormalizeResult(result);
+      if ("motion" in result) printNormalizeMotionResult(result);
+      else printNormalizeResult(result);
     }
     return 0;
   }
@@ -797,6 +842,16 @@ async function main(argv: string[]): Promise<number> {
       printCompileSprite(result);
     }
     return result.validation?.ok === false || result.qualityGate?.status === "failed" ? 1 : 0;
+  }
+
+  if (command === "compile" && subcommand === "animation") {
+    const result = await compileAnimation(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactCompileAnimationResult(result) : result, null, 2));
+    } else {
+      printCompileAnimation(result);
+    }
+    return result.validation.status === "failed" ? 1 : 0;
   }
 
   if (command === "install") {
@@ -912,6 +967,11 @@ function parseArgs(argv: string[]): ParsedFlags {
 function readStringFlag(parsed: ParsedFlags, name: string, fallback: string): string {
   const value = parsed.flags.get(name);
   return typeof value === "string" ? value : fallback;
+}
+
+function readOptionalStringFlag(parsed: ParsedFlags, name: string): string | undefined {
+  const value = parsed.flags.get(name);
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function readRunId(parsed: ParsedFlags, fallback = "latest"): string {
@@ -1071,6 +1131,882 @@ async function normalizeCommand(parsed: ParsedFlags): Promise<NormalizeCommandRe
     outputPath: path.relative(projectRoot, output.path),
     output
   };
+}
+
+async function detectMotionCommand(parsed: ParsedFlags): Promise<DetectMotionCommandResult> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requirePathArgument(parsed, "detect-motion"));
+  const fps = readIntegerFlag(parsed, "fps", 12);
+  const stat = await fs.stat(sourcePath);
+
+  if (stat.isDirectory()) {
+    const sequence = await detectPngSequence({ sourcePath, fps });
+    return createDetectMotionResultFromPngSequence(projectRoot, sequence);
+  }
+
+  const extension = path.extname(sourcePath).toLowerCase();
+  if (extension === ".png" || extension === ".webp" || extension === ".jpg" || extension === ".jpeg") {
+    const metadata = await loadImageMetadata(sourcePath);
+    const frames = readOptionalIntegerFlag(parsed, "frames");
+    const detected = await detectFrameGrid({ sourcePath, frames });
+    const frameSlices = planFrameSlices({
+      layout: detected.suggested.layout,
+      imageWidth: metadata.width,
+      frames: detected.suggested.frameCount,
+      frameWidth: detected.suggested.frameWidth,
+      frameHeight: detected.suggested.frameHeight
+    });
+    const invariants = await analyzeSpriteInvariants({
+      sourcePath,
+      layout: detected.suggested.layout,
+      frames: detected.suggested.frameCount,
+      frameWidth: detected.suggested.frameWidth,
+      frameHeight: detected.suggested.frameHeight
+    });
+    return {
+      ok: true,
+      sourcePath: path.relative(projectRoot, sourcePath),
+      sourceType: "sprite_sheet",
+      runtime: { ffmpeg: "not_required", ffprobe: "not_required" },
+      durationMs: Math.round((detected.suggested.frameCount / fps) * 1000),
+      width: metadata.width,
+      height: metadata.height,
+      fps,
+      frameCount: detected.suggested.frameCount,
+      hasAlpha: metadata.hasAlpha,
+      frameSize: {
+        width: detected.suggested.frameWidth,
+        height: detected.suggested.frameHeight
+      },
+      suggested: {
+        fps,
+        frames: detected.suggested.frameCount,
+        layout: detected.suggested.layout,
+        loop: invariants.ok
+      },
+      diagnostics: {
+        duplicateFrameRatio: invariants.checks.some((check) => check.name === "duplicateFrameApprox" && check.status === "failed") ? 0.5 : 0,
+        emptyFrameRisk: invariants.checks.some((check) => check.name === "emptyFrame" && check.status === "failed") ? "high" : "none",
+        boundsJitter: invariants.checks.some((check) => check.name === "frameBoundsJitter" && check.status === "failed") ? Math.max(detected.suggested.frameWidth, detected.suggested.frameHeight) : 0,
+        loopConfidence: invariants.ok ? 0.62 : 0.35
+      },
+      nextActions: [
+        "Run openrender compile animation --from <path> --target <engine> --id <asset.id> --dry-run --json.",
+        "Choose --layout grid when the sheet has multiple rows; choose --layout horizontal_strip for a single strip."
+      ],
+      localOnly: true,
+      frameSlices
+    };
+  }
+
+  if (extension === ".mp4" || extension === ".webm" || extension === ".gif") {
+    if (!await commandAvailable("ffprobe")) {
+      return createMotionRuntimeMissingResult(projectRoot, sourcePath, "ffprobe");
+    }
+    const probe = await ffprobeMotion(sourcePath);
+    return {
+      ok: true,
+      sourcePath: path.relative(projectRoot, sourcePath),
+      sourceType: extension === ".gif" ? "gif" : "video",
+      runtime: {
+        ffmpeg: await commandAvailable("ffmpeg") ? "available" : "missing",
+        ffprobe: "available"
+      },
+      durationMs: probe.durationMs,
+      width: probe.width,
+      height: probe.height,
+      fps: probe.fps || fps,
+      frameCount: probe.frameCount || Math.max(1, Math.round((probe.durationMs / 1000) * (probe.fps || fps))),
+      hasAlpha: probe.hasAlpha,
+      frameSize: {
+        width: probe.width,
+        height: probe.height
+      },
+      suggested: {
+        fps: Math.min(Math.max(Math.round(probe.fps || fps), 1), 24),
+        frames: probe.frameCount || Math.max(1, Math.round((probe.durationMs / 1000) * (probe.fps || fps))),
+        layout: (probe.frameCount || 0) > 12 ? "grid" : "horizontal_strip",
+        loop: extension === ".gif"
+      },
+      diagnostics: {
+        duplicateFrameRatio: 0,
+        emptyFrameRisk: "low",
+        boundsJitter: 0,
+        loopConfidence: extension === ".gif" ? 0.7 : 0.35
+      },
+      nextActions: await commandAvailable("ffmpeg")
+        ? ["Run openrender compile animation when you are ready to extract frames and install helpers."]
+        : ["Install ffmpeg before frame extraction: brew install ffmpeg, then re-run detect-motion or compile animation."],
+      localOnly: true
+    };
+  }
+
+  throw new Error(`Unsupported motion input: ${extension || "unknown"}. Use .mp4, .webm, .gif, a PNG sequence directory, or a sprite sheet image.`);
+}
+
+async function normalizeMotionCommand(parsed: ParsedFlags): Promise<NormalizeMotionCommandResult> {
+  const projectRoot = process.cwd();
+  const sourceArg = parsed.positionals[2] ?? parsed.flags.get("from") ?? parsed.flags.get("input");
+  if (typeof sourceArg !== "string" || sourceArg.length === 0) {
+    throw new Error("Missing required path for normalize motion.");
+  }
+  const sourcePath = resolveInsideProject(projectRoot, sourceArg);
+  const id = readStringFlag(parsed, "id", "motion.normalized");
+  const layout = readMotionLayoutFlag(parsed);
+  const fps = readIntegerFlag(parsed, "fps", 12);
+  const run = createInitialRun({ id, mediaType: "visual.animation_clip" });
+  const prepared = await prepareMotionAsset({
+    projectRoot,
+    sourcePath,
+    runId: run.runId,
+    id,
+    fps,
+    frames: readOptionalIntegerFlag(parsed, "frames"),
+    layout,
+    dryRun: false,
+    start: readOptionalNumberFlag(parsed, "start"),
+    end: readOptionalNumberFlag(parsed, "end")
+  });
+
+  return {
+    ok: true,
+    motion: {
+      sourceType: prepared.sourceType,
+      durationMs: prepared.input.durationMs,
+      fps: prepared.input.fps,
+      frames: prepared.frameCount,
+      layout: prepared.motionLayout,
+      loop: prepared.diagnostics.loopConfidence >= 0.5
+    },
+    outputPath: prepared.artifactPath,
+    output: prepared.artifact,
+    frameSlices: prepared.frameSlices,
+    diagnostics: prepared.diagnostics,
+    localOnly: true
+  };
+}
+
+async function compileAnimation(parsed: ParsedFlags): Promise<CompileAnimationResult> {
+  const projectRoot = process.cwd();
+  const sourcePath = resolveInsideProject(projectRoot, requireSourcePathFlag(parsed));
+  const id = requireStringFlag(parsed, "id");
+  const target = readTargetFlag(parsed, "phaser");
+  const framework = readFrameworkFlag(parsed, defaultFrameworkForTarget(target));
+  assertTargetFrameworkPair(target, framework);
+  const assetRoot = readStringFlag(parsed, "asset-root", defaultAssetRootForTarget(target));
+  const fps = readIntegerFlag(parsed, "fps", 12);
+  const frames = readOptionalIntegerFlag(parsed, "frames");
+  const layout = readMotionLayoutFlag(parsed);
+  const mediaType = readMotionMediaTypeFlag(parsed);
+  const dryRun = parsed.flags.get("dry-run") === true;
+  const manifestStrategy = readManifestStrategyFlag(parsed);
+  const run = createInitialRun({ id, mediaType });
+  const prepared = await prepareMotionAsset({
+    projectRoot,
+    sourcePath,
+    runId: run.runId,
+    id,
+    fps,
+    frames,
+    layout,
+    dryRun,
+    start: readOptionalNumberFlag(parsed, "start"),
+    end: readOptionalNumberFlag(parsed, "end")
+  });
+  const loop = parsed.flags.get("loop") === true || mediaType === "visual.effect_loop";
+  const contract: MotionCompileContract = {
+    schemaVersion: OPENRENDER_DEVKIT_VERSION,
+    mediaType,
+    sourcePath: path.relative(projectRoot, sourcePath),
+    target: {
+      engine: target,
+      framework,
+      projectRoot
+    },
+    id,
+    motion: {
+      layout: prepared.motionLayout,
+      fps: prepared.input.fps,
+      frames: prepared.frameCount,
+      loop,
+      ...(prepared.startMs !== undefined ? { startMs: prepared.startMs } : {}),
+      ...(prepared.endMs !== undefined ? { endMs: prepared.endMs } : {})
+    },
+    visual: {
+      layout: prepared.spriteLayout,
+      frames: prepared.frameCount,
+      frameWidth: prepared.frameWidth,
+      frameHeight: prepared.frameHeight,
+      fps: prepared.input.fps,
+      padding: 0,
+      background: prepared.input.hasAlpha ? "transparent" : "solid",
+      outputFormat: "png"
+    },
+    install: {
+      enabled: parsed.flags.get("install") === true,
+      assetRoot,
+      writeManifest: true,
+      writeCodegen: true,
+      snapshotBeforeInstall: true
+    },
+    verify: {
+      preview: true,
+      checkFrameCount: true,
+      checkLoadPath: true
+    }
+  };
+  const adapterContract = createAnimationAdapterContract(contract);
+  const descriptor = createEngineAssetDescriptor(adapterContract);
+  let installPlan = createEngineInstallPlan({
+    contract: adapterContract,
+    compiledAssetPath: prepared.artifactPath,
+    frameSlices: prepared.frameSlices
+  });
+  run.status = dryRun ? "harness_ready" : "completed";
+  const validation = createMotionValidation({
+    contract,
+    artifactPath: prepared.artifactPath,
+    artifactExists: prepared.artifact !== undefined,
+    frameSlices: prepared.frameSlices,
+    diagnostics: prepared.diagnostics,
+    dryRun
+  });
+  run.verification = validation;
+
+  const manifestPlan = await applyManifestStrategy({
+    projectRoot,
+    contract: adapterContract,
+    descriptor,
+    installPlan,
+    frameSlices: prepared.frameSlices,
+    strategy: manifestStrategy,
+    runId: run.runId
+  });
+  installPlan = manifestPlan.installPlan;
+  run.outputs = [
+    { kind: "compiled_asset", path: prepared.artifactPath },
+    ...(manifestPlan.manifest.strategy === "isolated" ? [] : [{ kind: "manifest" as const, path: descriptor.manifestPath }]),
+    ...(descriptor.codegenPath ? [{ kind: "codegen" as const, path: descriptor.codegenPath }] : [])
+  ];
+
+  if (prepared.framePreview) {
+    run.outputs.push({ kind: "preview", path: prepared.framePreview.path });
+  }
+
+  const result: CompileAnimationResult = {
+    dryRun,
+    projectRoot,
+    input: prepared.input,
+    contract,
+    adapterContract,
+    outputPlan: descriptor,
+    installPlan,
+    artifact: prepared.artifact,
+    processing: {
+      pipeline: "animation",
+      sourceType: prepared.sourceType,
+      layout: prepared.motionLayout,
+      frameExtraction: prepared.frameExtraction,
+      manifestStrategy
+    },
+    motion: {
+      durationMs: prepared.input.durationMs,
+      fps: prepared.input.fps,
+      frames: prepared.frameCount,
+      layout: prepared.motionLayout,
+      loop,
+      diagnostics: prepared.diagnostics
+    },
+    recipe: createCoreRecipeReference(contract.mediaType),
+    agentSummary: createCompileAnimationAgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: 0,
+      validationOk: validation.status !== "failed"
+    }),
+    generatedSources: manifestPlan.generatedSources,
+    manifest: manifestPlan.manifest,
+    validation,
+    frameSlices: prepared.frameSlices,
+    framePreview: prepared.framePreview,
+    run
+  };
+
+  if (!dryRun) {
+    await writeCompileRecord(projectRoot, result);
+  }
+
+  if (!dryRun && parsed.flags.get("install") === true && result.validation.status !== "failed") {
+    result.installResult = await installCompiledRecord({
+      projectRoot,
+      record: result,
+      force: parsed.flags.get("force") === true
+    });
+    result.agentSummary = createCompileAnimationAgentSummary({
+      contract,
+      installPlan,
+      dryRun,
+      installedWrites: result.installResult.writes.length,
+      validationOk: true
+    });
+    await writeCompileRecord(projectRoot, result, true);
+  }
+
+  return result;
+}
+
+async function prepareMotionAsset(input: {
+  projectRoot: string;
+  sourcePath: string;
+  runId: string;
+  id: string;
+  fps: number;
+  frames?: number;
+  layout: MotionLayout;
+  dryRun: boolean;
+  start?: number;
+  end?: number;
+}): Promise<PreparedMotionAsset> {
+  const sourceStat = await fs.stat(input.sourcePath);
+  const safeId = sanitizeAssetId(input.id);
+  const artifactPath = path.posix.join(".openrender", "artifacts", input.runId, "output", `${safeId}.png`);
+  const absoluteArtifactPath = resolveInsideProject(input.projectRoot, artifactPath);
+
+  if (sourceStat.isDirectory()) {
+    const sequence = await detectPngSequence({ sourcePath: input.sourcePath, fps: input.fps });
+    const outputLayout = motionLayoutToOutputSheetLayout(input.layout, sequence.frameCount);
+    const frameSlices = createComposedFrameSlices({
+      frameCount: sequence.frameCount,
+      frameWidth: sequence.width,
+      frameHeight: sequence.height,
+      layout: outputLayout
+    });
+    const artifact = input.dryRun
+      ? undefined
+      : await composeFrameSequenceToSpriteSheet({
+          framePaths: sequence.framePaths,
+          outputPath: absoluteArtifactPath,
+          layout: outputLayout
+        });
+    const framePreview = artifact
+      ? await createFramePreviewSheet({
+          sourcePath: absoluteArtifactPath,
+          outputPath: resolveInsideProject(input.projectRoot, path.posix.join(".openrender", "runs", input.runId, "preview_frames.png")),
+          frameSlices
+        })
+      : undefined;
+
+    return {
+      sourceType: "png_sequence",
+      artifactPath,
+      absoluteArtifactPath,
+      artifact: artifact ? { path: artifact.path, metadata: artifact.metadata } : undefined,
+      framePreview,
+      frameSlices,
+      frameCount: sequence.frameCount,
+      frameWidth: sequence.width,
+      frameHeight: sequence.height,
+      spriteLayout: outputLayout,
+      motionLayout: input.layout,
+      diagnostics: sequence.diagnostics,
+      input: {
+        sourcePath: path.relative(input.projectRoot, input.sourcePath),
+        sourceType: "png_sequence",
+        durationMs: sequence.durationMs,
+        width: sequence.width,
+        height: sequence.height,
+        fps: sequence.fps,
+        frameCount: sequence.frameCount,
+        hasAlpha: sequence.hasAlpha
+      },
+      frameExtraction: "not_required",
+      startMs: input.start !== undefined ? Math.round(input.start * 1000) : undefined,
+      endMs: input.end !== undefined ? Math.round(input.end * 1000) : undefined
+    };
+  }
+
+  const extension = path.extname(input.sourcePath).toLowerCase();
+  if (extension === ".png" || extension === ".webp" || extension === ".jpg" || extension === ".jpeg") {
+    const metadata = await loadImageMetadata(input.sourcePath);
+    const detected = await detectFrameGrid({ sourcePath: input.sourcePath, frames: input.frames });
+    const selectedLayout = input.layout === "grid" ? "grid" : detected.suggested.layout;
+    const frameSlices = planFrameSlices({
+      layout: selectedLayout,
+      imageWidth: metadata.width,
+      frames: detected.suggested.frameCount,
+      frameWidth: detected.suggested.frameWidth,
+      frameHeight: detected.suggested.frameHeight
+    });
+    const invariants = await analyzeSpriteInvariants({
+      sourcePath: input.sourcePath,
+      layout: selectedLayout,
+      frames: detected.suggested.frameCount,
+      frameWidth: detected.suggested.frameWidth,
+      frameHeight: detected.suggested.frameHeight
+    });
+    const artifact = input.dryRun
+      ? undefined
+      : await normalizeImageToPng({
+          sourcePath: input.sourcePath,
+          outputPath: absoluteArtifactPath
+        });
+    const framePreview = artifact
+      ? await createFramePreviewSheet({
+          sourcePath: absoluteArtifactPath,
+          outputPath: resolveInsideProject(input.projectRoot, path.posix.join(".openrender", "runs", input.runId, "preview_frames.png")),
+          frameSlices
+        })
+      : undefined;
+
+    return {
+      sourceType: "sprite_sheet",
+      artifactPath,
+      absoluteArtifactPath,
+      artifact: artifact ? { path: artifact.path, metadata: artifact.metadata } : undefined,
+      framePreview,
+      frameSlices,
+      frameCount: detected.suggested.frameCount,
+      frameWidth: detected.suggested.frameWidth,
+      frameHeight: detected.suggested.frameHeight,
+      spriteLayout: selectedLayout,
+      motionLayout: input.layout,
+      diagnostics: {
+        duplicateFrameRatio: invariants.checks.some((check) => check.name === "duplicateFrameApprox" && check.status === "failed") ? 0.5 : 0,
+        emptyFrameRisk: invariants.checks.some((check) => check.name === "emptyFrame" && check.status === "failed") ? "high" : "none",
+        boundsJitter: invariants.checks.some((check) => check.name === "frameBoundsJitter" && check.status === "failed") ? Math.max(detected.suggested.frameWidth, detected.suggested.frameHeight) : 0,
+        loopConfidence: invariants.ok ? 0.62 : 0.35
+      },
+      input: {
+        sourcePath: path.relative(input.projectRoot, input.sourcePath),
+        sourceType: "sprite_sheet",
+        durationMs: Math.round((detected.suggested.frameCount / input.fps) * 1000),
+        width: metadata.width,
+        height: metadata.height,
+        fps: input.fps,
+        frameCount: detected.suggested.frameCount,
+        hasAlpha: metadata.hasAlpha
+      },
+      frameExtraction: "not_required",
+      startMs: input.start !== undefined ? Math.round(input.start * 1000) : undefined,
+      endMs: input.end !== undefined ? Math.round(input.end * 1000) : undefined
+    };
+  }
+
+  if (extension === ".mp4" || extension === ".webm" || extension === ".gif") {
+    const probe = await ffprobeMotion(input.sourcePath);
+    if (input.dryRun) {
+      const frameCount = input.frames ?? probe.frameCount ?? Math.max(1, Math.round((probe.durationMs / 1000) * input.fps));
+      const outputLayout = motionLayoutToOutputSheetLayout(input.layout, frameCount);
+      return {
+        sourceType: extension === ".gif" ? "gif" : "video",
+        artifactPath,
+        absoluteArtifactPath,
+        artifact: undefined,
+        frameSlices: createComposedFrameSlices({
+          frameCount,
+          frameWidth: probe.width,
+          frameHeight: probe.height,
+          layout: outputLayout
+        }),
+        frameCount,
+        frameWidth: probe.width,
+        frameHeight: probe.height,
+        spriteLayout: outputLayout,
+        motionLayout: input.layout,
+        diagnostics: {
+          duplicateFrameRatio: 0,
+          emptyFrameRisk: "low",
+          boundsJitter: 0,
+          loopConfidence: extension === ".gif" ? 0.7 : 0.35
+        },
+        input: {
+          sourcePath: path.relative(input.projectRoot, input.sourcePath),
+          sourceType: extension === ".gif" ? "gif" : "video",
+          durationMs: probe.durationMs,
+          width: probe.width,
+          height: probe.height,
+          fps: input.fps,
+          frameCount,
+          hasAlpha: probe.hasAlpha
+        },
+        frameExtraction: "dry_run",
+        startMs: input.start !== undefined ? Math.round(input.start * 1000) : undefined,
+        endMs: input.end !== undefined ? Math.round(input.end * 1000) : undefined
+      };
+    }
+
+    if (!await commandAvailable("ffmpeg")) {
+      throw new Error("MOTION_RUNTIME_MISSING: ffmpeg is required to extract video/GIF frames. Install it with `brew install ffmpeg` and re-run compile animation.");
+    }
+    const framesDir = path.posix.join(".openrender", "artifacts", input.runId, "frames");
+    await extractMotionFrames({
+      projectRoot: input.projectRoot,
+      sourcePath: input.sourcePath,
+      framesDir,
+      fps: input.fps,
+      frames: input.frames,
+      start: input.start,
+      end: input.end
+    });
+    const sequence = await detectPngSequence({
+      sourcePath: resolveInsideProject(input.projectRoot, framesDir),
+      fps: input.fps
+    });
+    const outputLayout = motionLayoutToOutputSheetLayout(input.layout, sequence.frameCount);
+    const artifact = await composeFrameSequenceToSpriteSheet({
+      framePaths: sequence.framePaths,
+      outputPath: absoluteArtifactPath,
+      layout: outputLayout
+    });
+    const framePreview = await createFramePreviewSheet({
+      sourcePath: absoluteArtifactPath,
+      outputPath: resolveInsideProject(input.projectRoot, path.posix.join(".openrender", "runs", input.runId, "preview_frames.png")),
+      frameSlices: artifact.frameSlices
+    });
+
+    return {
+      sourceType: extension === ".gif" ? "gif" : "video",
+      artifactPath,
+      absoluteArtifactPath,
+      artifact: { path: artifact.path, metadata: artifact.metadata },
+      framePreview,
+      frameSlices: artifact.frameSlices,
+      frameCount: sequence.frameCount,
+      frameWidth: sequence.width,
+      frameHeight: sequence.height,
+      spriteLayout: outputLayout,
+      motionLayout: input.layout,
+      diagnostics: sequence.diagnostics,
+      input: {
+        sourcePath: path.relative(input.projectRoot, input.sourcePath),
+        sourceType: extension === ".gif" ? "gif" : "video",
+        durationMs: sequence.durationMs,
+        width: sequence.width,
+        height: sequence.height,
+        fps: sequence.fps,
+        frameCount: sequence.frameCount,
+        hasAlpha: sequence.hasAlpha || probe.hasAlpha
+      },
+      frameExtraction: framesDir,
+      startMs: input.start !== undefined ? Math.round(input.start * 1000) : undefined,
+      endMs: input.end !== undefined ? Math.round(input.end * 1000) : undefined
+    };
+  }
+
+  throw new Error(`Unsupported motion input: ${extension || "unknown"}.`);
+}
+
+function createAnimationAdapterContract(contract: MotionCompileContract): SpriteFrameSetContract {
+  return {
+    schemaVersion: contract.schemaVersion,
+    mediaType: "visual.sprite_frame_set",
+    sourcePath: contract.sourcePath,
+    target: contract.target,
+    id: contract.id,
+    visual: {
+      layout: contract.visual.layout,
+      frames: contract.visual.frames,
+      frameWidth: contract.visual.frameWidth,
+      frameHeight: contract.visual.frameHeight,
+      fps: contract.visual.fps,
+      padding: contract.visual.padding,
+      background: contract.visual.background,
+      outputFormat: contract.visual.outputFormat
+    },
+    install: contract.install,
+    verify: contract.verify
+  };
+}
+
+function createMotionValidation(input: {
+  contract: MotionCompileContract;
+  artifactPath: string;
+  artifactExists: boolean;
+  frameSlices: FrameSlice[];
+  diagnostics: MotionDiagnostics;
+  dryRun: boolean;
+}): MotionValidationResult {
+  const checks: MotionValidationResult["checks"] = [
+    {
+      name: "motion_contract_pipeline",
+      status: "passed",
+      path: input.contract.sourcePath,
+      message: `${input.contract.mediaType} uses animation compile/install/verify/report/rollback pipeline`
+    },
+    {
+      name: "motion_compiled_artifact_ready",
+      status: input.artifactExists ? "passed" : input.dryRun ? "skipped" : "failed",
+      path: input.artifactPath,
+      message: input.artifactExists ? "animation sheet written" : input.dryRun ? "dry-run only" : "artifact missing"
+    },
+    {
+      name: "motion_frame_slices_ready",
+      status: input.frameSlices.length === input.contract.motion.frames ? "passed" : "failed",
+      path: input.artifactPath,
+      message: `${input.frameSlices.length}/${input.contract.motion.frames} frame slices`
+    },
+    {
+      name: "motion_empty_frame_risk",
+      status: input.diagnostics.emptyFrameRisk === "high" ? "warning" : "passed",
+      path: input.artifactPath,
+      message: input.diagnostics.emptyFrameRisk
+    },
+    {
+      name: "motion_loop_confidence",
+      status: input.contract.motion.loop && input.diagnostics.loopConfidence < 0.4 ? "warning" : "passed",
+      path: input.artifactPath,
+      message: `loop confidence ${input.diagnostics.loopConfidence}`
+    }
+  ];
+
+  return {
+    status: createVerificationStatus(checks),
+    checks
+  };
+}
+
+function createDetectMotionResultFromPngSequence(
+  projectRoot: string,
+  sequence: PngSequenceDetectionResult
+): DetectMotionCommandResult {
+  return {
+    ok: true,
+    sourcePath: path.relative(projectRoot, sequence.sourcePath),
+    sourceType: sequence.sourceType,
+    runtime: { ffmpeg: "not_required", ffprobe: "not_required" },
+    durationMs: sequence.durationMs,
+    width: sequence.width,
+    height: sequence.height,
+    fps: sequence.fps,
+    frameCount: sequence.frameCount,
+    hasAlpha: sequence.hasAlpha,
+    frameSize: {
+      width: sequence.width,
+      height: sequence.height
+    },
+    suggested: sequence.suggested,
+    diagnostics: sequence.diagnostics,
+    nextActions: [
+      "Run openrender compile animation --from <frames-dir> --target <engine> --id <asset.id> --dry-run --json.",
+      "Use --layout horizontal_strip for short loops or --layout grid for larger frame sets."
+    ],
+    localOnly: true
+  };
+}
+
+function createMotionRuntimeMissingResult(
+  projectRoot: string,
+  sourcePath: string,
+  runtime: "ffmpeg" | "ffprobe"
+): DetectMotionCommandResult {
+  return {
+    ok: false,
+    code: "MOTION_RUNTIME_MISSING",
+    sourcePath: path.relative(projectRoot, sourcePath),
+    sourceType: "video",
+    runtime: {
+      ffmpeg: runtime === "ffmpeg" ? "missing" : "unknown",
+      ffprobe: runtime === "ffprobe" ? "missing" : "unknown"
+    },
+    durationMs: null,
+    width: null,
+    height: null,
+    fps: null,
+    frameCount: null,
+    hasAlpha: null,
+    frameSize: null,
+    suggested: null,
+    diagnostics: null,
+    nextActions: [
+      "Install ffmpeg/ffprobe first, for example: brew install ffmpeg.",
+      "For an ffmpeg-free path, pass a PNG frame directory to detect-motion or compile animation."
+    ],
+    localOnly: true
+  };
+}
+
+async function ffprobeMotion(sourcePath: string): Promise<{
+  durationMs: number;
+  width: number;
+  height: number;
+  fps: number;
+  frameCount: number | null;
+  hasAlpha: boolean;
+}> {
+  if (!await commandAvailable("ffprobe")) {
+    throw new Error("MOTION_RUNTIME_MISSING: ffprobe is required to inspect video/GIF inputs. Install it with `brew install ffmpeg`.");
+  }
+
+  const result = await runProcessCapture({
+    command: "ffprobe",
+    args: [
+      "-v", "error",
+      "-select_streams", "v:0",
+      "-show_entries", "stream=width,height,avg_frame_rate,nb_frames,pix_fmt,duration",
+      "-of", "json",
+      sourcePath
+    ],
+    cwd: process.cwd(),
+    timeoutMs: 30_000
+  });
+  const parsed = JSON.parse(result.stdout) as {
+    streams?: Array<{
+      width?: number;
+      height?: number;
+      avg_frame_rate?: string;
+      nb_frames?: string;
+      pix_fmt?: string;
+      duration?: string;
+    }>;
+  };
+  const stream = parsed.streams?.[0];
+  if (!stream?.width || !stream.height) {
+    throw new Error("Could not read video dimensions with ffprobe.");
+  }
+  const fps = parseFrameRate(stream.avg_frame_rate) || 12;
+  const durationSeconds = Number.parseFloat(stream.duration ?? "0");
+  const frameCount = stream.nb_frames ? Number.parseInt(stream.nb_frames, 10) : null;
+  return {
+    durationMs: Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? Math.round(durationSeconds * 1000)
+      : frameCount ? Math.round((frameCount / fps) * 1000) : 0,
+    width: stream.width,
+    height: stream.height,
+    fps,
+    frameCount: frameCount && Number.isFinite(frameCount) ? frameCount : null,
+    hasAlpha: /rgba|argb|yuva|bgra|gbrap|alpha/i.test(stream.pix_fmt ?? "")
+  };
+}
+
+async function extractMotionFrames(input: {
+  projectRoot: string;
+  sourcePath: string;
+  framesDir: string;
+  fps: number;
+  frames?: number;
+  start?: number;
+  end?: number;
+}): Promise<void> {
+  const absoluteFramesDir = resolveInsideProject(input.projectRoot, input.framesDir);
+  await fs.mkdir(absoluteFramesDir, { recursive: true });
+  const outputPattern = path.join(absoluteFramesDir, "frame_%04d.png");
+  const args = ["-y"];
+  if (input.start !== undefined) args.push("-ss", String(input.start));
+  args.push("-i", input.sourcePath);
+  if (input.end !== undefined) args.push("-to", String(input.end));
+  args.push("-vf", `fps=${input.fps}`);
+  if (input.frames !== undefined) args.push("-frames:v", String(input.frames));
+  args.push(outputPattern);
+  await runProcessCapture({
+    command: "ffmpeg",
+    args,
+    cwd: input.projectRoot,
+    timeoutMs: 120_000
+  });
+}
+
+async function runProcessCapture(input: {
+  command: string;
+  args: string[];
+  cwd: string;
+  timeoutMs: number;
+}): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(input.command, input.args, {
+      cwd: input.cwd,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const settle = (error?: Error): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve({ stdout, stderr });
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      settle(new Error(`${input.command} timed out after ${input.timeoutMs}ms.`));
+    }, input.timeoutMs);
+
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", (error) => settle(error));
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        settle();
+      } else {
+        const exitLabel = signal ? `signal ${signal}` : `exit ${code ?? "unknown"}`;
+        settle(new Error(`${input.command} failed with ${exitLabel}: ${stderr.trim().slice(0, 1200)}`));
+      }
+    });
+  });
+}
+
+function parseFrameRate(value: string | undefined): number {
+  if (!value || value === "0/0") return 0;
+  const [left, right] = value.split("/");
+  if (right === undefined) {
+    const fps = Number.parseFloat(value);
+    return Number.isFinite(fps) ? fps : 0;
+  }
+  const numerator = Number.parseFloat(left ?? "0");
+  const denominator = Number.parseFloat(right ?? "0");
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return 0;
+  return numerator / denominator;
+}
+
+function readMotionLayoutFlag(parsed: ParsedFlags): MotionLayout {
+  const value = readStringFlag(parsed, "layout", "horizontal_strip");
+  if (value === "horizontal_strip" || value === "grid" || value === "sequence") return value;
+  throw new Error(`Unsupported motion layout: ${value}`);
+}
+
+function readMotionMediaTypeFlag(parsed: ParsedFlags): MotionCompileContract["mediaType"] {
+  const value = readStringFlag(parsed, "media-type", "visual.animation_clip");
+  if (
+    value === "visual.animation_clip" ||
+    value === "visual.sprite_sequence" ||
+    value === "visual.effect_loop" ||
+    value === "visual.ui_motion" ||
+    value === "visual.reference_video"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported animation media type: ${value}`);
+}
+
+function motionLayoutToOutputSheetLayout(layout: MotionLayout, frameCount: number): "horizontal_strip" | "grid" {
+  if (layout === "grid") return "grid";
+  if (layout === "sequence") return frameCount > 12 ? "grid" : "horizontal_strip";
+  return "horizontal_strip";
+}
+
+function createComposedFrameSlices(input: {
+  frameCount: number;
+  frameWidth: number;
+  frameHeight: number;
+  layout: "horizontal_strip" | "grid";
+}): FrameSlice[] {
+  const columns = input.layout === "horizontal_strip" ? input.frameCount : Math.ceil(Math.sqrt(input.frameCount));
+  return Array.from({ length: input.frameCount }, (_, index) => ({
+    index,
+    x: (index % columns) * input.frameWidth,
+    y: Math.floor(index / columns) * input.frameHeight,
+    width: input.frameWidth,
+    height: input.frameHeight
+  }));
+}
+
+function sanitizeAssetId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
 }
 
 async function inspectMediaMetadata(
@@ -1338,6 +2274,7 @@ function compactAgentContext(result: AgentContextCommandResult): CompactAgentCon
       manifest: result.paths.manifest
     },
     latestRun: result.latestRun,
+    references: result.references.slice(0, 3),
     tables: {
       overwriteRisks: {
         columns: ["code", "path", "note"],
@@ -1453,6 +2390,47 @@ function compactDiffResult(result: DiffCommandResult): CompactDiffCommandResult 
   };
 }
 
+function compactDetectMotionResult(result: DetectMotionCommandResult): CompactDetectMotionResult {
+  return {
+    ok: result.ok,
+    code: result.ok ? undefined : result.code,
+    sourceType: result.sourceType,
+    recommendation: result.suggested
+      ? {
+          fps: result.suggested.fps,
+          frames: result.suggested.frames,
+          layout: result.suggested.layout,
+          loop: result.suggested.loop
+        }
+      : null,
+    diagnostics: result.diagnostics,
+    runtime: result.runtime,
+    nextActions: result.nextActions
+  };
+}
+
+function compactCompileAnimationResult(result: CompileAnimationResult): CompactCompileAnimationResult {
+  return {
+    ok: result.validation.status !== "failed",
+    runId: result.run.runId,
+    assetId: result.contract.id,
+    target: result.contract.target.engine,
+    mediaType: result.contract.mediaType,
+    motion: result.motion,
+    assetPath: result.outputPlan.assetPath,
+    helperPath: result.outputPlan.codegenPath ?? null,
+    rollbackCommand: result.installResult ? `openrender rollback --run ${result.run.runId} --json` : null,
+    tables: {
+      installPlan: {
+        columns: ["kind", "action", "to"],
+        rows: result.installPlan.files.map((file) => [file.kind, file.action, file.to])
+      },
+      checks: createVerificationCheckTable(result.validation.checks)
+    },
+    nextActions: createSuccessNextActions(result)
+  };
+}
+
 function createVerificationCheckTable(checks: VerifyCommandResult["checks"]): CompactTable {
   return {
     columns: ["name", "status", "path", "message"],
@@ -1531,7 +2509,7 @@ function getSchemaResult(name: string | undefined): { name: string; schema: Reco
   const normalized = name ?? "contract";
   const schema = OPENRENDER_SCHEMAS[normalized];
   if (!schema) {
-    throw new Error(`Unknown schema: ${normalized}. Use contract, output, report, install-plan, pack-manifest, or media-p4.`);
+    throw new Error(`Unknown schema: ${normalized}. Use contract, output, report, install-plan, pack-manifest, or media.`);
   }
   return { name: normalized, schema };
 }
@@ -1617,11 +2595,142 @@ async function listJsonFiles(root: string): Promise<string[]> {
   return files.sort();
 }
 
+async function ingestReference(parsed: ParsedFlags): Promise<IngestReferenceCommandResult> {
+  const projectRoot = process.cwd();
+  const role = readReferenceRole(parsed);
+  const intent = requireStringFlag(parsed, "intent");
+  const notes = readOptionalStringFlag(parsed, "notes");
+  const urlValue = parsed.flags.get("url");
+  const fromValue = parsed.flags.get("from");
+  if (typeof urlValue !== "string" && typeof fromValue !== "string") {
+    throw new Error("Missing reference source: pass --url or --from.");
+  }
+  if (typeof urlValue === "string" && typeof fromValue === "string") {
+    throw new Error("Reference ingest accepts either --url or --from, not both.");
+  }
+
+  const createdAt = new Date().toISOString();
+  const referenceId = `ref_${createdAt.replace(/[^0-9]/g, "").slice(0, 14)}_${role}`;
+  let record: VisualReferenceRecord;
+
+  if (typeof urlValue === "string") {
+    const url = new URL(urlValue);
+    record = {
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
+      referenceId,
+      createdAt,
+      role,
+      intent,
+      ...(notes ? { notes } : {}),
+      source: {
+        kind: "url",
+        url: url.toString(),
+        downloaded: false
+      },
+      localOnly: true
+    };
+  } else if (typeof fromValue === "string") {
+    const absolutePath = resolveInsideProject(projectRoot, fromValue);
+    const stat = await fs.stat(absolutePath);
+    if (!stat.isFile()) throw new Error(`Reference --from must point to a file: ${fromValue}`);
+    const bytes = await fs.readFile(absolutePath);
+    record = {
+      schemaVersion: OPENRENDER_DEVKIT_VERSION,
+      referenceId,
+      createdAt,
+      role,
+      intent,
+      ...(notes ? { notes } : {}),
+      source: {
+        kind: "local_file",
+        path: path.relative(projectRoot, absolutePath),
+        bytes: stat.size,
+        hash: createHash("sha256").update(bytes).digest("hex")
+      },
+      localOnly: true
+    };
+  } else {
+    throw new Error("Missing reference source: pass --url or --from.");
+  }
+
+  const relativePath = path.posix.join(".openrender", "references", `${referenceId}.json`);
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath,
+    contents: `${JSON.stringify(record, null, 2)}\n`,
+    allowOverwrite: false
+  });
+
+  return {
+    ok: true,
+    referenceId,
+    path: relativePath,
+    role,
+    source: record.source,
+    summary: `${role} reference recorded for agent context; remote URLs were not downloaded.`,
+    nextActions: [
+      "Run openrender context --json --compact to show the latest reference summary.",
+      "Use the reference intent when choosing compile or animation settings."
+    ],
+    localOnly: true
+  };
+}
+
+async function readReferenceSummaries(projectRoot: string): Promise<ReferenceSummary[]> {
+  const referenceRoot = resolveInsideProject(projectRoot, ".openrender/references");
+  if (!await pathExists(referenceRoot)) return [];
+  let entries: string[];
+  try {
+    entries = await fs.readdir(referenceRoot);
+  } catch {
+    return [];
+  }
+
+  const summaries: ReferenceSummary[] = [];
+  for (const entry of entries.filter((name) => name.endsWith(".json")).sort().reverse().slice(0, 12)) {
+    try {
+      const record = JSON.parse(await fs.readFile(path.join(referenceRoot, entry), "utf8")) as VisualReferenceRecord;
+      summaries.push({
+        referenceId: record.referenceId,
+        createdAt: record.createdAt,
+        role: record.role,
+        intent: record.intent,
+        source: record.source.kind === "url" ? record.source.url : record.source.path,
+        sourceKind: record.source.kind,
+        downloaded: record.source.kind === "url" ? record.source.downloaded : false,
+        notes: record.notes
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return summaries;
+}
+
+function readReferenceRole(parsed: ParsedFlags): VisualReferenceRole {
+  const value = readStringFlag(parsed, "role", "style");
+  if (
+    value === "mechanic" ||
+    value === "style" ||
+    value === "layout" ||
+    value === "logic" ||
+    value === "motion" ||
+    value === "mood" ||
+    value === "character" ||
+    value === "environment"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported reference role: ${value}`);
+}
+
 async function createAgentContext(options: { includeWireMap?: boolean } = {}): Promise<AgentContextCommandResult> {
   const projectRoot = process.cwd();
   const scan = await scanProject(projectRoot);
   const latestRun = await readLatestRunSummary(projectRoot);
   const latestRecord = options.includeWireMap ? await readLatestCompileRecordIfAvailable(projectRoot) : null;
+  const references = await readReferenceSummaries(projectRoot);
   const overwriteRisks: AgentContextCommandResult["overwriteRisks"] = [];
   if (scan.manifestExists) {
     overwriteRisks.push({
@@ -1670,6 +2779,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
       manifest: scan.manifestExists
     },
     latestRun,
+    references,
     overwriteRisks,
     recommendedNextActions: [...recommendedNextActions],
     localOnly: true,
@@ -1967,10 +3077,24 @@ function createWireMapLatestAsset(record: OpenRenderCompileRecord): WireMapLates
     assetPath: record.outputPlan.assetPath,
     loadPath: record.outputPlan.loadPath,
     manifestPath: record.outputPlan.manifestPath,
+    helperPath: record.outputPlan.codegenPath ?? null,
     manifestModule: createManifestModuleName(record),
     runId: record.run.runId,
+    suggestedUse: createWireMapSuggestedUse(record),
     snippets: createWireMapSnippets(record)
   };
+}
+
+function createWireMapSuggestedUse(record: OpenRenderCompileRecord): string {
+  if (isAnimationCompileRecord(record)) {
+    return `Connect ${record.motion.frames} frame(s) at ${record.motion.fps} fps using the generated helper; openRender does not patch engine code.`;
+  }
+  if (isP4CompileRecord(record)) {
+    return `Load the installed ${record.contract.mediaType} through the generated media manifest.`;
+  }
+  return record.contract.mediaType === "visual.sprite_frame_set"
+    ? "Use the generated frame helper near the target engine preload/create or render loop."
+    : "Use the generated manifest load path where the target engine creates sprites.";
 }
 
 function createManifestModuleName(record: OpenRenderCompileRecord): string {
@@ -2235,7 +3359,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.8.2: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 0.9.0: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -2576,7 +3700,7 @@ async function compileP4Media(
   });
   const contractValidation = validateMediaContract(contract);
   if (!contractValidation.ok) {
-    throw new Error(`Invalid P4 media contract: ${contractValidation.issues.map((issue) => `${issue.path} ${issue.message}`).join("; ")}`);
+    throw new Error(`Invalid media contract: ${contractValidation.issues.map((issue) => `${issue.path} ${issue.message}`).join("; ")}`);
   }
 
   const descriptor = createP4AssetDescriptor(contract);
@@ -2812,7 +3936,7 @@ function createP4Contract(input: {
     };
   }
 
-  throw new Error(`P4 metadata mismatch for ${input.kind}.`);
+  throw new Error(`Media metadata mismatch for ${input.kind}.`);
 }
 
 function createP4AssetDescriptor(contract: P4CompileContract): P4AssetDescriptor {
@@ -3701,6 +4825,15 @@ function readOptionalIntegerFlag(parsed: ParsedFlags, name: string): number | un
   return parsedValue;
 }
 
+function readOptionalNumberFlag(parsed: ParsedFlags, name: string): number | undefined {
+  const value = parsed.flags.get(name);
+  if (value === undefined || value === false) return undefined;
+  if (typeof value !== "string") throw new Error(`--${name} requires a number.`);
+  const parsedValue = Number.parseFloat(value);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) throw new Error(`--${name} must be a non-negative number.`);
+  return parsedValue;
+}
+
 function readIntegerFlag(parsed: ParsedFlags, name: string, fallback: number): number {
   return readOptionalIntegerFlag(parsed, name) ?? fallback;
 }
@@ -3893,7 +5026,7 @@ async function writeManifestStateFromRecord(projectRoot: string, record: OpenRen
   const entries = record.manifest.strategy === "merge"
     ? { ...(state?.entries ?? {}) }
     : {};
-  entries[record.contract.id] = createManifestStateEntry(record.contract, record.outputPlan, record.run.runId);
+  entries[record.contract.id] = createManifestStateEntry(getManifestContractForRecord(record), record.outputPlan, record.run.runId);
 
   const nextState: ManifestState = {
     version: CLI_VERSION,
@@ -3909,6 +5042,10 @@ async function writeManifestStateFromRecord(projectRoot: string, record: OpenRen
     contents: `${JSON.stringify(nextState, null, 2)}\n`,
     allowOverwrite: true
   });
+}
+
+function getManifestContractForRecord(record: OpenRenderCompileRecord): MediaContract {
+  return isAnimationCompileRecord(record) ? record.adapterContract : record.contract;
 }
 
 function createManifestStateRelativePath(target: TargetEngine, manifestPath: string): string {
@@ -3937,12 +5074,22 @@ function assertSpriteCompileContract(contract: MediaContract): asserts contract 
   }
 }
 
+function isMotionCompileContract(contract: MediaContract): contract is MotionCompileContract {
+  return (
+    contract.mediaType === "visual.animation_clip" ||
+    contract.mediaType === "visual.sprite_sequence" ||
+    contract.mediaType === "visual.effect_loop" ||
+    contract.mediaType === "visual.ui_motion" ||
+    contract.mediaType === "visual.reference_video"
+  );
+}
+
 function isSpriteCompileContract(contract: MediaContract): contract is SpriteCompileContract {
   return contract.mediaType === "visual.transparent_sprite" || contract.mediaType === "visual.sprite_frame_set";
 }
 
 function isP4CompileContract(contract: MediaContract): contract is P4CompileContract {
-  return !isSpriteCompileContract(contract);
+  return !isSpriteCompileContract(contract) && !isMotionCompileContract(contract);
 }
 
 function isSpriteCompileRecord(record: OpenRenderCompileRecord): record is CompileSpriteResult {
@@ -3951,6 +5098,10 @@ function isSpriteCompileRecord(record: OpenRenderCompileRecord): record is Compi
 
 function isP4CompileRecord(record: OpenRenderCompileRecord): record is CompileP4Result {
   return isP4CompileContract(record.contract);
+}
+
+function isAnimationCompileRecord(record: OpenRenderCompileRecord): record is CompileAnimationResult {
+  return isMotionCompileContract(record.contract);
 }
 
 async function installRun(parsed: ParsedFlags): Promise<InstallCommandResult> {
@@ -4281,7 +5432,7 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
   let visualSource: { relativePath: string; absolutePath: string } | null = null;
   if (installedAsset && await pathExists(resolveInsideProject(projectRoot, installedAsset.to))) {
     const installedAssetAbsolutePath = resolveInsideProject(projectRoot, installedAsset.to);
-    if (isSpriteCompileRecord(record)) {
+    if (isSpriteCompileRecord(record) || isAnimationCompileRecord(record)) {
       visualSource = {
         relativePath: installedAsset.to,
         absolutePath: installedAssetAbsolutePath
@@ -4321,7 +5472,7 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
       });
     }
   } else if (artifactPath && artifactExists) {
-    if (isSpriteCompileRecord(record)) {
+    if (isSpriteCompileRecord(record) || isAnimationCompileRecord(record)) {
       visualSource = {
         relativePath: artifactPath,
         absolutePath: resolveInsideProject(projectRoot, artifactPath)
@@ -4345,6 +5496,18 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
       artifactExists
     });
     checks.push(...p4Validation.checks.filter((check) => check.name !== "compiled_artifact_ready"));
+  }
+
+  if (isAnimationCompileRecord(record)) {
+    const motionValidation = createMotionValidation({
+      contract: record.contract,
+      artifactPath: artifactPath ?? record.outputPlan.assetPath,
+      artifactExists,
+      frameSlices: record.frameSlices,
+      diagnostics: record.motion.diagnostics,
+      dryRun: record.dryRun
+    });
+    checks.push(...motionValidation.checks.filter((check) => check.name !== "motion_compiled_artifact_ready"));
   }
 
   let visualQuality: VisualQualityResult | undefined;
@@ -4382,6 +5545,15 @@ async function verifyRun(parsed: ParsedFlags): Promise<VerifyCommandResult> {
       validation: record.validation,
       invariants: record.invariants,
       visualQuality: record.visualQuality
+    });
+  } else if (isAnimationCompileRecord(record)) {
+    record.validation = createMotionValidation({
+      contract: record.contract,
+      artifactPath: artifactPath ?? record.outputPlan.assetPath,
+      artifactExists,
+      frameSlices: record.frameSlices,
+      diagnostics: record.motion.diagnostics,
+      dryRun: record.dryRun
     });
   } else {
     record.validation = {
@@ -4550,6 +5722,7 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Input", body: JSON.stringify(record.input, null, 2) },
       { heading: "Artifact", body: JSON.stringify(record.artifact ?? null, null, 2) },
       ...(isSpriteCompileRecord(record) && record.background ? [{ heading: "Background Policy", body: createBackgroundReportText(record) }] : []),
+      ...(isAnimationCompileRecord(record) ? [{ heading: "Motion Summary", body: JSON.stringify(record.motion, null, 2) }] : []),
       { heading: "Agent Summary", body: record.agentSummary },
       { heading: "Core Recipe", body: JSON.stringify(record.recipe, null, 2) },
       ...(framePreviewPath ? [{ heading: "Frame Preview Sheet", body: framePreviewPath }] : []),
@@ -4562,8 +5735,14 @@ async function writeReport(parsed: ParsedFlags): Promise<ReportCommandResult> {
       { heading: "Run Verification", body: JSON.stringify(record.run.verification ?? null, null, 2) },
       ...(isP4CompileRecord(record)
         ? [{
-            heading: "P4 Media Pipeline",
+            heading: "Media Asset Pipeline",
             body: "Audio, atlas/tileset, and UI assets use the same local compile/install/verify/report/rollback pipeline as sprite assets. openRender installs files and helper metadata only; game code remains read-only until the developer or agent wires the generated paths."
+          }]
+        : []),
+      ...(isAnimationCompileRecord(record)
+        ? [{
+            heading: "Animation Runtime Integration",
+            body: "openRender installs an animation spritesheet plus target-shaped manifest/helper files. It stops before game-code patching: use the helper path, frame slices, and wire-map suggestions to connect the asset in the engine."
           }]
         : []),
       ...(record.contract.target.engine === "godot"
@@ -4696,7 +5875,7 @@ function createPreviewAssetUrl(record: OpenRenderCompileRecord): string | undefi
 }
 
 function createVisualOverlayHtml(record: OpenRenderCompileRecord): string | null {
-  if (!isSpriteCompileRecord(record)) return null;
+  if (!isSpriteCompileRecord(record) && !isAnimationCompileRecord(record)) return null;
   const artifactPath = record.run.outputs.find((output) => output.kind === "compiled_asset")?.path;
   const artifact = record.artifact;
   if (!artifactPath || !artifact) return null;
@@ -4730,7 +5909,20 @@ function createNextActionText(record: OpenRenderCompileRecord): string | null {
   if (isP4CompileRecord(record) && record.validation.status === "failed") {
     const failedChecks = record.validation.checks.filter((check) => check.status === "failed");
     return [
-      "Failure: P4 media validation failed",
+      "Failure: media validation failed",
+      "",
+      "Failed checks:",
+      ...failedChecks.map((check) => `- ${check.name}${check.path ? `: ${check.path}` : ""}`),
+      "",
+      "Suggested next action:",
+      ...createVerifySuggestions(record, failedChecks).map((suggestion) => `- ${suggestion}`)
+    ].join("\n");
+  }
+
+  if (isAnimationCompileRecord(record) && record.validation.status === "failed") {
+    const failedChecks = record.validation.checks.filter((check) => check.status === "failed");
+    return [
+      "Failure: animation validation failed",
       "",
       "Failed checks:",
       ...failedChecks.map((check) => `- ${check.name}${check.path ? `: ${check.path}` : ""}`),
@@ -4779,7 +5971,8 @@ function createAgentSummary(record: OpenRenderCompileRecord): string {
   const report = record.run.outputs.find((output) => output.kind === "report")?.path ?? ".openrender/reports/latest.html";
   const background = isSpriteCompileRecord(record) && record.background ? `${createBackgroundSummary(record)} ` : "";
   const media = isP4CompileRecord(record) ? `${record.contract.mediaType} ` : "";
-  return `${installed} ${background}Review ${report} before wiring ${media}asset code.`;
+  const motion = isAnimationCompileRecord(record) ? "animation " : "";
+  return `${installed} ${background}Review ${report} before wiring ${motion}${media}asset code.`;
 }
 
 function createBackgroundSummary(record: CompileSpriteResult): string {
@@ -4817,6 +6010,8 @@ function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): Compi
   const normalizedMediaType =
     mediaType === "audio.music_loop"
       ? "audio.sound_effect"
+      : isMotionMediaTypeValue(mediaType)
+        ? "visual.animation_clip"
       : mediaType === "visual.tileset"
         ? "visual.atlas"
         : mediaType === "visual.ui_panel" || mediaType === "visual.icon_set"
@@ -4831,6 +6026,16 @@ function createCoreRecipeReference(mediaType: MediaContract["mediaType"]): Compi
     recipeId: recipe.id,
     localOnly: true
   };
+}
+
+function isMotionMediaTypeValue(mediaType: MediaContract["mediaType"]): boolean {
+  return (
+    mediaType === "visual.animation_clip" ||
+    mediaType === "visual.sprite_sequence" ||
+    mediaType === "visual.effect_loop" ||
+    mediaType === "visual.ui_motion" ||
+    mediaType === "visual.reference_video"
+  );
 }
 
 function createCompileAgentSummary(input: {
@@ -4863,7 +6068,7 @@ function createCompileP4AgentSummary(input: {
   validationOk: boolean;
 }): string {
   if (!input.validationOk) {
-    return `Blocked ${input.contract.id} for ${input.contract.target.engine}; fix P4 media metadata before installing.`;
+    return `Blocked ${input.contract.id} for ${input.contract.target.engine}; fix media metadata before installing.`;
   }
 
   if (input.dryRun) {
@@ -4877,6 +6082,28 @@ function createCompileP4AgentSummary(input: {
   return `Compiled ${input.contract.mediaType} ${input.contract.id} for ${input.contract.target.engine}; install when the plan is acceptable.`;
 }
 
+function createCompileAnimationAgentSummary(input: {
+  contract: MotionCompileContract;
+  installPlan: EngineInstallPlan;
+  dryRun: boolean;
+  installedWrites: number;
+  validationOk: boolean;
+}): string {
+  if (!input.validationOk) {
+    return `Blocked animation ${input.contract.id} for ${input.contract.target.engine}; inspect motion diagnostics before installing.`;
+  }
+
+  if (input.dryRun) {
+    return `Planned animation ${input.contract.id} for ${input.contract.target.engine}; review ${input.installPlan.files.length} file(s), helper path, and frame slices before install.`;
+  }
+
+  if (input.installedWrites > 0) {
+    return `Installed animation ${input.contract.id} for ${input.contract.target.engine}; wrote ${input.installedWrites} file(s) with rollback available.`;
+  }
+
+  return `Compiled animation ${input.contract.id} for ${input.contract.target.engine}; install when the plan is acceptable.`;
+}
+
 function createSuccessNextActions(record: OpenRenderCompileRecord): string[] {
   const actions = [
     `Use asset path ${record.outputPlan.assetPath}.`,
@@ -4887,6 +6114,9 @@ function createSuccessNextActions(record: OpenRenderCompileRecord): string[] {
   }
   if (record.outputPlan.codegenPath) {
     actions.unshift(`Import or require generated helper ${record.outputPlan.codegenPath}.`);
+  }
+  if (isAnimationCompileRecord(record)) {
+    actions.unshift(`Use ${record.outputPlan.codegenPath ?? record.outputPlan.manifestPath} to connect ${record.motion.frames} frame(s) at ${record.motion.fps} fps.`);
   }
   if (record.installResult) {
     actions.push(`Rollback with openrender rollback --run ${record.run.runId} --json if needed.`);
@@ -4928,11 +6158,13 @@ function createVerifySuggestions(
   const suggestions = new Set<string>();
   for (const check of failedChecks) {
     if (check.name === "compiled_artifact_exists") {
-      suggestions.add(`re-run openrender compile ${isP4CompileRecord(record) ? p4CommandKindForContract(record.contract) : "sprite"} for the source asset`);
+      suggestions.add(`re-run openrender compile ${isP4CompileRecord(record) ? p4CommandKindForContract(record.contract) : isAnimationCompileRecord(record) ? "animation" : "sprite"} for the source asset`);
     } else if (check.name.endsWith("_installed")) {
       suggestions.add(`run openrender install --run ${record.run.runId}`);
     } else if (check.name === "installed_asset_dimensions") {
       suggestions.add(`re-run openrender install --run ${record.run.runId} --force after recompiling`);
+    } else if (check.name === "motion_frame_slices_ready") {
+      suggestions.add("re-run compile animation with explicit --frames, --fps, or --layout to match the source motion geometry");
     } else if (check.name === "atlas_tile_grid_divisible") {
       suggestions.add("adjust --tile-size or regenerate the atlas image with divisible dimensions");
     } else if (check.name === "ui_states_declared") {
@@ -5095,6 +6327,26 @@ function printCompileP4(result: CompileP4Result): void {
   }
 }
 
+function printCompileAnimation(result: CompileAnimationResult): void {
+  console.log(`openRender compile animation${result.dryRun ? " --dry-run" : ""}`);
+  console.log("");
+  console.log(`Project root: ${result.projectRoot}`);
+  console.log(`Input: ${result.contract.sourcePath}`);
+  console.log(`Asset id: ${result.contract.id}`);
+  console.log(`Media type: ${result.contract.mediaType}`);
+  console.log(`Motion: ${result.motion.frames} frame(s), ${result.motion.fps} fps, ${result.motion.layout}`);
+  console.log(`Output asset: ${result.outputPlan.assetPath}`);
+  console.log(`Load path: ${result.outputPlan.loadPath}`);
+  if (result.outputPlan.codegenPath) console.log(`Codegen: ${result.outputPlan.codegenPath}`);
+  if (result.manifest) console.log(`Manifest strategy: ${result.manifest.strategy} (${result.manifest.entryChange})`);
+  console.log(`Install plan files: ${result.installPlan.files.length}`);
+  console.log(`Validation: ${result.validation.status}`);
+  if (result.installResult) {
+    console.log(`Installed files: ${result.installResult.writes.length}`);
+    console.log(`Snapshot: ${result.installResult.snapshotRoot}`);
+  }
+}
+
 function printPlanResult(result: PlanCommandResult): void {
   console.log("openRender plan sprite");
   console.log("");
@@ -5116,12 +6368,40 @@ function printDetectFramesResult(result: DetectFramesCommandResult): void {
   for (const diagnostic of result.diagnostics) console.log(`Note: ${diagnostic}`);
 }
 
+function printDetectMotionResult(result: DetectMotionCommandResult): void {
+  console.log("openRender detect-motion");
+  console.log("");
+  console.log(`Source: ${result.sourcePath}`);
+  console.log(`Status: ${result.ok ? "ready" : result.code}`);
+  console.log(`Type: ${result.sourceType}`);
+  if (result.suggested) {
+    console.log(`Suggested: ${result.suggested.frames} frame(s), ${result.suggested.fps} fps, ${result.suggested.layout}, loop=${result.suggested.loop}`);
+  }
+  for (const action of result.nextActions) console.log(`Next: ${action}`);
+}
+
 function printNormalizeResult(result: NormalizeCommandResult): void {
   console.log("openRender normalize");
   console.log("");
   console.log(`Preset: ${result.preset}`);
   console.log(`Background: ${result.background.policy} ${result.background.action} (${result.background.confidence})`);
   console.log(`Output: ${result.outputPath}`);
+}
+
+function printNormalizeMotionResult(result: NormalizeMotionCommandResult): void {
+  console.log("openRender normalize motion");
+  console.log("");
+  console.log(`Output: ${result.outputPath}`);
+  console.log(`Motion: ${result.motion.frames} frame(s), ${result.motion.fps} fps, ${result.motion.layout}`);
+}
+
+function printIngestReferenceResult(result: IngestReferenceCommandResult): void {
+  console.log("openRender ingest reference");
+  console.log("");
+  console.log(`Reference: ${result.referenceId}`);
+  console.log(`Role: ${result.role}`);
+  console.log(`Path: ${result.path}`);
+  console.log(result.summary);
 }
 
 function printPackListResult(result: PackListCommandResult): void {
@@ -5239,16 +6519,20 @@ Usage:
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
   openrender context [--json] [--compact] [--wire-map]
+  openrender ingest reference --url <url>|--from <path> --role mechanic|style|layout|logic|motion|mood|character|environment --intent <text> [--notes <text>] [--json]
   openrender doctor [--json]
-  openrender schema contract|output|report|install-plan|pack-manifest|media-p4
+  openrender schema contract|output|report|install-plan|pack-manifest|media
   openrender pack list|inspect [packId] [--json]
   openrender recipe list|inspect|validate [recipeId] [--json]
   openrender plan sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--frames n --frame-size WxH] [--json]
   openrender detect-frames <path> [--frames n] [--json]
+  openrender detect-motion <path> [--fps n] [--frames n] [--json] [--compact]
   openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
+  openrender normalize motion <path> [--fps n] [--frames n] [--layout horizontal_strip|grid|sequence] [--json]
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
   openrender smoke [--target phaser|godot|love2d|pixi|canvas|three|unity] [--run latest] [--timeout seconds] [--screenshot] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
+  openrender compile animation --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--fps n] [--frames n] [--loop] [--start seconds] [--end seconds] [--layout horizontal_strip|grid|sequence] [--background-policy auto|preserve|remove] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json] [--compact]
   openrender compile audio --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type audio.sound_effect|audio.music_loop] [--loop] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
   openrender compile atlas --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type visual.atlas|visual.tileset] [--tile-size WxH] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
   openrender compile ui --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type visual.ui_button|visual.ui_panel|visual.icon_set] [--states default,hover,pressed] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
@@ -5402,6 +6686,7 @@ interface AgentContextCommandResult {
     verification: NonNullable<OpenRenderCompileRecord["run"]["verification"]>["status"] | null;
     installRecorded: boolean;
   } | null;
+  references: ReferenceSummary[];
   overwriteRisks: Array<{
     code: "manifest_exists";
     path: string;
@@ -5426,6 +6711,7 @@ interface CompactAgentContextResult {
   target: AgentContextCommandResult["target"];
   paths: Pick<AgentContextCommandResult["paths"], "assetRoot" | "sourceRoot" | "manifest">;
   latestRun: AgentContextCommandResult["latestRun"];
+  references: ReferenceSummary[];
   tables: {
     overwriteRisks: CompactTable;
   };
@@ -5433,6 +6719,28 @@ interface CompactAgentContextResult {
   wireMap?: WireMapResult;
   localOnly: true;
   capabilities: AgentContextCommandResult["capabilities"];
+}
+
+interface ReferenceSummary {
+  referenceId: string;
+  createdAt: string;
+  role: VisualReferenceRole;
+  intent: string;
+  source: string;
+  sourceKind: "url" | "local_file";
+  downloaded: boolean;
+  notes?: string;
+}
+
+interface IngestReferenceCommandResult {
+  ok: true;
+  referenceId: string;
+  path: string;
+  role: VisualReferenceRole;
+  source: VisualReferenceRecord["source"];
+  summary: string;
+  nextActions: string[];
+  localOnly: true;
 }
 
 interface CompactVerifyCommandResult {
@@ -5492,6 +6800,33 @@ interface CompactDiffCommandResult {
   };
   snapshotPath: string | null;
   rollbackCommand: string | null;
+}
+
+interface CompactDetectMotionResult {
+  ok: boolean;
+  code?: "MOTION_RUNTIME_MISSING";
+  sourceType: DetectMotionCommandResult["sourceType"];
+  recommendation: DetectMotionCommandResult["suggested"];
+  diagnostics: DetectMotionCommandResult["diagnostics"];
+  runtime: DetectMotionCommandResult["runtime"];
+  nextActions: string[];
+}
+
+interface CompactCompileAnimationResult {
+  ok: boolean;
+  runId: string;
+  assetId: string;
+  target: TargetEngine;
+  mediaType: MotionCompileContract["mediaType"];
+  motion: CompileAnimationResult["motion"];
+  assetPath: string;
+  helperPath: string | null;
+  rollbackCommand: string | null;
+  tables: {
+    installPlan: CompactTable;
+    checks: CompactTable;
+  };
+  nextActions: string[];
 }
 
 interface AgentInstallFilePlan {
@@ -5577,6 +6912,26 @@ interface NormalizeCommandResult {
   output: Awaited<ReturnType<typeof normalizeWithPreset>>;
 }
 
+interface NormalizeMotionCommandResult {
+  ok: true;
+  motion: {
+    sourceType: MotionSourceType;
+    durationMs: number;
+    fps: number;
+    frames: number;
+    layout: MotionLayout;
+    loop: boolean;
+  };
+  outputPath: string;
+  output?: {
+    path: string;
+    metadata: ImageMetadata;
+  };
+  frameSlices: FrameSlice[];
+  diagnostics: MotionDiagnostics;
+  localOnly: true;
+}
+
 interface ExplainCommandResult {
   ok: boolean;
   runId: string;
@@ -5653,8 +7008,10 @@ interface WireMapLatestAsset {
   assetPath: string;
   loadPath: string;
   manifestPath: string;
+  helperPath: string | null;
   manifestModule: string;
   runId: string;
+  suggestedUse: string;
   snippets: Array<{
     label: string;
     language: string;
@@ -5691,6 +7048,84 @@ type P4InputMetadata =
       states: string[];
       outputFormat: "png";
     };
+
+type MotionSourceType = "png_sequence" | "sprite_sheet" | "video" | "gif";
+
+interface MotionDiagnostics {
+  duplicateFrameRatio: number;
+  emptyFrameRisk: "none" | "low" | "medium" | "high";
+  boundsJitter: number;
+  loopConfidence: number;
+}
+
+interface MotionInputMetadata {
+  sourcePath: string;
+  sourceType: MotionSourceType;
+  durationMs: number;
+  width: number;
+  height: number;
+  fps: number;
+  frameCount: number;
+  hasAlpha: boolean;
+}
+
+interface MotionValidationResult {
+  status: VerificationStatus;
+  checks: VerifyCommandResult["checks"];
+}
+
+interface DetectMotionCommandResult {
+  ok: boolean;
+  code?: "MOTION_RUNTIME_MISSING";
+  sourcePath: string;
+  sourceType: MotionSourceType;
+  runtime: {
+    ffmpeg: "available" | "missing" | "not_required" | "unknown";
+    ffprobe: "available" | "missing" | "not_required" | "unknown";
+  };
+  durationMs: number | null;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
+  frameCount: number | null;
+  hasAlpha: boolean | null;
+  frameSize: {
+    width: number;
+    height: number;
+  } | null;
+  suggested: {
+    fps: number;
+    frames: number;
+    layout: MotionLayout;
+    loop: boolean;
+  } | null;
+  diagnostics: MotionDiagnostics | null;
+  nextActions: string[];
+  localOnly: true;
+  frameSlices?: FrameSlice[];
+}
+
+interface PreparedMotionAsset {
+  sourceType: MotionSourceType;
+  artifactPath: string;
+  absoluteArtifactPath: string;
+  artifact?: {
+    path: string;
+    metadata: ImageMetadata;
+  };
+  framePreview?: FramePreviewSheetOutput;
+  frameSlices: FrameSlice[];
+  frameCount: number;
+  frameWidth: number;
+  frameHeight: number;
+  spriteLayout: SpriteFrameSetContract["visual"]["layout"];
+  motionLayout: MotionLayout;
+  diagnostics: MotionDiagnostics;
+  input: MotionInputMetadata;
+  frameExtraction: string;
+  startMs?: number;
+  endMs?: number;
+}
 
 interface P4AssetDescriptor {
   id: string;
@@ -5756,6 +7191,52 @@ interface CompileP4Result {
   };
   manifest?: ManifestStrategyResult;
   validation: P4ValidationResult;
+  run: ReturnType<typeof createInitialRun>;
+  installResult?: InstallCommandResult;
+}
+
+interface CompileAnimationResult {
+  dryRun: boolean;
+  projectRoot: string;
+  input: MotionInputMetadata;
+  contract: MotionCompileContract;
+  adapterContract: SpriteFrameSetContract;
+  outputPlan: EngineAssetDescriptor;
+  installPlan: EngineInstallPlan;
+  artifact?: {
+    path: string;
+    metadata: ImageMetadata;
+  };
+  processing: {
+    pipeline: "animation";
+    sourceType: MotionSourceType;
+    layout: MotionLayout;
+    frameExtraction: string;
+    manifestStrategy: ManifestStrategy;
+  };
+  motion: {
+    durationMs: number;
+    fps: number;
+    frames: number;
+    layout: MotionLayout;
+    loop: boolean;
+    diagnostics: MotionDiagnostics;
+  };
+  recipe: {
+    packId: string;
+    packVersion: string;
+    recipeId: string;
+    localOnly: true;
+  };
+  agentSummary: string;
+  generatedSources: {
+    manifest: string;
+    animationHelper?: string;
+  };
+  manifest?: ManifestStrategyResult;
+  validation: MotionValidationResult;
+  frameSlices: FrameSlice[];
+  framePreview?: FramePreviewSheetOutput;
   run: ReturnType<typeof createInitialRun>;
   installResult?: InstallCommandResult;
 }

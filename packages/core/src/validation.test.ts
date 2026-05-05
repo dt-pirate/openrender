@@ -226,7 +226,7 @@ test("validateMediaContract accepts Pixi, Canvas, and Three.js Vite targets", ()
   }
 });
 
-test("validateMediaContract accepts P4 audio, atlas, and UI contracts", () => {
+test("validateMediaContract accepts audio, atlas, and UI contracts", () => {
   const base = {
     schemaVersion: OPENRENDER_DEVKIT_VERSION,
     sourcePath: "tmp/asset.bin",

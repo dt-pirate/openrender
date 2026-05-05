@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.8.2");
+  assert.equal(stdout.trim(), "0.9.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,12 +31,15 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.8\.2/m);
+  assert.match(stdout, /^openRender 0\.9\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
+  assert.match(stdout, /openrender ingest reference --url <url>\|--from <path>/);
+  assert.match(stdout, /openrender detect-motion <path> \[--fps n\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|three\|unity/);
   assert.match(stdout, /compile sprite .*--output-size WxH/);
+  assert.match(stdout, /compile animation .*--fps n/);
   assert.match(stdout, /compile audio .*--media-type audio\.sound_effect\|audio\.music_loop/);
   assert.match(stdout, /compile atlas .*--media-type visual\.atlas\|visual\.tileset/);
   assert.match(stdout, /compile ui .*--media-type visual\.ui_button\|visual\.ui_panel\|visual\.icon_set/);
@@ -59,17 +62,17 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.8.2");
+  assert.equal(schema.properties.schemaVersion.const, "0.9.0");
 
-  const { stdout: p4Stdout } = await execFileAsync(process.execPath, [
+  const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
     "schema",
-    "media-p4"
+    "media"
   ]);
-  const p4Schema = JSON.parse(p4Stdout) as { title: string; properties: { mediaType: { enum: string[] } } };
+  const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(p4Schema.title, "openRender 0.8.2 Media Contracts");
-  assert.equal(p4Schema.properties.mediaType.enum.includes("audio.sound_effect"), true);
+  assert.equal(mediaSchema.title, "openRender 0.9.0 Media Contracts");
+  assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
 test("pack and recipe commands expose built-in local core metadata", async () => {
@@ -98,6 +101,7 @@ test("pack and recipe commands expose built-in local core metadata", async () =>
   assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.audio"));
   assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.atlas"));
   assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.ui"));
+  assert.ok(recipeResult.recipes.some((recipe) => recipe.id === "core.animation"));
 });
 
 test("plan sprite emits a compact install plan", async () => {
@@ -153,6 +157,94 @@ test("detect-frames infers a simple horizontal strip", async () => {
     frameHeight: 1,
     frameCount: 1
   });
+});
+
+test("ingest reference records URL provenance without downloading media", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-reference-"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "ingest",
+    "reference",
+    "--url",
+    "https://example.com/sketch.png",
+    "--role",
+    "layout",
+    "--intent",
+    "Match the screen composition.",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    ok: boolean;
+    path: string;
+    source: { kind: string; downloaded: boolean };
+  };
+
+  assert.equal(result.ok, true);
+  assert.equal(result.source.kind, "url");
+  assert.equal(result.source.downloaded, false);
+  assert.equal(await fileExists(path.join(root, result.path)), true);
+
+  const context = await execFileAsync(process.execPath, [
+    cliPath,
+    "context",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const contextResult = JSON.parse(context.stdout) as { references: Array<{ role: string; intent: string }> };
+  assert.equal(contextResult.references[0]?.role, "layout");
+  assert.equal(contextResult.references[0]?.intent, "Match the screen composition.");
+});
+
+test("detect-motion and normalize motion support PNG frame directories without ffmpeg", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-motion-"));
+  await fs.mkdir(path.join(root, "frames"));
+  await fs.writeFile(path.join(root, "frames", "frame_0001.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(root, "frames", "frame_0002.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "detect-motion",
+    "frames",
+    "--fps",
+    "6",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const detected = JSON.parse(stdout) as {
+    ok: boolean;
+    recommendation: { fps: number; frames: number; layout: string };
+    runtime: { ffmpeg: string };
+  };
+
+  assert.equal(detected.ok, true);
+  assert.equal(detected.runtime.ffmpeg, "not_required");
+  assert.equal(detected.recommendation.fps, 6);
+  assert.equal(detected.recommendation.frames, 2);
+
+  const normalized = await execFileAsync(process.execPath, [
+    cliPath,
+    "normalize",
+    "motion",
+    "frames",
+    "--id",
+    "fx.blink",
+    "--fps",
+    "6",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const normalizeResult = JSON.parse(normalized.stdout) as { ok: boolean; outputPath: string; frameSlices: unknown[] };
+  assert.equal(normalizeResult.ok, true);
+  assert.equal(normalizeResult.frameSlices.length, 2);
+  assert.equal(await fileExists(path.join(root, normalizeResult.outputPath)), true);
 });
 
 test("normalize command writes preset output", async () => {
@@ -248,7 +340,7 @@ test("metadata and smoke commands return local deterministic JSON", async () => 
   assert.equal(smokeResult.command, null);
 });
 
-test("compile audio installs, verifies, reports, and rolls back through the P4 pipeline", async () => {
+test("compile audio installs, verifies, reports, and rolls back through the media pipeline", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-audio-"));
   await fs.writeFile(path.join(root, "sound.wav"), Buffer.from("RIFF0000WAVE", "ascii"));
 
@@ -297,7 +389,7 @@ test("compile audio installs, verifies, reports, and rolls back through the P4 p
   });
   const reportResult = JSON.parse(report.stdout) as { htmlPath: string };
   const reportHtml = await fs.readFile(path.join(root, reportResult.htmlPath), "utf8");
-  assert.match(reportHtml, /P4 Media Pipeline/);
+  assert.match(reportHtml, /Media Asset Pipeline/);
 
   const rollback = await execFileAsync(process.execPath, [cliPath, "rollback", "--run", "latest", "--json"], {
     cwd: root
@@ -311,7 +403,7 @@ test("compile audio installs, verifies, reports, and rolls back through the P4 p
   assert.equal(await fileExists(path.join(root, "public/assets/sfx-hit.wav")), false);
 });
 
-test("compile atlas and ui assets promote P4 metadata into installable verified runs", async () => {
+test("compile atlas and ui assets promote media metadata into installable verified runs", async () => {
   const atlasRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-p4-atlas-"));
   await fs.writeFile(path.join(atlasRoot, "atlas.png"), Buffer.from(onePixelPng, "base64"));
   await fs.writeFile(path.join(atlasRoot, "main.lua"), "function love.load() end\n", "utf8");
@@ -883,7 +975,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.8.2");
+  assert.equal(result.version, "0.9.0");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -1513,6 +1605,103 @@ test("compile sprite can install the compiled run", async () => {
   ]);
   assert.equal(await fileExists(path.join(root, "public/assets/prop-dot.png")), true);
   assert.equal(await fileExists(path.join(root, ".openrender/runs", `${result.run.runId}.install.json`)), true);
+});
+
+test("compile animation dry-run covers every target and install lifecycle works", async () => {
+  for (const target of ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"]) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), `openrender-cli-animation-${target}-`));
+    await fs.mkdir(path.join(root, "frames"));
+    await fs.writeFile(path.join(root, "frames", "frame_0001.png"), Buffer.from(onePixelPng, "base64"));
+    await fs.writeFile(path.join(root, "frames", "frame_0002.png"), Buffer.from(onePixelPng, "base64"));
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      cliPath,
+      "compile",
+      "animation",
+      "--from",
+      "frames",
+      "--id",
+      "fx.blink",
+      "--target",
+      target,
+      "--fps",
+      "6",
+      "--dry-run",
+      "--json",
+      "--compact"
+    ], {
+      cwd: root
+    });
+    const result = JSON.parse(stdout) as {
+      ok: boolean;
+      target: string;
+      mediaType: string;
+      motion: { frames: number; fps: number };
+      tables: { installPlan: { rows: unknown[] } };
+    };
+
+    assert.equal(result.ok, true);
+    assert.equal(result.target, target);
+    assert.equal(result.mediaType, "visual.animation_clip");
+    assert.equal(result.motion.frames, 2);
+    assert.equal(result.motion.fps, 6);
+    assert.equal(result.tables.installPlan.rows.length >= 2, true);
+  }
+
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-animation-lifecycle-"));
+  await fs.mkdir(path.join(root, "frames"));
+  await fs.writeFile(path.join(root, "frames", "frame_0001.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(root, "frames", "frame_0002.png"), Buffer.from(onePixelPng, "base64"));
+  const compile = await execFileAsync(process.execPath, [
+    cliPath,
+    "compile",
+    "animation",
+    "--from",
+    "frames",
+    "--id",
+    "fx.blink",
+    "--target",
+    "canvas",
+    "--fps",
+    "6",
+    "--install",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const compileResult = JSON.parse(compile.stdout) as {
+    run: { runId: string };
+    outputPlan: { assetPath: string; codegenPath: string };
+    installResult: { writes: Array<{ relativePath: string }> };
+  };
+
+  assert.equal(await fileExists(path.join(root, compileResult.outputPlan.assetPath)), true);
+  assert.equal(await fileExists(path.join(root, compileResult.outputPlan.codegenPath)), true);
+  assert.equal(compileResult.installResult.writes.some((write) => write.relativePath.endsWith("fx-blink.ts")), true);
+
+  const verify = await execFileAsync(process.execPath, [cliPath, "verify", "--run", "latest", "--json", "--compact"], { cwd: root });
+  const verifyResult = JSON.parse(verify.stdout) as { ok: boolean; status: string };
+  assert.equal(verifyResult.ok, true);
+  assert.equal(verifyResult.status, "passed");
+
+  const report = await execFileAsync(process.execPath, [cliPath, "report", "--run", "latest", "--json", "--compact"], { cwd: root });
+  const reportResult = JSON.parse(report.stdout) as { rollbackCommand: string | null; reportPath: string };
+  assert.match(reportResult.rollbackCommand ?? "", /openrender rollback --run/);
+  assert.equal(await fileExists(path.join(root, reportResult.reportPath)), true);
+
+  const diff = await execFileAsync(process.execPath, [cliPath, "diff", "--run", "latest", "--json", "--compact"], { cwd: root });
+  const diffResult = JSON.parse(diff.stdout) as { summary: { helperCodeGenerated: number; rollbackAvailable: boolean } };
+  assert.equal(diffResult.summary.helperCodeGenerated > 0, true);
+  assert.equal(diffResult.summary.rollbackAvailable, true);
+
+  const explain = await execFileAsync(process.execPath, [cliPath, "explain", "--run", "latest", "--json", "--compact"], { cwd: root });
+  const explainResult = JSON.parse(explain.stdout) as { ok: boolean; agentSummary: string };
+  assert.equal(explainResult.ok, true);
+  assert.match(explainResult.agentSummary, /animation/);
+
+  await execFileAsync(process.execPath, [cliPath, "rollback", "--run", "latest", "--json"], { cwd: root });
+  assert.equal(await fileExists(path.join(root, compileResult.outputPlan.assetPath)), false);
+  assert.equal(await fileExists(path.join(root, compileResult.outputPlan.codegenPath)), false);
 });
 
 test("compile sprite can install, verify, report, and rollback a Godot run", async () => {

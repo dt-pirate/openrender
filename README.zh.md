@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.8.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.8.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `0.8.2` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的 sprite 图片交接，以及 audio、atlas/tileset、UI 资产管线。
+当前 `0.9.0` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的 sprite 图片交接、visual reference 记录、motion 分析、animation compile/install，以及 audio、atlas/tileset、UI 资产管线。
 
 ## 快速开始
 
@@ -105,6 +105,27 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --json
 ```
 
+安装 animation 资产前，可以先记录 reference 或分析 motion：
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js ingest reference \
+  --url https://example.com/reference.gif \
+  --role motion \
+  --intent "匹配这个动作的节奏和风格。" \
+  --json
+
+node /path/to/openrender/packages/cli/dist/index.js detect-motion tmp/slime_idle_frames --json --compact
+
+node /path/to/openrender/packages/cli/dist/index.js compile animation \
+  --from tmp/slime_idle_frames \
+  --target phaser \
+  --id enemy.slime.idle \
+  --fps 8 \
+  --layout horizontal_strip \
+  --dry-run \
+  --json
+```
+
 确认计划正确后再安装：
 
 ```bash
@@ -153,6 +174,9 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 
 - 项目扫描和 doctor 检查。
 - sprite 计划、dry-run、安装、验证、报告、diff、explain 和 rollback。
+- 安全记录 sketch、mockup、concept image、本地文件或 URL 作为 visual reference。URL 只保存 provenance，不自动下载。
+- `detect-motion` 在安装前分析 video/GIF/PNG sequence；缺少 ffmpeg 时返回明确的下一步。
+- `compile animation` 生成 animation sheet、目标引擎 runtime helper、wire-map handoff、验证、报告、diff、explain 和 rollback。
 - audio、atlas/tileset、UI 的 compile/install/verify/report/rollback 使用同一套本地 run-state 管线。
 - 面向 context、验证、报告、explain、diff 的紧凑 agent 输出。
 - 指向可能代码连接位置的只读 wiring map。
@@ -173,6 +197,8 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 | Canvas + Vite | PNG 资源、TypeScript manifest、图片加载和帧绘制辅助代码 |
 | Unity | `Assets/OpenRender` 下的 PNG/audio 资源、C# manifest、sprite/media 辅助类 |
 
+Animation compile 复用同一套 target adapters。Phaser、Godot、LOVE2D、Unity 提供更深入的 runtime helper；PixiJS、Three.js、Canvas 提供 render loop 连接所需的 helper path 和 snippet。openRender 仍然不会自动修改 game code。
+
 ## 代理规则
 
 - 在广泛读取文件或假设项目类型前运行 `context --json`。
@@ -180,6 +206,9 @@ openRender 将运行状态保存在 `.openrender/` 下，包括 artifacts、prev
 - 编辑连接生成 helper 的游戏代码前使用 `context --json --wire-map`。
 - 在陌生项目中写文件前运行 `doctor --json`。
 - 在 `--install` 前使用 `plan sprite --json` 或 `compile sprite --dry-run --json`。
+- 用户提供 sketch、mockup、concept image、video URL 或本地 reference file 时，先用 `ingest reference --json` 记录。
+- 选择 animation fps、frame count、layout、loop 前使用 `detect-motion --json --compact`。
+- 安装 animation asset 前使用 `compile animation --dry-run --json` 查看计划。
 - 安装前检查 `installPlan.files`。
 - 除非用户接受覆盖目标文件，不要传入 `--force`。
 - 生成的 manifest 默认使用 `merge` 累积条目；只有在需要单条目或不写共享 manifest 时才使用 `--manifest-strategy replace|isolated`。

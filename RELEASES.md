@@ -8,19 +8,79 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `0.8.2 Three.js Support` |
-| Package/CLI version | `0.8.2` |
+| Current implementation baseline | `0.9.0 Animation Runtime Integration` |
+| Package/CLI version | `0.9.0` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v0.8.2`](https://github.com/dt-pirate/openrender/releases/tag/v0.8.2) |
-| Release timestamp | 2026-05-05 10:00 KST (2026-05-05 01:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.2` |
+| Release channel | GitHub release [`v0.9.0`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.0) |
+| Release timestamp | 2026-05-05 18:00 KST (2026-05-05 09:00 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.0` |
+
+## 0.9.0 Animation Runtime Integration
+
+`0.9.0` is the current implemented package and CLI version.
+
+Released: 2026-05-05 18:00 KST (2026-05-05 09:00 UTC).
+
+### Added
+
+- New motion media contracts for `visual.animation_clip`, `visual.sprite_sequence`, `visual.effect_loop`, `visual.ui_motion`, and `visual.reference_video`.
+- `compile animation` for local PNG frame directories, sprite sheets, video, and GIF inputs, producing engine-ready animation sheets plus manifest/helper output.
+- Tiered runtime integration helpers for Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas without automatic game-code patching.
+- `normalize motion` for converting motion inputs into deterministic local animation sheets.
+- Wire-map latest asset summaries now include helper path and suggested usage for animation runs.
+- HTML and compact JSON reports now surface motion diagnostics, frame slices, helper paths, next actions, and rollback commands.
+- Regression coverage for every target's `compile animation --dry-run`, plus install/verify/report/diff/explain/rollback lifecycle coverage.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+node --check docs/openrender-i18n.js
+```
+
+Expected CLI version:
+
+```text
+0.9.0
+```
+
+## 0.8.4 Detect Motion
+
+`0.8.4` introduced motion analysis without installing extracted frames.
+
+Released: 2026-05-05 17:00 KST (2026-05-05 08:00 UTC).
+
+### Added
+
+- `detect-motion <path> --json [--compact]` for video, GIF, sprite sheet, and PNG frame directory analysis.
+- PNG frame directory analysis without ffmpeg.
+- ffprobe-based video/GIF metadata when available, with `MOTION_RUNTIME_MISSING` guidance when local video tooling is missing.
+- Motion diagnostics for duration, dimensions, fps, frame count, alpha, suggested layout, loop hint, duplicate frame ratio, empty frame risk, bounds jitter, and next actions.
+
+## 0.8.3 Visual Reference Foundation
+
+`0.8.3` introduced safe visual reference records for agent context.
+
+Released: 2026-05-05 16:00 KST (2026-05-05 07:00 UTC).
+
+### Added
+
+- `ingest reference --url <url> --role <role> --intent <text> [--notes <text>] --json`.
+- `ingest reference --from <path> --role <role> --intent <text> [--notes <text>] --json`.
+- Local `.openrender/references/` records for mechanic, style, layout, logic, motion, mood, character, and environment references.
+- Remote URL references are stored as provenance only; openRender does not download remote media.
+- `context --json` and `context --json --compact` include reference summaries for short agent handoff.
 
 ## 0.8.2 Three.js Support
 
-`0.8.2` is the current implemented package and CLI version.
+`0.8.2` was the Three.js Support package and CLI version.
 
 Released: 2026-05-05 10:00 KST (2026-05-05 01:00 UTC).
 

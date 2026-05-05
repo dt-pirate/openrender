@@ -60,6 +60,37 @@ export interface FrameDetectionResult {
   diagnostics: string[];
 }
 
+export interface PngSequenceDetectionResult {
+  ok: true;
+  sourcePath: string;
+  sourceType: "png_sequence";
+  framePaths: string[];
+  durationMs: number;
+  width: number;
+  height: number;
+  fps: number;
+  frameCount: number;
+  hasAlpha: boolean;
+  diagnostics: {
+    duplicateFrameRatio: number;
+    emptyFrameRisk: "none" | "low" | "medium" | "high";
+    boundsJitter: number;
+    loopConfidence: number;
+  };
+  suggested: {
+    fps: number;
+    frames: number;
+    layout: "horizontal_strip" | "grid" | "sequence";
+    loop: boolean;
+  };
+}
+
+export interface ComposedFrameSequenceOutput extends NormalizedImageOutput {
+  frameSlices: FrameSlice[];
+  frameCount: number;
+  layout: "horizontal_strip" | "grid";
+}
+
 export interface SpriteInvariantCheck {
   name:
     | "frameCountMatch"
@@ -778,6 +809,104 @@ export async function createFramePreviewSheet(input: {
   };
 }
 
+export async function detectPngSequence(input: {
+  sourcePath: string;
+  fps?: number;
+}): Promise<PngSequenceDetectionResult> {
+  const entries = await fs.readdir(input.sourcePath, { withFileTypes: true });
+  const framePaths = entries
+    .filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".png")
+    .map((entry) => path.join(input.sourcePath, entry.name))
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+
+  if (framePaths.length === 0) {
+    throw new Error(`No PNG frames found in ${input.sourcePath}.`);
+  }
+
+  const first = await loadImageMetadata(framePaths[0] ?? "");
+  const fps = input.fps ?? 12;
+  let hasAlpha = first.hasAlpha;
+  for (const framePath of framePaths.slice(1)) {
+    const metadata = await loadImageMetadata(framePath);
+    if (metadata.width !== first.width || metadata.height !== first.height) {
+      throw new Error(`PNG sequence frame sizes must match. ${framePath} is ${metadata.width}x${metadata.height}, expected ${first.width}x${first.height}.`);
+    }
+    hasAlpha = hasAlpha || metadata.hasAlpha;
+  }
+
+  const diagnostics = await analyzeFrameFiles(framePaths);
+
+  return {
+    ok: true,
+    sourcePath: input.sourcePath,
+    sourceType: "png_sequence",
+    framePaths,
+    durationMs: Math.round((framePaths.length / fps) * 1000),
+    width: first.width,
+    height: first.height,
+    fps,
+    frameCount: framePaths.length,
+    hasAlpha,
+    diagnostics,
+    suggested: {
+      fps,
+      frames: framePaths.length,
+      layout: framePaths.length > 12 ? "grid" : "horizontal_strip",
+      loop: diagnostics.loopConfidence >= 0.5
+    }
+  };
+}
+
+export async function composeFrameSequenceToSpriteSheet(input: {
+  framePaths: string[];
+  outputPath: string;
+  layout: "horizontal_strip" | "grid";
+}): Promise<ComposedFrameSequenceOutput> {
+  if (input.framePaths.length === 0) {
+    throw new Error("Cannot compose an empty frame sequence.");
+  }
+
+  const first = await loadImageMetadata(input.framePaths[0] ?? "");
+  const frameCount = input.framePaths.length;
+  const columns = input.layout === "horizontal_strip" ? frameCount : Math.ceil(Math.sqrt(frameCount));
+  const rows = input.layout === "horizontal_strip" ? 1 : Math.ceil(frameCount / columns);
+  const width = first.width * columns;
+  const height = first.height * rows;
+  const frameSlices: FrameSlice[] = input.framePaths.map((_, index) => ({
+    index,
+    x: (index % columns) * first.width,
+    y: Math.floor(index / columns) * first.height,
+    width: first.width,
+    height: first.height
+  }));
+  const composites = input.framePaths.map((framePath, index) => ({
+    input: framePath,
+    left: (index % columns) * first.width,
+    top: Math.floor(index / columns) * first.height
+  }));
+
+  await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
+  await sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite(composites)
+    .png()
+    .toFile(input.outputPath);
+
+  return {
+    path: input.outputPath,
+    metadata: await loadImageMetadata(input.outputPath),
+    frameSlices,
+    frameCount,
+    layout: input.layout
+  };
+}
+
 export async function cropAlphaBoundsToPng(input: {
   sourcePath: string;
   outputPath: string;
@@ -968,6 +1097,54 @@ function normalizeFormat(format: string | undefined): SupportedImageFormat | nul
   if (format === "jpg") return "jpeg";
   if (format === "jpeg" || format === "png" || format === "webp") return format;
   return null;
+}
+
+async function analyzeFrameFiles(framePaths: string[]): Promise<PngSequenceDetectionResult["diagnostics"]> {
+  const stats = [];
+  for (let index = 0; index < framePaths.length; index += 1) {
+    const framePath = framePaths[index] ?? "";
+    const { data, info } = await sharp(framePath, { failOn: "error" })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    stats.push(readFrameStats(data, info, {
+      index,
+      x: 0,
+      y: 0,
+      width: info.width,
+      height: info.height
+    }));
+  }
+
+  const duplicatePairs = findDuplicateFramePairs(stats);
+  const emptyRatio = stats.filter((stat) => stat.alphaPixels === 0).length / Math.max(stats.length, 1);
+  const bounds = stats.filter((stat) => stat.bounds !== null).map((stat) => stat.bounds as PixelBounds);
+  const boundsJitter = Math.max(
+    range(bounds.map((bound) => bound.x)),
+    range(bounds.map((bound) => bound.y)),
+    range(bounds.map((bound) => bound.width)),
+    range(bounds.map((bound) => bound.height))
+  );
+  const firstHash = stats[0]?.hash;
+  const lastHash = stats[stats.length - 1]?.hash;
+  const loopConfidence = firstHash && lastHash && firstHash === lastHash
+    ? 0.92
+    : stats.length >= 3 && duplicatePairs.length > 0
+      ? 0.62
+      : 0.35;
+
+  return {
+    duplicateFrameRatio: roundRatio(duplicatePairs.length / Math.max(stats.length - 1, 1)),
+    emptyFrameRisk: emptyRatio === 0
+      ? "none"
+      : emptyRatio < 0.1
+        ? "low"
+        : emptyRatio < 0.3
+          ? "medium"
+          : "high",
+    boundsJitter,
+    loopConfidence: roundRatio(loopConfidence)
+  };
 }
 
 function cleanupAlphaEdges(data: Buffer, alphaThreshold: number): Buffer {

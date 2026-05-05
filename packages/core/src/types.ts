@@ -1,4 +1,4 @@
-export const OPENRENDER_DEVKIT_VERSION = "0.8.2" as const;
+export const OPENRENDER_DEVKIT_VERSION = "0.9.0" as const;
 
 export type OpenRenderDevkitVersion = typeof OPENRENDER_DEVKIT_VERSION;
 export type TargetEngine = "phaser" | "godot" | "love2d" | "pixi" | "canvas" | "three" | "unity";
@@ -6,6 +6,11 @@ export type TargetFramework = "vite" | "godot" | "love2d" | "unity";
 export type VisualMediaType =
   | "visual.transparent_sprite"
   | "visual.sprite_frame_set"
+  | "visual.animation_clip"
+  | "visual.sprite_sequence"
+  | "visual.effect_loop"
+  | "visual.ui_motion"
+  | "visual.reference_video"
   | "visual.tileset"
   | "visual.atlas"
   | "visual.ui_button"
@@ -15,6 +20,16 @@ export type AudioMediaType = "audio.sound_effect" | "audio.music_loop";
 export type MediaType = VisualMediaType | AudioMediaType;
 export type OutputFormat = "png";
 export type SpriteLayout = "horizontal" | "horizontal_strip" | "grid";
+export type MotionLayout = "horizontal_strip" | "grid" | "sequence";
+export type VisualReferenceRole =
+  | "mechanic"
+  | "style"
+  | "layout"
+  | "logic"
+  | "motion"
+  | "mood"
+  | "character"
+  | "environment";
 export type RunStatus =
   | "created"
   | "input_loaded"
@@ -123,6 +138,39 @@ export interface SpriteFrameSetContract {
   verify?: Partial<VerifyContract>;
 }
 
+export interface MotionContract {
+  schemaVersion: OpenRenderDevkitVersion;
+  mediaType:
+    | "visual.animation_clip"
+    | "visual.sprite_sequence"
+    | "visual.effect_loop"
+    | "visual.ui_motion"
+    | "visual.reference_video";
+  sourcePath: string;
+  target: TargetContract;
+  id: string;
+  motion: {
+    layout: MotionLayout;
+    fps: number;
+    frames: number;
+    loop: boolean;
+    startMs?: number;
+    endMs?: number;
+  };
+  visual: {
+    layout: SpriteLayout;
+    frames: number;
+    frameWidth: number;
+    frameHeight: number;
+    fps: number;
+    padding: number;
+    background: "transparent" | "solid";
+    outputFormat: OutputFormat;
+  };
+  install: InstallContract;
+  verify?: Partial<VerifyContract>;
+}
+
 export interface AudioContract {
   schemaVersion: OpenRenderDevkitVersion;
   mediaType: AudioMediaType;
@@ -172,9 +220,32 @@ export interface UiAssetContract {
 export type MediaContract =
   | TransparentSpriteContract
   | SpriteFrameSetContract
+  | MotionContract
   | AudioContract
   | AtlasContract
   | UiAssetContract;
+
+export interface VisualReferenceRecord {
+  schemaVersion: OpenRenderDevkitVersion;
+  referenceId: string;
+  createdAt: string;
+  role: VisualReferenceRole;
+  intent: string;
+  notes?: string;
+  source:
+    | {
+        kind: "url";
+        url: string;
+        downloaded: false;
+      }
+    | {
+        kind: "local_file";
+        path: string;
+        bytes: number;
+        hash?: string;
+      };
+  localOnly: true;
+}
 
 export interface OutputDescriptor {
   kind:

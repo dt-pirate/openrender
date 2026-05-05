@@ -53,6 +53,25 @@ const outputKinds = [
 
 const targetEngines = ["phaser", "godot", "love2d", "pixi", "canvas", "three", "unity"] as const;
 const targetFrameworks = ["vite", "godot", "love2d", "unity"] as const;
+const motionMediaTypes = [
+  "visual.animation_clip",
+  "visual.sprite_sequence",
+  "visual.effect_loop",
+  "visual.ui_motion",
+  "visual.reference_video"
+] as const;
+const mediaTypes = [
+  "visual.transparent_sprite",
+  "visual.sprite_frame_set",
+  ...motionMediaTypes,
+  "audio.sound_effect",
+  "audio.music_loop",
+  "visual.tileset",
+  "visual.atlas",
+  "visual.ui_button",
+  "visual.ui_panel",
+  "visual.icon_set"
+] as const;
 
 export function validateOpenRenderConfig(input: unknown): SchemaValidationResult<OpenRenderConfig> {
   const issues: SchemaValidationIssue[] = [];
@@ -108,17 +127,7 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
   if (!root) return invalid(issues);
 
   expectOneOf(root.schemaVersion, "$.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
-  expectOneOf(root.mediaType, "$.mediaType", [
-    "visual.transparent_sprite",
-    "visual.sprite_frame_set",
-    "audio.sound_effect",
-    "audio.music_loop",
-    "visual.tileset",
-    "visual.atlas",
-    "visual.ui_button",
-    "visual.ui_panel",
-    "visual.icon_set"
-  ], issues);
+  expectOneOf(root.mediaType, "$.mediaType", mediaTypes, issues);
   expectString(root.sourcePath, "$.sourcePath", issues);
   expectString(root.id, "$.id", issues);
 
@@ -142,6 +151,30 @@ export function validateMediaContract(input: unknown): SchemaValidationResult<Me
     expectPositiveNumber(visual.frameWidth, "$.visual.frameWidth", issues);
     expectPositiveNumber(visual.frameHeight, "$.visual.frameHeight", issues);
     if (visual.fps !== undefined) expectPositiveNumber(visual.fps, "$.visual.fps", issues);
+    expectNonNegativeNumber(visual.padding, "$.visual.padding", issues);
+    expectOneOf(visual.background, "$.visual.background", ["transparent", "solid"], issues);
+    expectOneOf(visual.outputFormat, "$.visual.outputFormat", ["png"], issues);
+  }
+
+  const motion = root.motion === undefined ? undefined : expectRecord(root.motion, "$.motion", issues);
+  if (typeof root.mediaType === "string" && isMotionMediaType(root.mediaType) && !motion) {
+    issues.push({ path: "$.motion", message: "motion contract is required for motion media types" });
+  }
+  if (motion && typeof root.mediaType === "string" && isMotionMediaType(root.mediaType)) {
+    expectOneOf(motion.layout, "$.motion.layout", ["horizontal_strip", "grid", "sequence"], issues);
+    expectPositiveNumber(motion.fps, "$.motion.fps", issues);
+    expectPositiveNumber(motion.frames, "$.motion.frames", issues);
+    expectBoolean(motion.loop, "$.motion.loop", issues);
+    if (motion.startMs !== undefined) expectNonNegativeNumber(motion.startMs, "$.motion.startMs", issues);
+    if (motion.endMs !== undefined) expectPositiveNumber(motion.endMs, "$.motion.endMs", issues);
+  }
+
+  if (visual && typeof root.mediaType === "string" && isMotionMediaType(root.mediaType)) {
+    expectOneOf(visual.layout, "$.visual.layout", ["horizontal", "horizontal_strip", "grid"], issues);
+    expectPositiveNumber(visual.frames, "$.visual.frames", issues);
+    expectPositiveNumber(visual.frameWidth, "$.visual.frameWidth", issues);
+    expectPositiveNumber(visual.frameHeight, "$.visual.frameHeight", issues);
+    expectPositiveNumber(visual.fps, "$.visual.fps", issues);
     expectNonNegativeNumber(visual.padding, "$.visual.padding", issues);
     expectOneOf(visual.background, "$.visual.background", ["transparent", "solid"], issues);
     expectOneOf(visual.outputFormat, "$.visual.outputFormat", ["png"], issues);
@@ -184,17 +217,7 @@ export function validateOpenRenderRun(input: unknown): SchemaValidationResult<Op
   const contract = expectRecord(root.contract, "$.contract", issues);
   if (contract) {
     expectOneOf(contract.schemaVersion, "$.contract.schemaVersion", [OPENRENDER_DEVKIT_VERSION], issues);
-    expectOneOf(contract.mediaType, "$.contract.mediaType", [
-      "visual.transparent_sprite",
-      "visual.sprite_frame_set",
-      "audio.sound_effect",
-      "audio.music_loop",
-      "visual.tileset",
-      "visual.atlas",
-      "visual.ui_button",
-      "visual.ui_panel",
-      "visual.icon_set"
-    ], issues);
+    expectOneOf(contract.mediaType, "$.contract.mediaType", mediaTypes, issues);
     expectString(contract.id, "$.contract.id", issues);
   }
 
@@ -223,6 +246,10 @@ export function validateOpenRenderRun(input: unknown): SchemaValidationResult<Op
   }
 
   return issues.length === 0 ? valid(input as OpenRenderRun) : invalid(issues);
+}
+
+function isMotionMediaType(value: string): boolean {
+  return (motionMediaTypes as readonly string[]).includes(value);
 }
 
 function validateTargetContract(input: unknown, path: string, issues: SchemaValidationIssue[]): void {
