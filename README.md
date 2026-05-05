@@ -13,10 +13,8 @@
     <a href="./README.es.md">Español</a>
   </p>
   <p>
-    <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
     <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
-    <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -212,25 +210,6 @@ schemas                    JSON schemas for contracts, outputs, reports, install
 fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
-
-## Docs Deployment
-
-The canonical public documentation URL is:
-
-```text
-https://docs-gamma-orcin.vercel.app
-```
-
-Use this Vercel production alias in GitHub README files, release notes, issues, and user-facing references. Vercel also creates a unique URL for every deployment, such as `https://docs-<hash>-stelify87s-projects.vercel.app`; treat those URLs as deployment artifacts for inspection, not stable documentation links.
-
-Deploy the configured Vercel production site from the release environment:
-
-```bash
-vercel deploy <site-source> --prod -y
-vercel inspect <deployment-url>
-```
-
-After deploy, confirm the aliases include `https://docs-gamma-orcin.vercel.app`. GitHub Pages is not the canonical docs path; keep the Vercel production alias as the public URL.
 
 ## Development
 

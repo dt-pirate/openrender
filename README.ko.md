@@ -13,10 +13,8 @@
     <a href="./README.es.md">Español</a>
   </p>
   <p>
-    <a href="https://docs-gamma-orcin.vercel.app">Docs</a> •
     <a href="./AGENT_USAGE.md">Agent Usage</a> •
     <a href="./AGENT_USAGE.md#skill-setup">Agent Skill</a> •
-    <a href="https://docs-gamma-orcin.vercel.app/llm-reference.html">LLM Reference</a> •
     <a href="./ADAPTER_AUTHORING.md">Adapter Authoring</a> •
     <a href="./RECIPES.md">Recipes</a> •
     <a href="./ROADMAP.md">Roadmap</a> •
@@ -203,25 +201,6 @@ schemas                    JSON schemas for contracts, outputs, reports, install
 fixtures                   golden fixture corpus for adapter regression checks
 recipes                    local recipe metadata for supported targets
 ```
-
-## Docs 배포
-
-공식 공개 문서 URL은 다음 고정 Vercel production alias입니다:
-
-```text
-https://docs-gamma-orcin.vercel.app
-```
-
-GitHub README, 릴리스 노트, 이슈, 사용자에게 전달하는 링크에는 이 Vercel production alias를 사용합니다. Vercel은 배포할 때마다 `https://docs-<hash>-stelify87s-projects.vercel.app` 같은 고유 URL도 만들지만, 이 URL은 배포 결과 확인용 산출물이며 안정적인 문서 링크가 아닙니다.
-
-릴리스 환경에서 설정된 Vercel production 사이트를 배포합니다:
-
-```bash
-vercel deploy <site-source> --prod -y
-vercel inspect <deployment-url>
-```
-
-배포 후 alias 목록에 `https://docs-gamma-orcin.vercel.app`가 포함되어 있는지 확인합니다. GitHub Pages는 공식 문서 경로가 아니며, 공개 URL은 Vercel production alias로 유지합니다.
 
 ## 개발
 

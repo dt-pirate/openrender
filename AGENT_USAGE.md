@@ -71,5 +71,3 @@ Rules:
 - Avoid `--force` unless the user accepts overwriting generated destinations.
 - Use `rollback --run latest --json` only for openRender install outputs.
 - Do not enable upload, telemetry, sync, login, billing, or cloud report assumptions.
-
-See the public LLM reference: https://docs-gamma-orcin.vercel.app/llm-reference.html

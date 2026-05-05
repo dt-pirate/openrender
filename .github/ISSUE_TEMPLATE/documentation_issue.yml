@@ -1,5 +1,5 @@
 name: Documentation issue
-description: Report unclear or outdated public docs.
+description: Report unclear or outdated Developer Kit docs.
 title: "[Docs]: "
 labels: ["docs"]
 body:
@@ -7,6 +7,6 @@ body:
     id: docs
     attributes:
       label: Documentation issue
-      description: Link the root doc or README section and describe the correction.
+      description: Link the README, release note, CLI, adapter, recipe, MCP, or agent usage section and describe the correction.
     validations:
       required: true

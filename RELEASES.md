@@ -8,7 +8,7 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current docs baseline | `0.8.2 Three.js Support` |
+| Current implementation baseline | `0.8.2 Three.js Support` |
 | Package/CLI version | `0.8.2` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
@@ -17,7 +17,6 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 | Release channel | GitHub release [`v0.8.2`](https://github.com/dt-pirate/openrender/releases/tag/v0.8.2) |
 | Release timestamp | 2026-05-05 10:00 KST (2026-05-05 01:00 UTC) |
 | GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.2` |
-| Public docs | `https://docs-gamma-orcin.vercel.app` |
 
 ## 0.8.2 Three.js Support
 
@@ -240,15 +239,12 @@ Before publishing a tagged release:
 - `pnpm typecheck` passes.
 - `pnpm test` passes.
 - README language links resolve.
-- GitHub-facing docs use `https://docs-gamma-orcin.vercel.app` as the canonical public docs URL.
-- Per-deployment Vercel URLs are not used as stable links in README, release notes, or issue templates.
 - Agent-facing JSON workflows remain local-first and do not require account, billing, telemetry, cloud sync, or hosted execution.
 - Release notes describe implemented behavior only.
 
 ## Related Documents
 
 - [README](./README.md)
-- [Public Docs](https://docs-gamma-orcin.vercel.app)
 - [Roadmap](./ROADMAP.md)
 - [Agent Usage](./AGENT_USAGE.md)
 - [Adapter Authoring](./ADAPTER_AUTHORING.md)
