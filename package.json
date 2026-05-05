@@ -2,7 +2,7 @@
   "name": "openrender-repo",
   "version": "0.8.2",
   "private": true,
-  "description": "open infrastructure for AI agents turning generated media into engine-ready playable projects",
+  "description": "AI-native infrastructure for agents that install generated game assets into real engine projects.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
