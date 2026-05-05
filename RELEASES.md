@@ -14,8 +14,8 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | Git tag `v0.8.2` |
-| Release timestamp | 2026-05-05 |
+| Release channel | GitHub release [`v0.8.2`](https://github.com/dt-pirate/openrender/releases/tag/v0.8.2) |
+| Release timestamp | 2026-05-05 10:00 KST (2026-05-05 01:00 UTC) |
 | GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.8.2` |
 | Public docs | `https://docs-gamma-orcin.vercel.app` |
 
@@ -23,7 +23,7 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 `0.8.2` is the current implemented package and CLI version.
 
-Released: 2026-05-05.
+Released: 2026-05-05 10:00 KST (2026-05-05 01:00 UTC).
 
 ### Added
 
