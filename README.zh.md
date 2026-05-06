@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `0.9.2` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的 sprite 图片交接、visual reference 记录、motion 分析、animation compile/install，以及 audio、atlas/tileset、UI 资产管线，以及 agent loop task packet。
+当前 `1.0.0` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的精灵图片交接、视觉参考记录、动作分析、动画编译/安装，以及音频、图集/瓦片集、UI 资产管线、循环执行记录、引擎任务包和循环完成记录。
 
 ## 快速开始
 

@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.9.2` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, and agent loop task packets for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.0.0` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, and loop completion records for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -144,6 +144,7 @@ node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json -
 node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js loop attach --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js loop run animation --from tmp/slime_idle_frames --target phaser --id enemy.slime.idle --fps 8 --install --json --compact
+node /path/to/openrender/packages/cli/dist/index.js loop complete --notes "Helper wired and checked in game scene." --json --compact
 node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
 ```

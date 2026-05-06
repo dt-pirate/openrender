@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.2"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender es un Developer Kit local-first para agentes de codigo con IA que nec
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-El core actual `0.9.2` soporta handoff de sprites, registro de visual references, analisis de motion, compile/install de animation, y pipelines de audio, atlas/tileset, UI y paquetes de tarea de agent loop para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
+El core actual `1.0.0` soporta entrega de sprites, registro de referencias visuales, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor y registros de finalizacion del loop para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 

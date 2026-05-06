@@ -1,6 +1,6 @@
 {
   "name": "openrender-repo",
-  "version": "0.9.2",
+  "version": "1.0.0",
   "private": true,
   "description": "AI-native infrastructure for agents that install generated game assets into real engine projects.",
   "license": "Apache-2.0",

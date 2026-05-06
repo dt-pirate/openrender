@@ -8,15 +8,43 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `0.9.2 Loop Runner and Engine Packets` |
-| Package/CLI version | `0.9.2` |
+| Current implementation baseline | `1.0.0 Agent-Native Game Dev Infrastructure` |
+| Package/CLI version | `1.0.0` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v0.9.2`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.2) |
+| Release channel | GitHub release [`v1.0.0`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.0) |
 | Release timestamp | 2026-05-06 21:00 KST (2026-05-06 12:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.2` |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.0` |
+
+## 1.0.0 Agent-Native Game Dev Infrastructure
+
+`1.0.0` closes the first full agent-native game development loop: existing media becomes engine-ready assets, verification and reports stay attached, the next agent task stays compact, and rollback remains available.
+
+Released: 2026-05-06 21:00 KST (2026-05-06 12:00 UTC).
+
+### Added
+
+- `loop complete [--notes <text>]` to mark a handoff loop complete after a developer or agent wires and validates the generated helper in game code.
+- Completed loop state records `completedAt`, optional completion notes, latest runId, latest task path, rollback boundary, and no-regeneration guarantees.
+- Agent task packets now preserve completion state while still keeping openRender's boundary: no model provider calls, no asset regeneration, no remote download, and no automatic gameplay code patching.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+1.0.0
+```
 
 ## 0.9.2 Loop Runner and Engine Packets
 

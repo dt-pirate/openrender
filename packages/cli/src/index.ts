@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.9.2";
+const CLI_VERSION = "1.0.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 0.9.2 Media Contracts",
+    title: "openRender 1.0.0 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -590,7 +590,8 @@ type LoopCommandResult =
   | LoopRunCommandResult
   | LoopAttachCommandResult
   | LoopStatusCommandResult
-  | LoopTaskCommandResult;
+  | LoopTaskCommandResult
+  | LoopCompleteCommandResult;
 type LoopStatus = "created" | "needs_action" | "ready_for_wiring" | "failed" | "completed";
 type LoopIterationStatus = "recorded" | "needs_action" | "ready_for_wiring" | "failed";
 
@@ -606,6 +607,8 @@ interface OpenRenderLoopRecord {
   sourcePath?: string;
   status: LoopStatus;
   latestRunId?: string;
+  completedAt?: string;
+  completionNotes?: string;
   iterations: OpenRenderLoopIteration[];
   paths: {
     loop: string;
@@ -688,6 +691,15 @@ interface LoopTaskCommandResult {
   loopId: string;
   path: string;
   content: string;
+}
+
+interface LoopCompleteCommandResult {
+  ok: true;
+  operation: "loop.complete";
+  loop: OpenRenderLoopRecord;
+  taskPath: string;
+  summaryPath: string;
+  note: string | null;
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -2387,7 +2399,8 @@ async function handleLoopCommand(parsed: ParsedFlags): Promise<LoopCommandResult
   if (subcommand === "attach") return attachLoopRun(parsed);
   if (subcommand === "status") return statusLoop(parsed);
   if (subcommand === "task") return taskLoop(parsed);
-  throw new Error("Unsupported loop command. Use start, attach, status, or task.");
+  if (subcommand === "complete" || subcommand === "finish") return completeLoop(parsed);
+  throw new Error("Unsupported loop command. Use start, run, attach, status, task, or complete.");
 }
 
 async function startLoop(parsed: ParsedFlags): Promise<LoopStartCommandResult> {
@@ -2598,6 +2611,31 @@ async function taskLoop(parsed: ParsedFlags): Promise<LoopTaskCommandResult> {
     loopId: loop.loopId,
     path: loop.paths.latestTask,
     content
+  };
+}
+
+async function completeLoop(parsed: ParsedFlags): Promise<LoopCompleteCommandResult> {
+  const projectRoot = process.cwd();
+  const loop = await readLoop(projectRoot, readLoopId(parsed));
+  const completedAt = new Date().toISOString();
+  const note = readOptionalStringFlag(parsed, "notes") ?? readOptionalStringFlag(parsed, "note") ?? null;
+  const completedLoop: OpenRenderLoopRecord = {
+    ...loop,
+    updatedAt: completedAt,
+    completedAt,
+    completionNotes: note ?? loop.completionNotes,
+    status: "completed"
+  };
+  const latestRecord = completedLoop.latestRunId ? await readCompileRecord(projectRoot, completedLoop.latestRunId) : null;
+  await persistLoop(projectRoot, completedLoop);
+  await persistLoopTask(projectRoot, completedLoop, latestRecord);
+  return {
+    ok: true,
+    operation: "loop.complete",
+    loop: completedLoop,
+    taskPath: completedLoop.paths.latestTask,
+    summaryPath: completedLoop.paths.latestSummary,
+    note
   };
 }
 
@@ -2844,6 +2882,8 @@ async function createLoopTaskMarkdown(
     `Status: ${loop.status}`,
     `Target: ${loop.target}`,
     `Asset: ${loop.assetId ?? latestRecord?.contract.id ?? "unknown"}`,
+    ...(loop.completedAt ? [`Completed: ${loop.completedAt}`] : []),
+    ...(loop.completionNotes ? [`Completion notes: ${loop.completionNotes}`] : []),
     "",
     "Boundary:",
     "- Do not call model provider APIs.",
@@ -2962,6 +3002,7 @@ interface CompactLoopRecord {
   target: OpenRenderLoopRecord["target"];
   status: LoopStatus;
   latestRunId: string | null;
+  completedAt: string | null;
   iterations: number;
   latestTaskPath: string;
   modelProviderCalls: false;
@@ -2975,6 +3016,7 @@ function compactLoopRecord(loop: OpenRenderLoopRecord): CompactLoopRecord {
     target: loop.target,
     status: loop.status,
     latestRunId: loop.latestRunId ?? null,
+    completedAt: loop.completedAt ?? null,
     iterations: loop.iterations.length,
     latestTaskPath: loop.paths.latestTask,
     modelProviderCalls: false,
@@ -4101,7 +4143,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.9.2: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 1.0.0: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -7286,6 +7328,7 @@ Usage:
   openrender loop attach [--loop latest|loopId] [--run latest|runId] [--goal <text>] [--json] [--compact]
   openrender loop status [--loop latest|loopId] [--json] [--compact]
   openrender loop task [--loop latest|loopId] [--json]
+  openrender loop complete [--loop latest|loopId] [--notes <text>] [--json] [--compact]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest|media
   openrender pack list|inspect [packId] [--json]

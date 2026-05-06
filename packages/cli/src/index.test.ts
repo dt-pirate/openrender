@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.9.2");
+  assert.equal(stdout.trim(), "1.0.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,11 +31,12 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.9\.2/m);
+  assert.match(stdout, /^openRender 1\.0\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender ingest reference --url <url>\|--from <path>/);
   assert.match(stdout, /openrender loop run sprite\|animation\|audio\|atlas\|ui/);
+  assert.match(stdout, /openrender loop complete/);
   assert.match(stdout, /openrender detect-motion <path> \[--fps n\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|three\|unity/);
@@ -63,7 +64,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.9.2");
+  assert.equal(schema.properties.schemaVersion.const, "1.0.0");
 
   const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -72,7 +73,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(mediaSchema.title, "openRender 0.9.2 Media Contracts");
+  assert.equal(mediaSchema.title, "openRender 1.0.0 Media Contracts");
   assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -345,6 +346,30 @@ test("loop run executes compile verify report explain and diff for animation han
   assert.match(task, /Engine packet/);
   assert.match(task, /Phaser Scene/);
   assert.match(task, /Do not call model provider APIs/);
+
+  const completed = await execFileAsync(process.execPath, [
+    cliPath,
+    "loop",
+    "complete",
+    "--notes",
+    "Connected in the Phaser scene.",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const completeResult = JSON.parse(completed.stdout) as {
+    loop: { status: string; completedAt: string | null };
+  };
+  assert.equal(completeResult.loop.status, "completed");
+  assert.match(completeResult.loop.completedAt ?? "", /^20/);
+
+  const completedTask = await execFileAsync(process.execPath, [cliPath, "loop", "task", "--json"], {
+    cwd: root
+  });
+  const completedTaskResult = JSON.parse(completedTask.stdout) as { content: string };
+  assert.match(completedTaskResult.content, /Completed:/);
+  assert.match(completedTaskResult.content, /Connected in the Phaser scene/);
 });
 
 test("detect-motion and normalize motion support PNG frame directories without ffmpeg", async () => {
@@ -1122,7 +1147,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.9.2");
+  assert.equal(result.version, "1.0.0");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
