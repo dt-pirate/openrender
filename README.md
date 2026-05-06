@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.1"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender is a local-first Developer Kit for AI coding agents that need to plac
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `0.9.0` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, and audio, atlas/tileset, and UI asset pipelines for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `0.9.1` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, and agent loop task packets for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -73,6 +73,7 @@ cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js loop status --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```
@@ -141,6 +142,7 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
 
 node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
+node /path/to/openrender/packages/cli/dist/index.js loop attach --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
 node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
 ```

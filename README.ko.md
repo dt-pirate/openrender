@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.0"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v0.9.1"><img alt="Release" src="https://img.shields.io/badge/release-v0.9.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,7 +37,7 @@ openRender는 AI 코딩 에이전트가 생성된 게임 이미지를 실제 게
 
 이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
 
-현재 `0.9.0` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트에서 sprite 이미지 핸드오프, visual reference 기록, motion 분석, animation compile/install, audio, atlas/tileset, UI 에셋 파이프라인을 지원합니다.
+현재 `0.9.1` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트에서 sprite 이미지 핸드오프, visual reference 기록, motion 분석, animation compile/install, audio, atlas/tileset, UI 에셋 파이프라인과 agent loop task packet을 지원합니다.
 
 ## 빠른 시작
 

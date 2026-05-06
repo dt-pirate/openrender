@@ -1,13 +1,14 @@
 # openRender Roadmap
 
-## Current Baseline: 0.9.0 Animation Runtime Integration
+## Current Baseline: 0.9.1 Agent Loop MVP
 
-- Documentation baseline and package version: openRender `0.9.0 Animation Runtime Integration`.
+- Documentation baseline and package version: openRender `0.9.1 Agent Loop MVP`.
 - Local sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - Visual reference records for sketches, UI mockups, concept art, video URLs, and local reference files. Remote URLs are provenance only and are not downloaded.
 - `detect-motion` analysis for video, GIF, PNG sequence directories, and sprite sheets before install.
 - `compile animation` for engine-ready animation sheets, target helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Tiered runtime integration helpers across all supported engines: Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas.
+- Agent loop task packets that record runId, report, verification status, next actions, rollback command, and no-regeneration boundaries.
 - Local audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
 - Compact agent views for context, verify, report, explain, diff, and motion recommendations.
 - Read-only `context --json --wire-map` wiring candidates plus latest asset path, helper path, manifest module, suggested use, and example snippets.
@@ -27,6 +28,7 @@
 - Video/GIF frame extraction requires local ffmpeg tooling; PNG sequence analysis does not.
 - Godot `.import`, Unity `.meta`, Unity `Library/`, scenes, prefabs, and component wiring remain owned by the engine/editor.
 - openRender reports wiring candidates and generates helper files, but does not auto-edit gameplay code.
+- Agent loops do not call model providers, regenerate assets, scrape URLs, download references, or patch game code.
 
 ## Next Product Direction
 

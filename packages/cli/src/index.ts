@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.9.0";
+const CLI_VERSION = "0.9.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 0.9.0 Media Contracts",
+    title: "openRender 0.9.1 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -583,6 +583,90 @@ OPENRENDER_SCHEMAS["media-p4"] = OPENRENDER_SCHEMAS.media!;
 interface ParsedFlags {
   flags: Map<string, string | boolean>;
   positionals: string[];
+}
+
+type LoopCommandResult =
+  | LoopStartCommandResult
+  | LoopAttachCommandResult
+  | LoopStatusCommandResult
+  | LoopTaskCommandResult;
+type LoopStatus = "created" | "needs_action" | "ready_for_wiring" | "failed" | "completed";
+type LoopIterationStatus = "recorded" | "needs_action" | "ready_for_wiring" | "failed";
+
+interface OpenRenderLoopRecord {
+  schemaVersion: string;
+  loopId: string;
+  createdAt: string;
+  updatedAt: string;
+  goal: string;
+  target: TargetEngine | "unknown";
+  assetId?: string;
+  mediaKind?: "sprite" | "animation" | "audio" | "atlas" | "ui" | "asset";
+  sourcePath?: string;
+  status: LoopStatus;
+  latestRunId?: string;
+  iterations: OpenRenderLoopIteration[];
+  paths: {
+    loop: string;
+    latest: string;
+    latestTask: string;
+    latestSummary: string;
+  };
+  boundary: {
+    assetRegeneration: false;
+    modelProviderCalls: false;
+    gameCodePatching: false;
+    remoteDownload: false;
+  };
+  localOnly: true;
+}
+
+interface OpenRenderLoopIteration {
+  iteration: number;
+  createdAt: string;
+  runId: string;
+  command?: string;
+  status: LoopIterationStatus;
+  verification: VerificationStatus | null;
+  reportPath: string | null;
+  summary: string;
+  failureSummary: string | null;
+  nextActions: string[];
+  rollbackCommand: string | null;
+}
+
+interface LoopStartCommandResult {
+  ok: true;
+  operation: "loop.start";
+  loop: OpenRenderLoopRecord;
+  taskPath: string;
+  summaryPath: string;
+  nextActions: string[];
+}
+
+interface LoopAttachCommandResult {
+  ok: true;
+  operation: "loop.attach";
+  loop: OpenRenderLoopRecord;
+  iteration: OpenRenderLoopIteration;
+  taskPath: string;
+  summaryPath: string;
+}
+
+interface LoopStatusCommandResult {
+  ok: true;
+  operation: "loop.status";
+  loop: OpenRenderLoopRecord;
+  latestIteration: OpenRenderLoopIteration | null;
+  nextActions: string[];
+}
+
+interface LoopTaskCommandResult {
+  ok: true;
+  operation: "loop.task";
+  loopId: string;
+  path: string;
+  content: string;
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -685,6 +769,18 @@ async function main(argv: string[]): Promise<number> {
       console.log(JSON.stringify(result, null, 2));
     } else {
       printIngestReferenceResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "loop") {
+    const result = await handleLoopCommand(parsed);
+    if (subcommand === "task" && parsed.flags.get("json") !== true) {
+      console.log((result as LoopTaskCommandResult).content);
+    } else if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactLoopResult(result) : result, null, 2));
+    } else {
+      printLoopResult(result);
     }
     return 0;
   }
@@ -2263,6 +2359,440 @@ async function diffRun(parsed: ParsedFlags): Promise<DiffCommandResult> {
   };
 }
 
+async function handleLoopCommand(parsed: ParsedFlags): Promise<LoopCommandResult> {
+  const subcommand = parsed.positionals[1];
+  if (subcommand === "start") return startLoop(parsed);
+  if (subcommand === "attach") return attachLoopRun(parsed);
+  if (subcommand === "status") return statusLoop(parsed);
+  if (subcommand === "task") return taskLoop(parsed);
+  throw new Error("Unsupported loop command. Use start, attach, status, or task.");
+}
+
+async function startLoop(parsed: ParsedFlags): Promise<LoopStartCommandResult> {
+  const projectRoot = process.cwd();
+  const scan = await scanProject(projectRoot);
+  const goal = requireStringFlag(parsed, "goal");
+  const target = readOptionalTargetFlag(parsed) ?? (scan.engine === "unknown" ? "unknown" : scan.engine);
+  const now = new Date();
+  const loopId = createLoopId(now);
+  const loop = createInitialLoopRecord({
+    loopId,
+    goal,
+    target,
+    assetId: readOptionalStringFlag(parsed, "id"),
+    mediaKind: readLoopMediaKind(parsed),
+    sourcePath: readOptionalStringFlag(parsed, "from") ?? readOptionalStringFlag(parsed, "input"),
+    date: now
+  });
+
+  await persistLoop(projectRoot, loop);
+  await persistLoopTask(projectRoot, loop, null);
+
+  return {
+    ok: true,
+    operation: "loop.start",
+    loop,
+    taskPath: loop.paths.latestTask,
+    summaryPath: loop.paths.latestSummary,
+    nextActions: [
+      "Run compile/verify/report as usual, then attach the latest run with openrender loop attach --run latest --json.",
+      "Keep source media fixed; openRender loops do not call model providers or regenerate assets."
+    ]
+  };
+}
+
+async function attachLoopRun(parsed: ParsedFlags): Promise<LoopAttachCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = readRunId({ ...parsed, positionals: ["attach", parsed.positionals[2] ?? "latest"] });
+  const record = await readCompileRecord(projectRoot, runId);
+  let loop = await readLoopOrCreateFromRecord(projectRoot, parsed, record);
+  const report = await writeReport(createParsed(["report"], { run: record.run.runId }));
+  const installResult = record.installResult ?? await readInstallResultIfAvailable(projectRoot, record.run.runId);
+  const latestRecord = await readCompileRecord(projectRoot, record.run.runId);
+  const iteration = await createLoopIterationFromRecord({
+    projectRoot,
+    loop,
+    record: latestRecord,
+    report,
+    installRecorded: installResult !== null,
+    command: readOptionalStringFlag(parsed, "command") ?? undefined
+  });
+
+  loop = {
+    ...loop,
+    updatedAt: iteration.createdAt,
+    target: loop.target === "unknown" ? latestRecord.contract.target.engine : loop.target,
+    assetId: loop.assetId ?? latestRecord.contract.id,
+    mediaKind: loop.mediaKind ?? loopMediaKindFromRecord(latestRecord),
+    sourcePath: loop.sourcePath ?? latestRecord.contract.sourcePath,
+    status: iteration.status === "ready_for_wiring" ? "ready_for_wiring" : "needs_action",
+    latestRunId: latestRecord.run.runId,
+    iterations: [...loop.iterations, iteration]
+  };
+
+  await persistLoop(projectRoot, loop);
+  await persistLoopTask(projectRoot, loop, latestRecord);
+
+  return {
+    ok: true,
+    operation: "loop.attach",
+    loop,
+    iteration,
+    taskPath: loop.paths.latestTask,
+    summaryPath: loop.paths.latestSummary
+  };
+}
+
+async function statusLoop(parsed: ParsedFlags): Promise<LoopStatusCommandResult> {
+  const projectRoot = process.cwd();
+  const loop = await readLoop(projectRoot, readLoopId(parsed));
+  const latestIteration = loop.iterations.at(-1) ?? null;
+  return {
+    ok: true,
+    operation: "loop.status",
+    loop,
+    latestIteration,
+    nextActions: latestIteration?.nextActions ?? [
+      "Attach a run with openrender loop attach --run latest --json after compile/verify/report.",
+      "Do not request asset regeneration from model providers inside this loop."
+    ]
+  };
+}
+
+async function taskLoop(parsed: ParsedFlags): Promise<LoopTaskCommandResult> {
+  const projectRoot = process.cwd();
+  const loop = await readLoop(projectRoot, readLoopId(parsed));
+  let content: string;
+  try {
+    content = await fs.readFile(resolveInsideProject(projectRoot, loop.paths.latestTask), "utf8");
+  } catch {
+    const record = loop.latestRunId ? await readCompileRecord(projectRoot, loop.latestRunId) : null;
+    content = await persistLoopTask(projectRoot, loop, record);
+  }
+
+  return {
+    ok: true,
+    operation: "loop.task",
+    loopId: loop.loopId,
+    path: loop.paths.latestTask,
+    content
+  };
+}
+
+async function readLoopOrCreateFromRecord(
+  projectRoot: string,
+  parsed: ParsedFlags,
+  record: OpenRenderCompileRecord
+): Promise<OpenRenderLoopRecord> {
+  try {
+    return await readLoop(projectRoot, readLoopId(parsed));
+  } catch {
+    const now = new Date();
+    const loop = createInitialLoopRecord({
+      loopId: createLoopId(now),
+      goal: readOptionalStringFlag(parsed, "goal") ?? `Continue ${record.contract.id} handoff`,
+      target: record.contract.target.engine,
+      assetId: record.contract.id,
+      mediaKind: loopMediaKindFromRecord(record),
+      sourcePath: record.contract.sourcePath,
+      date: now
+    });
+    await persistLoop(projectRoot, loop);
+    return loop;
+  }
+}
+
+function createInitialLoopRecord(input: {
+  loopId: string;
+  goal: string;
+  target: TargetEngine | "unknown";
+  assetId?: string;
+  mediaKind?: OpenRenderLoopRecord["mediaKind"];
+  sourcePath?: string;
+  date: Date;
+}): OpenRenderLoopRecord {
+  const createdAt = input.date.toISOString();
+  const loopPath = path.posix.join(".openrender", "loops", input.loopId, "loop.json");
+  return {
+    schemaVersion: CLI_VERSION,
+    loopId: input.loopId,
+    createdAt,
+    updatedAt: createdAt,
+    goal: input.goal,
+    target: input.target,
+    assetId: input.assetId,
+    mediaKind: input.mediaKind,
+    sourcePath: input.sourcePath,
+    status: "created",
+    iterations: [],
+    paths: {
+      loop: loopPath,
+      latest: ".openrender/loops/latest.json",
+      latestTask: path.posix.join(".openrender", "loops", input.loopId, "latest-agent-task.md"),
+      latestSummary: path.posix.join(".openrender", "loops", input.loopId, "latest-compact-summary.json")
+    },
+    boundary: {
+      assetRegeneration: false,
+      modelProviderCalls: false,
+      gameCodePatching: false,
+      remoteDownload: false
+    },
+    localOnly: true
+  };
+}
+
+function createLoopId(date = new Date()): string {
+  const stamp = date
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.(\d{3})Z$/, "$1Z");
+  return `loop_${stamp}`;
+}
+
+async function persistLoop(projectRoot: string, loop: OpenRenderLoopRecord): Promise<void> {
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: loop.paths.loop,
+    contents: `${JSON.stringify(loop, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: loop.paths.latest,
+    contents: `${JSON.stringify(loop, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: loop.paths.latestSummary,
+    contents: `${JSON.stringify(compactLoopRecord(loop), null, 2)}\n`,
+    allowOverwrite: true
+  });
+}
+
+async function readLoop(projectRoot: string, loopId: string): Promise<OpenRenderLoopRecord> {
+  const relativePath = loopId === "latest"
+    ? ".openrender/loops/latest.json"
+    : path.posix.join(".openrender", "loops", loopId, "loop.json");
+  return JSON.parse(await fs.readFile(resolveInsideProject(projectRoot, relativePath), "utf8")) as OpenRenderLoopRecord;
+}
+
+async function readLatestLoopSummary(projectRoot: string): Promise<CompactLoopRecord | null> {
+  try {
+    const loop = await readLoop(projectRoot, "latest");
+    return compactLoopRecord(loop);
+  } catch {
+    return null;
+  }
+}
+
+function readLoopId(parsed: ParsedFlags): string {
+  const value = parsed.flags.get("loop");
+  if (typeof value === "string") return value;
+  return parsed.positionals[2] ?? "latest";
+}
+
+function readOptionalTargetFlag(parsed: ParsedFlags): TargetEngine | undefined {
+  const value = parsed.flags.get("target");
+  if (value === undefined || value === false) return undefined;
+  return readTargetFlag(parsed, "phaser");
+}
+
+function readLoopMediaKind(parsed: ParsedFlags): OpenRenderLoopRecord["mediaKind"] | undefined {
+  const value = readOptionalStringFlag(parsed, "media") ?? readOptionalStringFlag(parsed, "kind");
+  if (value === undefined) return undefined;
+  if (value === "sprite" || value === "animation" || value === "audio" || value === "atlas" || value === "ui" || value === "asset") return value;
+  throw new Error(`Unsupported loop media kind: ${value}`);
+}
+
+function loopMediaKindFromRecord(record: OpenRenderCompileRecord): NonNullable<OpenRenderLoopRecord["mediaKind"]> {
+  if (isAnimationCompileRecord(record)) return "animation";
+  if (isSpriteCompileRecord(record)) return "sprite";
+  if (record.contract.mediaType.startsWith("audio.")) return "audio";
+  if (record.contract.mediaType === "visual.atlas" || record.contract.mediaType === "visual.tileset") return "atlas";
+  return "ui";
+}
+
+async function createLoopIterationFromRecord(input: {
+  projectRoot: string;
+  loop: OpenRenderLoopRecord;
+  record: OpenRenderCompileRecord;
+  report: ReportCommandResult;
+  installRecorded: boolean;
+  command?: string;
+}): Promise<OpenRenderLoopIteration> {
+  const { record, report, installRecorded } = input;
+  const failureSummary = createLoopFailureSummary(record);
+  const status = createLoopIterationStatus(record, installRecorded);
+  return {
+    iteration: input.loop.iterations.length + 1,
+    createdAt: new Date().toISOString(),
+    runId: record.run.runId,
+    command: input.command,
+    status,
+    verification: record.run.verification?.status ?? null,
+    reportPath: report.htmlPath,
+    summary: createAgentSummary(record),
+    failureSummary,
+    nextActions: report.nextActions,
+    rollbackCommand: report.rollbackCommand
+  };
+}
+
+function createLoopIterationStatus(record: OpenRenderCompileRecord, installRecorded: boolean): LoopIterationStatus {
+  if (
+    record.run.verification?.status === "failed" ||
+    (isSpriteCompileRecord(record) && record.validation?.ok === false) ||
+    (!isSpriteCompileRecord(record) && record.validation.status === "failed")
+  ) {
+    return "failed";
+  }
+  if (record.run.verification?.status === "warning" || !installRecorded) return "needs_action";
+  if (record.run.verification?.status === "passed" && installRecorded) return "ready_for_wiring";
+  return "recorded";
+}
+
+function createLoopFailureSummary(record: OpenRenderCompileRecord): string | null {
+  const nextActionText = createNextActionText(record);
+  if (!nextActionText) return null;
+  const firstLine = nextActionText.split("\n").find((line) => line.startsWith("Failure:") || line.startsWith("Warning:"));
+  return firstLine ?? null;
+}
+
+async function persistLoopTask(
+  projectRoot: string,
+  loop: OpenRenderLoopRecord,
+  latestRecord: OpenRenderCompileRecord | null
+): Promise<string> {
+  const content = await createLoopTaskMarkdown(projectRoot, loop, latestRecord);
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: loop.paths.latestTask,
+    contents: content,
+    allowOverwrite: true
+  });
+  return content;
+}
+
+async function createLoopTaskMarkdown(
+  projectRoot: string,
+  loop: OpenRenderLoopRecord,
+  latestRecord: OpenRenderCompileRecord | null
+): Promise<string> {
+  const latestIteration = loop.iterations.at(-1) ?? null;
+  const scan = await scanProject(projectRoot);
+  const wireMap = latestRecord ? await createWireMap(scan, latestRecord) : null;
+  const helperPath = latestRecord?.outputPlan.codegenPath ?? null;
+  const manifestPath = latestRecord?.outputPlan.manifestPath ?? null;
+  const assetPath = latestRecord?.outputPlan.assetPath ?? null;
+  const sections = [
+    "# openRender Agent Loop Task",
+    "",
+    `Goal: ${loop.goal}`,
+    `Loop: ${loop.loopId}`,
+    `Status: ${loop.status}`,
+    `Target: ${loop.target}`,
+    `Asset: ${loop.assetId ?? latestRecord?.contract.id ?? "unknown"}`,
+    "",
+    "Boundary:",
+    "- Do not call model provider APIs.",
+    "- Do not regenerate, redraw, re-prompt, scrape, or download source assets.",
+    "- Do not patch game code automatically through openRender.",
+    "- Work only from existing source media, generated helper files, reports, and wire-map candidates.",
+    "",
+    "Latest run:",
+    latestRecord
+      ? [
+          `- runId: ${latestRecord.run.runId}`,
+          `- mediaType: ${latestRecord.contract.mediaType}`,
+          `- verification: ${latestRecord.run.verification?.status ?? "not_run"}`,
+          `- assetPath: ${assetPath ?? "n/a"}`,
+          `- helperPath: ${helperPath ?? "n/a"}`,
+          `- manifestPath: ${manifestPath ?? "n/a"}`,
+          `- report: ${latestIteration?.reportPath ?? ".openrender/reports/latest.html"}`,
+          `- rollback: ${latestIteration?.rollbackCommand ?? "not_available"}`
+        ].join("\n")
+      : "- No run attached yet.",
+    "",
+    "Next actions:",
+    ...(latestIteration?.nextActions.length
+      ? latestIteration.nextActions.map((action) => `- ${action}`)
+      : ["- Run compile/verify/report, then attach the run with openrender loop attach --run latest --json."]),
+    "",
+    ...(wireMap
+      ? [
+          "Read-only wire map:",
+          ...(wireMap.latestAsset
+            ? [
+                `- latest asset path: ${wireMap.latestAsset.assetPath}`,
+                `- latest load path: ${wireMap.latestAsset.loadPath}`,
+                `- latest helper path: ${wireMap.latestAsset.helperPath ?? "n/a"}`
+              ]
+            : []),
+          ...wireMap.candidates.slice(0, 5).map((candidate) => `- ${candidate.file}: ${candidate.suggestedAction}`),
+          ""
+        ]
+      : []),
+    "Recovery:",
+    `- If this handoff is wrong, use ${latestIteration?.rollbackCommand ?? "openrender rollback --run <runId> --json after an install exists"}.`
+  ];
+
+  return `${sections.join("\n")}\n`;
+}
+
+function createParsed(positionals: string[], flags: Record<string, string | boolean | undefined> = {}): ParsedFlags {
+  const map = new Map<string, string | boolean>();
+  for (const [key, value] of Object.entries(flags)) {
+    if (value !== undefined) map.set(key, value);
+  }
+  return { positionals, flags: map };
+}
+
+interface CompactLoopRecord {
+  loopId: string;
+  goal: string;
+  target: OpenRenderLoopRecord["target"];
+  status: LoopStatus;
+  latestRunId: string | null;
+  iterations: number;
+  latestTaskPath: string;
+  modelProviderCalls: false;
+  assetRegeneration: false;
+}
+
+function compactLoopRecord(loop: OpenRenderLoopRecord): CompactLoopRecord {
+  return {
+    loopId: loop.loopId,
+    goal: loop.goal,
+    target: loop.target,
+    status: loop.status,
+    latestRunId: loop.latestRunId ?? null,
+    iterations: loop.iterations.length,
+    latestTaskPath: loop.paths.latestTask,
+    modelProviderCalls: false,
+    assetRegeneration: false
+  };
+}
+
+function compactLoopResult(result: LoopCommandResult): unknown {
+  if (result.operation === "loop.task") {
+    return {
+      ok: result.ok,
+      operation: result.operation,
+      loopId: result.loopId,
+      path: result.path
+    };
+  }
+  return {
+    ok: result.ok,
+    operation: result.operation,
+    loop: compactLoopRecord(result.loop),
+    ...("iteration" in result ? { iteration: result.iteration } : {}),
+    ...("nextActions" in result ? { nextActions: result.nextActions } : {}),
+    ...("taskPath" in result ? { taskPath: result.taskPath } : {})
+  };
+}
+
 function compactAgentContext(result: AgentContextCommandResult): CompactAgentContextResult {
   return {
     ok: true,
@@ -2274,6 +2804,7 @@ function compactAgentContext(result: AgentContextCommandResult): CompactAgentCon
       manifest: result.paths.manifest
     },
     latestRun: result.latestRun,
+    latestLoop: result.latestLoop,
     references: result.references.slice(0, 3),
     tables: {
       overwriteRisks: {
@@ -2729,6 +3260,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
   const projectRoot = process.cwd();
   const scan = await scanProject(projectRoot);
   const latestRun = await readLatestRunSummary(projectRoot);
+  const latestLoop = await readLatestLoopSummary(projectRoot);
   const latestRecord = options.includeWireMap ? await readLatestCompileRecordIfAvailable(projectRoot) : null;
   const references = await readReferenceSummaries(projectRoot);
   const overwriteRisks: AgentContextCommandResult["overwriteRisks"] = [];
@@ -2779,6 +3311,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
       manifest: scan.manifestExists
     },
     latestRun,
+    latestLoop,
     references,
     overwriteRisks,
     recommendedNextActions: [...recommendedNextActions],
@@ -3359,7 +3892,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.9.0: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 0.9.1: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -6139,7 +6672,7 @@ function createFrameValidationSuggestions(record: CompileSpriteResult): string[]
     if (validation.actualWidth % visual.frames === 0) {
       suggestions.add(`try --frame-size ${validation.actualWidth / visual.frames}x${validation.actualHeight}`);
     }
-    suggestions.add(`resize or regenerate the source image to ${validation.expectedWidth}x${validation.expectedHeight}`);
+    suggestions.add(`provide an existing source image sized ${validation.expectedWidth}x${validation.expectedHeight} or resize it outside openRender`);
   } else {
     const columns = Math.floor(validation.actualWidth / visual.frameWidth);
     const rows = Math.floor(validation.actualHeight / visual.frameHeight);
@@ -6166,7 +6699,7 @@ function createVerifySuggestions(
     } else if (check.name === "motion_frame_slices_ready") {
       suggestions.add("re-run compile animation with explicit --frames, --fps, or --layout to match the source motion geometry");
     } else if (check.name === "atlas_tile_grid_divisible") {
-      suggestions.add("adjust --tile-size or regenerate the atlas image with divisible dimensions");
+      suggestions.add("adjust --tile-size or provide an existing atlas image with divisible dimensions");
     } else if (check.name === "ui_states_declared") {
       suggestions.add("pass --states default,hover,pressed or another non-empty UI state list");
     }
@@ -6260,8 +6793,27 @@ function printAgentContext(result: AgentContextCommandResult): void {
   console.log(`Target: ${result.target.engine}/${result.target.framework}`);
   console.log(`Manifest: ${result.exists.manifest ? result.paths.manifest : "missing"}`);
   console.log(`Latest run: ${result.latestRun ? result.latestRun.runId : "missing"}`);
+  console.log(`Latest loop: ${result.latestLoop ? result.latestLoop.loopId : "missing"}`);
   for (const risk of result.overwriteRisks) console.log(`Overwrite risk: ${risk.path} (${risk.code})`);
   for (const action of result.recommendedNextActions) console.log(`Next: ${action}`);
+}
+
+function printLoopResult(result: LoopCommandResult): void {
+  if (result.operation === "loop.task") {
+    console.log(result.content);
+    return;
+  }
+
+  console.log(`openRender ${result.operation}`);
+  console.log("");
+  console.log(`Loop: ${result.loop.loopId}`);
+  console.log(`Status: ${result.loop.status}`);
+  console.log(`Goal: ${result.loop.goal}`);
+  console.log(`Task: ${"taskPath" in result ? result.taskPath : result.loop.paths.latestTask}`);
+  if ("iteration" in result) console.log(`Iteration: ${result.iteration.iteration} (${result.iteration.status})`);
+  if ("nextActions" in result) {
+    for (const action of result.nextActions) console.log(`Next: ${action}`);
+  }
 }
 
 function printDoctor(result: DoctorResult): void {
@@ -6520,6 +7072,10 @@ Usage:
   openrender scan [--json]
   openrender context [--json] [--compact] [--wire-map]
   openrender ingest reference --url <url>|--from <path> --role mechanic|style|layout|logic|motion|mood|character|environment --intent <text> [--notes <text>] [--json]
+  openrender loop start --goal <text> [--target engine] [--id asset.id] [--media sprite|animation|audio|atlas|ui|asset] [--from <path>] [--json]
+  openrender loop attach [--loop latest|loopId] [--run latest|runId] [--goal <text>] [--json] [--compact]
+  openrender loop status [--loop latest|loopId] [--json] [--compact]
+  openrender loop task [--loop latest|loopId] [--json]
   openrender doctor [--json]
   openrender schema contract|output|report|install-plan|pack-manifest|media
   openrender pack list|inspect [packId] [--json]
@@ -6686,6 +7242,7 @@ interface AgentContextCommandResult {
     verification: NonNullable<OpenRenderCompileRecord["run"]["verification"]>["status"] | null;
     installRecorded: boolean;
   } | null;
+  latestLoop: CompactLoopRecord | null;
   references: ReferenceSummary[];
   overwriteRisks: Array<{
     code: "manifest_exists";
@@ -6711,6 +7268,7 @@ interface CompactAgentContextResult {
   target: AgentContextCommandResult["target"];
   paths: Pick<AgentContextCommandResult["paths"], "assetRoot" | "sourceRoot" | "manifest">;
   latestRun: AgentContextCommandResult["latestRun"];
+  latestLoop: AgentContextCommandResult["latestLoop"];
   references: ReferenceSummary[];
   tables: {
     overwriteRisks: CompactTable;

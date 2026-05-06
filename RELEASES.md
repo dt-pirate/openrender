@@ -1,6 +1,6 @@
 # Version History
 
-Last updated: 2026-05-05
+Last updated: 2026-05-06
 
 This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
 
@@ -8,19 +8,49 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `0.9.0 Animation Runtime Integration` |
-| Package/CLI version | `0.9.0` |
+| Current implementation baseline | `0.9.1 Agent Loop MVP` |
+| Package/CLI version | `0.9.1` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v0.9.0`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.0) |
-| Release timestamp | 2026-05-05 18:00 KST (2026-05-05 09:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.0` |
+| Release channel | GitHub release [`v0.9.1`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.1) |
+| Release timestamp | 2026-05-06 21:00 KST (2026-05-06 12:00 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.1` |
+
+## 0.9.1 Agent Loop MVP
+
+`0.9.1` introduced the first agent iteration loop layer without model-provider regeneration.
+
+Released: 2026-05-06 21:00 KST (2026-05-06 12:00 UTC).
+
+### Added
+
+- `loop start` creates a local `.openrender/loops/{loopId}/` task state for agent-led game asset handoff.
+- `loop attach` links an existing runId, report, verification status, next actions, and rollback command into the latest loop iteration.
+- `loop status` and `loop task` expose compact loop state and a short next-agent task packet.
+- `context --json` and `context --json --compact` include latest loop summary when a loop exists.
+- Loop task packets include explicit boundaries: no model provider calls, no asset regeneration, no remote download, and no automatic game-code patching.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.9.1
+```
 
 ## 0.9.0 Animation Runtime Integration
 
-`0.9.0` is the current implemented package and CLI version.
+`0.9.0` introduced the animation runtime integration package and CLI version.
 
 Released: 2026-05-05 18:00 KST (2026-05-05 09:00 UTC).
 
