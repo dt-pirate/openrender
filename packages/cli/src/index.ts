@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "0.9.1";
+const CLI_VERSION = "0.9.2";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 0.9.1 Media Contracts",
+    title: "openRender 0.9.2 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -587,6 +587,7 @@ interface ParsedFlags {
 
 type LoopCommandResult =
   | LoopStartCommandResult
+  | LoopRunCommandResult
   | LoopAttachCommandResult
   | LoopStatusCommandResult
   | LoopTaskCommandResult;
@@ -651,6 +652,26 @@ interface LoopAttachCommandResult {
   iteration: OpenRenderLoopIteration;
   taskPath: string;
   summaryPath: string;
+}
+
+interface LoopRunCommandResult {
+  ok: true;
+  operation: "loop.run";
+  loop: OpenRenderLoopRecord;
+  iteration: OpenRenderLoopIteration | null;
+  taskPath: string;
+  summaryPath: string;
+  lifecycle: {
+    compile: {
+      runId: string;
+      mediaType: MediaContract["mediaType"];
+      installed: boolean;
+    };
+    verify: CompactVerifyCommandResult | null;
+    report: CompactReportCommandResult | null;
+    explain: CompactExplainCommandResult | null;
+    diff: CompactDiffCommandResult | null;
+  };
 }
 
 interface LoopStatusCommandResult {
@@ -2362,6 +2383,7 @@ async function diffRun(parsed: ParsedFlags): Promise<DiffCommandResult> {
 async function handleLoopCommand(parsed: ParsedFlags): Promise<LoopCommandResult> {
   const subcommand = parsed.positionals[1];
   if (subcommand === "start") return startLoop(parsed);
+  if (subcommand === "run") return runLoop(parsed);
   if (subcommand === "attach") return attachLoopRun(parsed);
   if (subcommand === "status") return statusLoop(parsed);
   if (subcommand === "task") return taskLoop(parsed);
@@ -2398,6 +2420,106 @@ async function startLoop(parsed: ParsedFlags): Promise<LoopStartCommandResult> {
       "Run compile/verify/report as usual, then attach the latest run with openrender loop attach --run latest --json.",
       "Keep source media fixed; openRender loops do not call model providers or regenerate assets."
     ]
+  };
+}
+
+async function runLoop(parsed: ParsedFlags): Promise<LoopRunCommandResult> {
+  assertLoopDoesNotRequestRegeneration(parsed);
+  const projectRoot = process.cwd();
+  const mediaKind = readLoopRunMediaKind(parsed);
+  const compileParsed = createParsed(["compile", mediaKind], Object.fromEntries(parsed.flags));
+  let compile: OpenRenderCompileRecord;
+
+  if (mediaKind === "sprite") {
+    compile = await compileSprite(compileParsed);
+  } else if (mediaKind === "animation") {
+    compile = await compileAnimation(compileParsed);
+  } else {
+    compile = await compileP4Media(mediaKind, compileParsed);
+  }
+
+  let loop = await readLoopOrCreateFromRecord(projectRoot, parsed, compile);
+  if (compile.dryRun) {
+    const now = new Date().toISOString();
+    loop = {
+      ...loop,
+      updatedAt: now,
+      target: loop.target === "unknown" ? compile.contract.target.engine : loop.target,
+      assetId: loop.assetId ?? compile.contract.id,
+      mediaKind: loop.mediaKind ?? loopMediaKindFromRecord(compile),
+      sourcePath: loop.sourcePath ?? compile.contract.sourcePath,
+      status: "needs_action",
+      latestRunId: compile.run.runId
+    };
+    await persistLoop(projectRoot, loop);
+    await persistLoopTask(projectRoot, loop, compile);
+    return {
+      ok: true,
+      operation: "loop.run",
+      loop,
+      iteration: null,
+      taskPath: loop.paths.latestTask,
+      summaryPath: loop.paths.latestSummary,
+      lifecycle: {
+        compile: {
+          runId: compile.run.runId,
+          mediaType: compile.contract.mediaType,
+          installed: false
+        },
+        verify: null,
+        report: null,
+        explain: null,
+        diff: null
+      }
+    };
+  }
+
+  const verify = await verifyRun(createParsed(["verify"], { run: compile.run.runId }));
+  const report = await writeReport(createParsed(["report"], { run: compile.run.runId }));
+  const explain = await explainRun(createParsed(["explain"], { run: compile.run.runId }));
+  const diff = await diffRun(createParsed(["diff"], { run: compile.run.runId }));
+  const latestRecord = await readCompileRecord(projectRoot, compile.run.runId);
+  const installResult = latestRecord.installResult ?? await readInstallResultIfAvailable(projectRoot, latestRecord.run.runId);
+  const iteration = await createLoopIterationFromRecord({
+    projectRoot,
+    loop,
+    record: latestRecord,
+    report,
+    installRecorded: installResult !== null,
+    command: createLoopRunCommandSummary(mediaKind, parsed)
+  });
+  loop = {
+    ...loop,
+    updatedAt: iteration.createdAt,
+    target: loop.target === "unknown" ? latestRecord.contract.target.engine : loop.target,
+    assetId: loop.assetId ?? latestRecord.contract.id,
+    mediaKind: loop.mediaKind ?? loopMediaKindFromRecord(latestRecord),
+    sourcePath: loop.sourcePath ?? latestRecord.contract.sourcePath,
+    status: iteration.status === "ready_for_wiring" ? "ready_for_wiring" : "needs_action",
+    latestRunId: latestRecord.run.runId,
+    iterations: [...loop.iterations, iteration]
+  };
+  await persistLoop(projectRoot, loop);
+  await persistLoopTask(projectRoot, loop, latestRecord);
+
+  return {
+    ok: true,
+    operation: "loop.run",
+    loop,
+    iteration,
+    taskPath: loop.paths.latestTask,
+    summaryPath: loop.paths.latestSummary,
+    lifecycle: {
+      compile: {
+        runId: latestRecord.run.runId,
+        mediaType: latestRecord.contract.mediaType,
+        installed: installResult !== null
+      },
+      verify: compactVerifyResult(verify),
+      report: compactReportResult(report),
+      explain: compactExplainResult(explain),
+      diff: compactDiffResult(diff)
+    }
   };
 }
 
@@ -2605,6 +2727,35 @@ function readLoopMediaKind(parsed: ParsedFlags): OpenRenderLoopRecord["mediaKind
   throw new Error(`Unsupported loop media kind: ${value}`);
 }
 
+function readLoopRunMediaKind(parsed: ParsedFlags): "sprite" | "animation" | "audio" | "atlas" | "ui" {
+  const value = parsed.positionals[2];
+  if (value === "sprite" || value === "animation" || value === "audio" || value === "atlas" || value === "ui") return value;
+  throw new Error("loop run requires sprite, animation, audio, atlas, or ui.");
+}
+
+function assertLoopDoesNotRequestRegeneration(parsed: ParsedFlags): void {
+  const forbidden = ["prompt", "model", "provider", "api-key", "regenerate", "redraw", "reprompt", "download"];
+  const used = forbidden.filter((flag) => parsed.flags.has(flag));
+  if (used.length > 0) {
+    throw new Error(`openRender loops do not call model providers or regenerate assets. Remove ${used.map((flag) => `--${flag}`).join(", ")}.`);
+  }
+}
+
+function createLoopRunCommandSummary(mediaKind: string, parsed: ParsedFlags): string {
+  const id = readOptionalStringFlag(parsed, "id");
+  const source = readOptionalStringFlag(parsed, "from") ?? readOptionalStringFlag(parsed, "input");
+  const target = readOptionalStringFlag(parsed, "target");
+  return [
+    "openrender",
+    "loop",
+    "run",
+    mediaKind,
+    ...(source ? ["--from", source] : []),
+    ...(target ? ["--target", target] : []),
+    ...(id ? ["--id", id] : [])
+  ].join(" ");
+}
+
 function loopMediaKindFromRecord(record: OpenRenderCompileRecord): NonNullable<OpenRenderLoopRecord["mediaKind"]> {
   if (isAnimationCompileRecord(record)) return "animation";
   if (isSpriteCompileRecord(record)) return "sprite";
@@ -2714,6 +2865,7 @@ async function createLoopTaskMarkdown(
         ].join("\n")
       : "- No run attached yet.",
     "",
+    ...(latestRecord ? ["Engine packet:", ...createEngineLoopPacket(latestRecord).map((line) => `- ${line}`), ""] : []),
     "Next actions:",
     ...(latestIteration?.nextActions.length
       ? latestIteration.nextActions.map((action) => `- ${action}`)
@@ -2738,6 +2890,62 @@ async function createLoopTaskMarkdown(
   ];
 
   return `${sections.join("\n")}\n`;
+}
+
+function createEngineLoopPacket(record: OpenRenderCompileRecord): string[] {
+  const target = record.contract.target.engine;
+  const helper = record.outputPlan.codegenPath ?? "generated helper path not available";
+  const manifest = record.outputPlan.manifestPath ?? "generated manifest path not available";
+  const asset = record.outputPlan.assetPath;
+  const loadPath = record.outputPlan.loadPath;
+
+  if (target === "phaser") {
+    return [
+      `Use ${helper} from a Phaser Scene module.`,
+      `Preload ${loadPath} in preload() and register the animation/helper in create().`,
+      "Keep Arcade/body sizing edits in game code; openRender only provides helper and wire-map evidence."
+    ];
+  }
+  if (target === "godot") {
+    return [
+      `Use ${helper} and ${manifest} from GDScript.`,
+      `Load ${loadPath} after Godot imports the source asset.`,
+      "Do not create .import or .godot cache files from openRender."
+    ];
+  }
+  if (target === "love2d") {
+    return [
+      `Require ${helper} from main.lua or the target scene module.`,
+      `Load ${loadPath} through love.graphics.newImage or love.audio.newSource as appropriate.`,
+      "Keep update/draw integration in game code; openRender only records the helper path and rollback boundary."
+    ];
+  }
+  if (target === "unity") {
+    return [
+      `Use ${helper} and ${manifest} from Unity C# scripts under Assets/OpenRender.`,
+      `Reference ${asset} after Unity imports it into the Assets database.`,
+      "Do not write .meta, Library, scene, prefab, or component changes through openRender."
+    ];
+  }
+  if (target === "pixi") {
+    return [
+      `Import ${helper} from the Vite source tree.`,
+      `Load ${loadPath} with Pixi Assets.load before constructing sprites or AnimatedSprite helpers.`,
+      "Keep render-loop and container placement in game code."
+    ];
+  }
+  if (target === "three") {
+    return [
+      `Import ${helper} from the Vite source tree.`,
+      `Load ${loadPath} through TextureLoader or the generated sprite/plane helper.`,
+      "Keep camera, scene, material, and animation-loop placement in game code."
+    ];
+  }
+  return [
+    `Import ${helper} from the Vite source tree.`,
+    `Load ${loadPath} with Image, Audio, fetch, or createImageBitmap depending on media type.`,
+    "Keep draw/update placement in game code."
+  ];
 }
 
 function createParsed(positionals: string[], flags: Record<string, string | boolean | undefined> = {}): ParsedFlags {
@@ -2788,6 +2996,7 @@ function compactLoopResult(result: LoopCommandResult): unknown {
     operation: result.operation,
     loop: compactLoopRecord(result.loop),
     ...("iteration" in result ? { iteration: result.iteration } : {}),
+    ...("lifecycle" in result ? { lifecycle: result.lifecycle } : {}),
     ...("nextActions" in result ? { nextActions: result.nextActions } : {}),
     ...("taskPath" in result ? { taskPath: result.taskPath } : {})
   };
@@ -3892,7 +4101,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 0.9.1: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 0.9.2: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -6810,7 +7019,7 @@ function printLoopResult(result: LoopCommandResult): void {
   console.log(`Status: ${result.loop.status}`);
   console.log(`Goal: ${result.loop.goal}`);
   console.log(`Task: ${"taskPath" in result ? result.taskPath : result.loop.paths.latestTask}`);
-  if ("iteration" in result) console.log(`Iteration: ${result.iteration.iteration} (${result.iteration.status})`);
+  if ("iteration" in result && result.iteration) console.log(`Iteration: ${result.iteration.iteration} (${result.iteration.status})`);
   if ("nextActions" in result) {
     for (const action of result.nextActions) console.log(`Next: ${action}`);
   }
@@ -7073,6 +7282,7 @@ Usage:
   openrender context [--json] [--compact] [--wire-map]
   openrender ingest reference --url <url>|--from <path> --role mechanic|style|layout|logic|motion|mood|character|environment --intent <text> [--notes <text>] [--json]
   openrender loop start --goal <text> [--target engine] [--id asset.id] [--media sprite|animation|audio|atlas|ui|asset] [--from <path>] [--json]
+  openrender loop run sprite|animation|audio|atlas|ui --goal <text> --from|--input <path> --id <asset.id> [--target engine] [--install] [--force] [--json] [--compact]
   openrender loop attach [--loop latest|loopId] [--run latest|runId] [--goal <text>] [--json] [--compact]
   openrender loop status [--loop latest|loopId] [--json] [--compact]
   openrender loop task [--loop latest|loopId] [--json]

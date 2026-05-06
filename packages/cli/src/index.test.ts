@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "0.9.1");
+  assert.equal(stdout.trim(), "0.9.2");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,10 +31,11 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 0\.9\.1/m);
+  assert.match(stdout, /^openRender 0\.9\.2/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender ingest reference --url <url>\|--from <path>/);
+  assert.match(stdout, /openrender loop run sprite\|animation\|audio\|atlas\|ui/);
   assert.match(stdout, /openrender detect-motion <path> \[--fps n\]/);
   assert.match(stdout, /openrender install-agent \[--platform codex\|cursor\|claude\|all\] \[--dry-run\] \[--force\] \[--json\]/);
   assert.match(stdout, /phaser\|godot\|love2d\|pixi\|canvas\|three\|unity/);
@@ -62,7 +63,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "0.9.1");
+  assert.equal(schema.properties.schemaVersion.const, "0.9.2");
 
   const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -71,7 +72,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(mediaSchema.title, "openRender 0.9.1 Media Contracts");
+  assert.equal(mediaSchema.title, "openRender 0.9.2 Media Contracts");
   assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -286,6 +287,64 @@ test("loop start attach status and task preserve an agent handoff boundary", asy
   const contextResult = JSON.parse(context.stdout) as { latestLoop: { loopId: string; status: string } };
   assert.equal(contextResult.latestLoop.loopId, startResult.loop.loopId);
   assert.equal(contextResult.latestLoop.status, "needs_action");
+});
+
+test("loop run executes compile verify report explain and diff for animation handoff", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-loop-run-"));
+  await fs.mkdir(path.join(root, "frames"));
+  await fs.writeFile(path.join(root, "frames", "frame_0001.png"), Buffer.from(onePixelPng, "base64"));
+  await fs.writeFile(path.join(root, "frames", "frame_0002.png"), Buffer.from(onePixelPng, "base64"));
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    cliPath,
+    "loop",
+    "run",
+    "animation",
+    "--goal",
+    "Prepare an existing idle animation for Phaser.",
+    "--from",
+    "frames",
+    "--target",
+    "phaser",
+    "--id",
+    "loop.idle",
+    "--fps",
+    "6",
+    "--install",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const result = JSON.parse(stdout) as {
+    operation: string;
+    loop: { status: string; latestRunId: string; modelProviderCalls: boolean; assetRegeneration: boolean };
+    iteration: { status: string; rollbackCommand: string };
+    lifecycle: {
+      compile: { mediaType: string; installed: boolean };
+      verify: { status: string };
+      report: { rollbackCommand: string };
+      explain: { nextActions: string[] };
+      diff: { rollbackCommand: string };
+    };
+    taskPath: string;
+  };
+
+  assert.equal(result.operation, "loop.run");
+  assert.equal(result.loop.status, "ready_for_wiring");
+  assert.equal(result.loop.modelProviderCalls, false);
+  assert.equal(result.loop.assetRegeneration, false);
+  assert.equal(result.lifecycle.compile.mediaType, "visual.animation_clip");
+  assert.equal(result.lifecycle.compile.installed, true);
+  assert.equal(result.lifecycle.verify.status, "passed");
+  assert.match(result.lifecycle.report.rollbackCommand, /openrender rollback --run run_/);
+  assert.match(result.lifecycle.diff.rollbackCommand, /openrender rollback --run run_/);
+  assert.equal(result.iteration.status, "ready_for_wiring");
+
+  const task = await fs.readFile(path.join(root, result.taskPath), "utf8");
+  assert.match(task, /Engine packet/);
+  assert.match(task, /Phaser Scene/);
+  assert.match(task, /Do not call model provider APIs/);
 });
 
 test("detect-motion and normalize motion support PNG frame directories without ffmpeg", async () => {
@@ -1063,7 +1122,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "0.9.1");
+  assert.equal(result.version, "0.9.2");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);

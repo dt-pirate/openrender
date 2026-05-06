@@ -8,15 +8,45 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `0.9.1 Agent Loop MVP` |
-| Package/CLI version | `0.9.1` |
+| Current implementation baseline | `0.9.2 Loop Runner and Engine Packets` |
+| Package/CLI version | `0.9.2` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v0.9.1`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.1) |
+| Release channel | GitHub release [`v0.9.2`](https://github.com/dt-pirate/openrender/releases/tag/v0.9.2) |
 | Release timestamp | 2026-05-06 21:00 KST (2026-05-06 12:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.1` |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v0.9.2` |
+
+## 0.9.2 Loop Runner and Engine Packets
+
+`0.9.2` added the loop runner that executes the existing compile, verify, report, explain, and diff lifecycle as one agent-facing iteration.
+
+Released: 2026-05-06 21:00 KST (2026-05-06 12:00 UTC).
+
+### Added
+
+- `loop run sprite|animation|audio|atlas|ui` for existing source media.
+- Automatic compile, verify, report, explain, and diff lifecycle capture in loop iteration records.
+- Compact loop lifecycle output with compile media type, install state, verification summary, report path, next actions, diff table, and rollback command.
+- Engine packet guidance in `latest-agent-task.md` for Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas.
+- Guardrails that reject generation-shaped options such as `--prompt`, `--model`, `--provider`, `--api-key`, `--regenerate`, `--redraw`, `--reprompt`, and `--download`.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+0.9.2
+```
 
 ## 0.9.1 Agent Loop MVP
 
