@@ -2247,7 +2247,9 @@ async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandRes
     timeoutMs
   });
   const screenshotPath = parsed.flags.get("screenshot") === true
-    ? await captureSmokeScreenshot(projectRoot, record?.run.runId ?? `${target}-${Date.now()}`)
+    ? await captureSmokeScreenshot(projectRoot, record?.run.runId ?? `${target}-${Date.now()}`, {
+        keepHistory: parsed.flags.get("keep-screenshot") === true
+      })
     : null;
 
   return {
@@ -2329,17 +2331,53 @@ async function runRuntimeProcess(input: {
   });
 }
 
-async function captureSmokeScreenshot(projectRoot: string, runId: string): Promise<string | null> {
+async function captureSmokeScreenshot(
+  projectRoot: string,
+  runId: string,
+  options: { keepHistory?: boolean } = {}
+): Promise<string | null> {
   if (process.platform !== "darwin") return null;
-  const relativePath = path.posix.join(".openrender", "smoke", `${runId}.png`);
+  const filename = options.keepHistory === true ? `${sanitizeAssetId(runId)}.png` : "latest.png";
+  const relativePath = path.posix.join(".openrender", "smoke", filename);
   const outputPath = resolveInsideProject(projectRoot, relativePath);
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
   return new Promise((resolve) => {
     const child = spawn("screencapture", ["-x", outputPath], { stdio: "ignore" });
     child.on("error", () => resolve(null));
-    child.on("exit", (code) => resolve(code === 0 ? relativePath : null));
+    child.on("exit", async (code) => {
+      if (code !== 0) {
+        resolve(null);
+        return;
+      }
+
+      if (options.keepHistory !== true) {
+        await pruneSmokeScreenshots(projectRoot, relativePath);
+      }
+      resolve(relativePath);
+    });
   });
+}
+
+async function pruneSmokeScreenshots(projectRoot: string, keepRelativePath: string): Promise<void> {
+  const smokeDir = resolveInsideProject(projectRoot, path.posix.join(".openrender", "smoke"));
+  let entries: string[];
+  try {
+    entries = await fs.readdir(smokeDir);
+  } catch {
+    return;
+  }
+
+  await Promise.all(entries.map(async (entry) => {
+    if (!entry.endsWith(".png")) return;
+    const relativePath = path.posix.join(".openrender", "smoke", entry);
+    if (relativePath === keepRelativePath) return;
+    try {
+      await fs.unlink(resolveInsideProject(projectRoot, relativePath));
+    } catch {
+      // Screenshot cleanup is best effort; smoke result should not fail on stale files.
+    }
+  }));
 }
 
 async function commandAvailable(command: string): Promise<boolean> {
