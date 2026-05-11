@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>AI 게임 개발을 위한 로컬 에셋 핸드오프 인프라</h3>
+  <h3>AI 에이전트 네이티브 게임 개발을 위한 상태 인프라</h3>
   <p>
-    openRender는 이미 생성된 게임 이미지를 실행 가능한 프로젝트 파일로 바꾸고,
-    설치 계획, 헬퍼 코드, 리포트, 검증, 롤백 기록을 함께 남깁니다.
+    openRender는 이미 생성된 게임 미디어를 엔진이 쓸 수 있는 프로젝트 파일로 바꾸고,
+    설치 계획, 헬퍼 코드, 압축 메모리, 리포트, 검증, 롤백 기록을 함께 남깁니다.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -33,11 +33,13 @@
 
 ## openRender란?
 
-openRender는 AI 코딩 에이전트가 생성된 게임 이미지를 실제 게임 프로젝트에 안전하게 배치할 수 있도록 돕는 로컬 우선 Developer Kit입니다.
+openRender는 AI 코딩 에이전트가 프로젝트 의도, 엔진 제약, 시각 방향, 복구 맥락을 잃지 않고 게임 개발을 이어가도록 돕는 상태 인프라입니다.
 
 이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
 
-현재 `1.0.0` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트에서 스프라이트 이미지 핸드오프, 시각 레퍼런스 기록, 모션 분석, 애니메이션 컴파일/설치, 오디오, 아틀라스/타일셋, UI 에셋 파이프라인, 루프 실행 이력 기록, 엔진별 작업 패킷, 루프 완료 기록을 지원합니다.
+openRender 메모리는 노트 작성 계층이 아닙니다. run, loop, 사용자 피드백에서 파생된 이벤트, 결론, 프로젝트 카드, 에이전트 카드를 저장해서 다음 에이전트 작업이 원시 로그를 다시 읽거나 모델 API로 에셋을 재생성하지 않고도 올바른 맥락을 이어받게 합니다.
+
+현재 `1.0.1` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트에서 스프라이트 이미지 핸드오프, 시각 레퍼런스 기록, 모션 분석, 애니메이션 컴파일/설치, 오디오, 아틀라스/타일셋, UI 에셋 파이프라인, 루프 실행 이력 기록, 엔진별 작업 패킷, 루프 완료 기록, 메모리 인프라를 지원합니다.
 
 ## 빠른 시작
 
@@ -73,6 +75,8 @@ cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js memory status --json
+node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```

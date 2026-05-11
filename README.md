@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>Local asset handoff infrastructure for AI game development</h3>
+  <h3>State infrastructure for AI-agent-native game development</h3>
   <p>
-    openRender turns existing generated game images into engine-ready project files with plans,
-    helper code, reports, verification, and rollback records.
+    openRender turns existing generated game media into engine-ready project files with plans,
+    helper code, compact memory, reports, verification, and rollback records.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -33,11 +33,13 @@
 
 ## What Is openRender?
 
-openRender is a local-first Developer Kit for AI coding agents that need to place generated game assets into real projects.
+openRender is state infrastructure for AI coding agents that need to continue game development without losing project intent, engine constraints, visual direction, or recovery context.
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-The current `1.0.0` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, and loop completion records for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, and agent cards so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
+
+The current `1.0.1` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, and local memory infrastructure for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -73,6 +75,8 @@ cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js memory status --json
+node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js loop status --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
@@ -127,6 +131,17 @@ node /path/to/openrender/packages/cli/dist/index.js compile animation \
   --json
 ```
 
+Preserve project intent and visual direction for the next agent task:
+
+```bash
+node /path/to/openrender/packages/cli/dist/index.js memory ingest \
+  --feedback "Keep the UI readable and preserve the neon arcade direction." \
+  --json
+
+node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js clean --memory --keep-latest --dry-run --json
+```
+
 Install only after the plan is correct:
 
 ```bash
@@ -169,11 +184,12 @@ local image
 -> install plan
 -> engine-shaped files
 -> verify and report
+-> derived project memory
 -> agent handoff summary
 -> rollback remains available
 ```
 
-openRender keeps run state under `.openrender/`, including artifacts, previews, reports, run records, and rollback snapshots.
+openRender keeps run state under `.openrender/`, including artifacts, previews, reports, run records, rollback snapshots, and compact memory records under `.openrender/memory/`.
 
 ## Core Capabilities
 
@@ -183,6 +199,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - `detect-motion` for video/GIF/PNG sequence analysis before install, with clear ffmpeg guidance when video tooling is missing.
 - `compile animation` for engine-ready animation sheets, runtime helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same local run-state pipeline.
+- Memory infrastructure that derives project events, conclusions, project cards, agent cards, and compact context from runs, loops, and user feedback.
+- `memory status`, `memory ingest`, `memory context`, `memory consolidate`, and `clean --memory` for keeping agent continuity useful without accumulating raw chat logs.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
 - Alpha diagnostics, safe default background cutout, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
@@ -213,6 +231,9 @@ Additional media assets use sibling media manifests and helpers, such as `src/as
 
 - Run `context --json` before reading broadly or assuming the project type.
 - Use `context --json --compact` for the shortest project handoff.
+- Use `memory context --json --compact` before a follow-up agent task that depends on prior project intent, visual direction, or recovery context.
+- Use `memory ingest --feedback <text> --json`, `memory ingest --run latest --json`, or `memory ingest --loop latest --json` to preserve durable project state after meaningful work.
+- Use `clean --memory --keep-latest --dry-run --json` before pruning memory state.
 - Use `context --json --wire-map` before editing game code that should connect generated helpers.
 - Run `doctor --json` before writing into an unfamiliar project.
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.

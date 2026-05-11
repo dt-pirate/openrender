@@ -1,6 +1,6 @@
 # Version History
 
-Last updated: 2026-05-06
+Last updated: 2026-05-11
 
 This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
 
@@ -8,15 +8,55 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `1.0.0 Agent-Native Game Dev Infrastructure` |
-| Package/CLI version | `1.0.0` |
+| Current implementation baseline | `1.0.1 Memory Infrastructure Foundation` |
+| Package/CLI version | `1.0.1` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v1.0.0`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.0) |
-| Release timestamp | 2026-05-06 21:00 KST (2026-05-06 12:00 UTC) |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.0` |
+| Release channel | GitHub release [`v1.0.1`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.1) |
+| Release timestamp | 2026-05-11 22:00 KST (2026-05-11 13:00 UTC) |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.1` |
+
+## 1.0.1 Memory Infrastructure Foundation
+
+`1.0.1` adds openRender memory as project state infrastructure for agent continuity. It is not a note-taking layer: it derives compact project state from runs, loops, and user feedback so agents can continue game development without losing project intent, engine constraints, visual direction, or recovery context.
+
+Released: 2026-05-11 22:00 KST (2026-05-11 13:00 UTC).
+
+### Added
+
+- `.openrender/memory/` state with events, conclusions, project cards, agent cards, and `latest-context.json`.
+- `memory status --json` for inspecting memory state paths, counts, and storage size.
+- `memory ingest --feedback <text> --json`, `memory ingest --run latest --json`, and `memory ingest --loop latest --json` for deriving durable state from user direction and openRender work.
+- `memory context --json --compact` for short agent-facing context before the next task.
+- `memory consolidate --json` for refreshing project and agent cards from derived conclusions.
+- `clean --memory --keep-latest --dry-run --json` for pruning memory without creating loose scratch files.
+- Compact `context --json --compact` and `loop task --json` now include project memory when available.
+
+### Boundaries
+
+- No external memory service is required.
+- No model provider API is called.
+- No asset regeneration or remote reference download is performed.
+- Raw chat logs are not treated as openRender memory; memory is derived, compact, and pruneable project state.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+node packages/cli/dist/index.js --version
+node --check docs/openrender-i18n.js
+```
+
+Expected CLI version:
+
+```text
+1.0.1
+```
 
 ## 1.0.0 Agent-Native Game Dev Infrastructure
 

@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>面向 AI 游戏开发的本地资源交接基础设施</h3>
+  <h3>面向 AI 原生游戏开发的状态基础设施</h3>
   <p>
-    openRender 将已有的生成式游戏图片转换为可进入引擎项目的文件，
-    并留下安装计划、辅助代码、报告、验证结果和回滚记录。
+    openRender 将已有的生成式游戏媒体转换为可进入引擎项目的文件，
+    并留下安装计划、辅助代码、紧凑记忆、报告、验证结果和回滚记录。
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -33,11 +33,13 @@
 
 ## 什么是 openRender？
 
-openRender 是一个本地优先的 Developer Kit，帮助 AI 编码代理把生成式游戏资源安全地放入真实项目。
+openRender 是面向 AI 编码代理的状态基础设施，帮助代理在继续游戏开发时不丢失项目意图、引擎约束、视觉方向和恢复上下文。
 
 图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
 
-当前 `1.0.0` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的精灵图片交接、视觉参考记录、动作分析、动画编译/安装，以及音频、图集/瓦片集、UI 资产管线、循环执行记录、引擎任务包和循环完成记录。
+openRender memory 不是记事层。它保存从 run、loop 和用户反馈中派生的事件、结论、项目卡片和代理卡片，让下一次代理任务不需要重读原始日志，也不需要调用模型 API 重新生成资源。
+
+当前 `1.0.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的精灵图片交接、视觉参考记录、动作分析、动画编译/安装，以及音频、图集/瓦片集、UI 资产管线、循环执行记录、引擎任务包、循环完成记录和记忆基础设施。
 
 ## 快速开始
 
@@ -73,6 +75,8 @@ cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js memory status --json
+node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```

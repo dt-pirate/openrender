@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "1.0.0";
+const CLI_VERSION = "1.0.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 1.0.0 Media Contracts",
+    title: "openRender 1.0.1 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -592,8 +592,155 @@ type LoopCommandResult =
   | LoopStatusCommandResult
   | LoopTaskCommandResult
   | LoopCompleteCommandResult;
+type MemoryCommandResult =
+  | MemoryStatusCommandResult
+  | MemoryIngestCommandResult
+  | MemoryContextCommandResult
+  | MemoryConsolidateCommandResult;
+type MemoryEventType =
+  | "user.feedback"
+  | "run.compiled"
+  | "run.verified"
+  | "verification.failed"
+  | "rollback.available"
+  | "loop.started"
+  | "loop.updated"
+  | "loop.completed";
+type MemoryConclusionLevel = "explicit" | "deductive" | "inductive" | "abductive";
+type MemoryConclusionCategory = "constraint" | "preference" | "engine" | "visual" | "recovery" | "failure" | "workflow";
+type MemoryCardKind = "project" | "agent" | "user-direction" | "engine";
 type LoopStatus = "created" | "needs_action" | "ready_for_wiring" | "failed" | "completed";
 type LoopIterationStatus = "recorded" | "needs_action" | "ready_for_wiring" | "failed";
+
+interface OpenRenderMemoryEvent {
+  schemaVersion: string;
+  eventId: string;
+  createdAt: string;
+  type: MemoryEventType;
+  source: "cli" | "loop" | "run" | "user";
+  summary: string;
+  runId?: string;
+  loopId?: string;
+  target?: TargetEngine | "unknown";
+  assetId?: string;
+  severity?: "info" | "warning" | "failure";
+  data?: Record<string, unknown>;
+}
+
+interface OpenRenderMemoryConclusion {
+  schemaVersion: string;
+  conclusionId: string;
+  createdAt: string;
+  level: MemoryConclusionLevel;
+  category: MemoryConclusionCategory;
+  text: string;
+  confidence: number;
+  stability: "session" | "project" | "standing";
+  sourceEventIds: string[];
+  status: "active" | "superseded";
+}
+
+interface OpenRenderMemoryCardFact {
+  id: string;
+  type: MemoryConclusionCategory;
+  text: string;
+  stability: OpenRenderMemoryConclusion["stability"];
+  sourceConclusionIds: string[];
+}
+
+interface OpenRenderMemoryCard {
+  schemaVersion: string;
+  kind: MemoryCardKind;
+  updatedAt: string;
+  facts: OpenRenderMemoryCardFact[];
+}
+
+interface MemorySnapshot {
+  events: OpenRenderMemoryEvent[];
+  conclusions: OpenRenderMemoryConclusion[];
+  projectCard: OpenRenderMemoryCard;
+  agentCard: OpenRenderMemoryCard;
+}
+
+interface MemoryStatusCommandResult {
+  ok: true;
+  operation: "memory.status";
+  paths: {
+    root: string;
+    events: string;
+    conclusions: string;
+    projectCard: string;
+    agentCard: string;
+    latestContext: string;
+  };
+  counts: {
+    events: number;
+    conclusions: number;
+    projectFacts: number;
+    agentFacts: number;
+  };
+  latestEvent: OpenRenderMemoryEvent | null;
+  localOnly: true;
+}
+
+interface MemoryIngestCommandResult {
+  ok: true;
+  operation: "memory.ingest";
+  eventsWritten: number;
+  conclusionsWritten: number;
+  cardsUpdated: string[];
+  contextPath: string;
+  nextActions: string[];
+  localOnly: true;
+}
+
+interface MemoryContextCommandResult {
+  ok: true;
+  operation: "memory.context";
+  version: string;
+  projectCard: OpenRenderMemoryCard;
+  agentCard: OpenRenderMemoryCard;
+  conclusions: OpenRenderMemoryConclusion[];
+  recentEvents: OpenRenderMemoryEvent[];
+  summary: string;
+  nextActions: string[];
+  localOnly: true;
+}
+
+interface MemoryConsolidateCommandResult {
+  ok: true;
+  operation: "memory.consolidate";
+  before: {
+    events: number;
+    conclusions: number;
+  };
+  after: {
+    events: number;
+    conclusions: number;
+  };
+  cardsUpdated: string[];
+  contextPath: string;
+  localOnly: true;
+}
+
+interface MemoryCleanCommandResult {
+  ok: true;
+  operation: "clean.memory";
+  dryRun: boolean;
+  keepLatest: boolean;
+  before: {
+    events: number;
+    conclusions: number;
+    bytes: number;
+  };
+  after: {
+    events: number;
+    conclusions: number;
+    bytes: number | null;
+  };
+  actions: string[];
+  localOnly: true;
+}
 
 interface OpenRenderLoopRecord {
   schemaVersion: string;
@@ -793,6 +940,22 @@ async function main(argv: string[]): Promise<number> {
     } else {
       printAgentContext(result);
     }
+    return 0;
+  }
+
+  if (command === "memory") {
+    const result = await handleMemoryCommand(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(parsed.flags.get("compact") === true ? compactMemoryResult(result) : result, null, 2));
+    } else {
+      printMemoryResult(result);
+    }
+    return 0;
+  }
+
+  if (command === "clean") {
+    const result = await cleanMemory(parsed);
+    console.log(JSON.stringify(result, null, 2));
     return 0;
   }
 
@@ -2635,13 +2798,8 @@ async function statusLoop(parsed: ParsedFlags): Promise<LoopStatusCommandResult>
 async function taskLoop(parsed: ParsedFlags): Promise<LoopTaskCommandResult> {
   const projectRoot = process.cwd();
   const loop = await readLoop(projectRoot, readLoopId(parsed));
-  let content: string;
-  try {
-    content = await fs.readFile(resolveInsideProject(projectRoot, loop.paths.latestTask), "utf8");
-  } catch {
-    const record = loop.latestRunId ? await readCompileRecord(projectRoot, loop.latestRunId) : null;
-    content = await persistLoopTask(projectRoot, loop, record);
-  }
+  const record = loop.latestRunId ? await readCompileRecord(projectRoot, loop.latestRunId) : null;
+  const content = await persistLoopTask(projectRoot, loop, record);
 
   return {
     ok: true,
@@ -2909,6 +3067,7 @@ async function createLoopTaskMarkdown(
   const latestIteration = loop.iterations.at(-1) ?? null;
   const scan = await scanProject(projectRoot);
   const wireMap = latestRecord ? await createWireMap(scan, latestRecord) : null;
+  const memory = await readCompactMemoryForTask(projectRoot);
   const helperPath = latestRecord?.outputPlan.codegenPath ?? null;
   const manifestPath = latestRecord?.outputPlan.manifestPath ?? null;
   const assetPath = latestRecord?.outputPlan.assetPath ?? null;
@@ -2929,6 +3088,15 @@ async function createLoopTaskMarkdown(
     "- Do not patch game code automatically through openRender.",
     "- Work only from existing source media, generated helper files, reports, and wire-map candidates.",
     "",
+    ...(memory
+      ? [
+          "Project memory:",
+          `- summary: ${memory.summary}`,
+          ...memory.projectCard.facts.slice(0, 6).map((fact) => `- project ${fact.type}: ${fact.text}`),
+          ...memory.agentCard.facts.slice(0, 4).map((fact) => `- agent ${fact.type}: ${fact.text}`),
+          ""
+        ]
+      : []),
     "Latest run:",
     latestRecord
       ? [
@@ -3094,6 +3262,7 @@ function compactAgentContext(result: AgentContextCommandResult): CompactAgentCon
     },
     latestRun: result.latestRun,
     latestLoop: result.latestLoop,
+    memory: result.memory,
     references: result.references.slice(0, 3),
     tables: {
       overwriteRisks: {
@@ -3545,11 +3714,575 @@ function readReferenceRole(parsed: ParsedFlags): VisualReferenceRole {
   throw new Error(`Unsupported reference role: ${value}`);
 }
 
+async function handleMemoryCommand(parsed: ParsedFlags): Promise<MemoryCommandResult> {
+  const subcommand = parsed.positionals[1] ?? "status";
+  if (subcommand === "status") return memoryStatus();
+  if (subcommand === "ingest") return ingestMemory(parsed);
+  if (subcommand === "context") return memoryContext(parsed);
+  if (subcommand === "consolidate") return consolidateMemory(parsed);
+  throw new Error("Unsupported memory command. Use status, ingest, context, or consolidate.");
+}
+
+function memoryPaths(): MemoryStatusCommandResult["paths"] {
+  return {
+    root: ".openrender/memory",
+    events: ".openrender/memory/events.jsonl",
+    conclusions: ".openrender/memory/conclusions.jsonl",
+    projectCard: ".openrender/memory/project-card.json",
+    agentCard: ".openrender/memory/agent-card.json",
+    latestContext: ".openrender/memory/latest-context.json"
+  };
+}
+
+async function memoryStatus(): Promise<MemoryStatusCommandResult> {
+  const projectRoot = process.cwd();
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const events = snapshot.events;
+  const conclusions = snapshot.conclusions;
+  return {
+    ok: true,
+    operation: "memory.status",
+    paths: memoryPaths(),
+    counts: {
+      events: events.length,
+      conclusions: conclusions.length,
+      projectFacts: snapshot.projectCard.facts.length,
+      agentFacts: snapshot.agentCard.facts.length
+    },
+    latestEvent: events.at(-1) ?? null,
+    localOnly: true
+  };
+}
+
+async function ingestMemory(parsed: ParsedFlags): Promise<MemoryIngestCommandResult> {
+  const projectRoot = process.cwd();
+  const events: OpenRenderMemoryEvent[] = [];
+  const feedback = readOptionalStringFlag(parsed, "feedback") ?? readOptionalStringFlag(parsed, "note") ?? readOptionalStringFlag(parsed, "notes");
+  const runFlag = parsed.flags.get("run");
+  const loopFlag = parsed.flags.get("loop");
+
+  if (typeof feedback === "string" && feedback.trim().length > 0) {
+    events.push(createMemoryEvent({
+      type: "user.feedback",
+      source: "user",
+      summary: feedback.trim(),
+      severity: "info"
+    }));
+  }
+
+  if (typeof runFlag === "string" || (events.length === 0 && loopFlag === undefined)) {
+    const runId = typeof runFlag === "string" ? runFlag : "latest";
+    const record = await readCompileRecord(projectRoot, runId);
+    events.push(...createMemoryEventsFromRecord(record));
+  }
+
+  if (typeof loopFlag === "string" || parsed.flags.get("loop") === true) {
+    const loop = await readLoop(projectRoot, typeof loopFlag === "string" ? loopFlag : "latest");
+    events.push(createMemoryEventFromLoop(loop));
+  }
+
+  if (events.length === 0) throw new Error("memory ingest needs --run latest, --loop latest, or --feedback <text>.");
+
+  const snapshot = await writeMemoryEventsAndConclusions(projectRoot, events);
+  const context = createMemoryContextFromSnapshot(snapshot, false);
+  await writeLatestMemoryContext(projectRoot, context);
+
+  return {
+    ok: true,
+    operation: "memory.ingest",
+    eventsWritten: events.length,
+    conclusionsWritten: snapshot.conclusions.filter((conclusion) => events.some((event) => conclusion.sourceEventIds.includes(event.eventId))).length,
+    cardsUpdated: ["project-card", "agent-card"],
+    contextPath: memoryPaths().latestContext,
+    nextActions: [
+      "Run openrender memory context --json --compact before the next agent task.",
+      "Run openrender loop task --json to include compact project memory in the next handoff."
+    ],
+    localOnly: true
+  };
+}
+
+async function memoryContext(parsed: ParsedFlags): Promise<MemoryContextCommandResult> {
+  const projectRoot = process.cwd();
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const context = createMemoryContextFromSnapshot(snapshot, parsed.flags.get("compact") === true);
+  await writeLatestMemoryContext(projectRoot, context);
+  return context;
+}
+
+async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidateCommandResult> {
+  const projectRoot = process.cwd();
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const before = {
+    events: snapshot.events.length,
+    conclusions: snapshot.conclusions.length
+  };
+  const maxEvents = readNonNegativeIntegerFlag(parsed, "max-events", 200);
+  const maxConclusions = readNonNegativeIntegerFlag(parsed, "max-conclusions", 120);
+  const dedupedConclusions = dedupeConclusions(snapshot.conclusions).slice(-maxConclusions);
+  const trimmedEvents = snapshot.events.slice(-maxEvents);
+  const consolidated: MemorySnapshot = {
+    events: trimmedEvents,
+    conclusions: dedupedConclusions,
+    projectCard: createMemoryCard("project", dedupedConclusions),
+    agentCard: createMemoryCard("agent", dedupedConclusions)
+  };
+  await writeMemorySnapshot(projectRoot, consolidated);
+  const context = createMemoryContextFromSnapshot(consolidated, false);
+  await writeLatestMemoryContext(projectRoot, context);
+  return {
+    ok: true,
+    operation: "memory.consolidate",
+    before,
+    after: {
+      events: consolidated.events.length,
+      conclusions: consolidated.conclusions.length
+    },
+    cardsUpdated: ["project-card", "agent-card"],
+    contextPath: memoryPaths().latestContext,
+    localOnly: true
+  };
+}
+
+async function cleanMemory(parsed: ParsedFlags): Promise<MemoryCleanCommandResult> {
+  if (parsed.flags.get("memory") !== true) throw new Error("clean currently supports --memory.");
+  const projectRoot = process.cwd();
+  const dryRun = parsed.flags.get("dry-run") === true;
+  const keepLatest = parsed.flags.get("keep-latest") === true;
+  const maxEvents = readNonNegativeIntegerFlag(parsed, "max-events", keepLatest ? 50 : 200);
+  const maxConclusions = readNonNegativeIntegerFlag(parsed, "max-conclusions", keepLatest ? 40 : 120);
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const beforeBytes = await memoryStorageBytes(projectRoot);
+  const trimmed: MemorySnapshot = {
+    events: snapshot.events.slice(-maxEvents),
+    conclusions: dedupeConclusions(snapshot.conclusions).slice(-maxConclusions),
+    projectCard: createMemoryCard("project", snapshot.conclusions),
+    agentCard: createMemoryCard("agent", snapshot.conclusions)
+  };
+  trimmed.projectCard = createMemoryCard("project", trimmed.conclusions);
+  trimmed.agentCard = createMemoryCard("agent", trimmed.conclusions);
+
+  const actions = [
+    `keep latest ${trimmed.events.length}/${snapshot.events.length} memory events`,
+    `keep latest ${trimmed.conclusions.length}/${snapshot.conclusions.length} active conclusions`,
+    "rewrite project-card, agent-card, and latest-context"
+  ];
+
+  if (!dryRun) {
+    await writeMemorySnapshot(projectRoot, trimmed);
+    await writeLatestMemoryContext(projectRoot, createMemoryContextFromSnapshot(trimmed, false));
+  }
+
+  return {
+    ok: true,
+    operation: "clean.memory",
+    dryRun,
+    keepLatest,
+    before: {
+      events: snapshot.events.length,
+      conclusions: snapshot.conclusions.length,
+      bytes: beforeBytes
+    },
+    after: {
+      events: trimmed.events.length,
+      conclusions: trimmed.conclusions.length,
+      bytes: dryRun ? null : await memoryStorageBytes(projectRoot)
+    },
+    actions,
+    localOnly: true
+  };
+}
+
+async function readMemorySnapshot(projectRoot: string): Promise<MemorySnapshot> {
+  const [events, conclusions] = await Promise.all([
+    readMemoryJsonl<OpenRenderMemoryEvent>(projectRoot, memoryPaths().events),
+    readMemoryJsonl<OpenRenderMemoryConclusion>(projectRoot, memoryPaths().conclusions)
+  ]);
+  return {
+    events,
+    conclusions,
+    projectCard: await readMemoryCard(projectRoot, "project", conclusions),
+    agentCard: await readMemoryCard(projectRoot, "agent", conclusions)
+  };
+}
+
+async function readMemoryJsonl<T>(projectRoot: string, relativePath: string): Promise<T[]> {
+  const absolutePath = resolveInsideProject(projectRoot, relativePath);
+  if (!await pathExists(absolutePath)) return [];
+  const raw = await fs.readFile(absolutePath, "utf8");
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as T);
+}
+
+async function readMemoryCard(
+  projectRoot: string,
+  kind: MemoryCardKind,
+  conclusions: OpenRenderMemoryConclusion[]
+): Promise<OpenRenderMemoryCard> {
+  const relativePath = kind === "agent" ? memoryPaths().agentCard : memoryPaths().projectCard;
+  try {
+    const card = JSON.parse(await fs.readFile(resolveInsideProject(projectRoot, relativePath), "utf8")) as OpenRenderMemoryCard;
+    if (card.kind === kind && Array.isArray(card.facts)) return card;
+  } catch {
+    // Fall through to a derived card.
+  }
+  return createMemoryCard(kind, conclusions);
+}
+
+async function writeMemoryEventsAndConclusions(projectRoot: string, events: OpenRenderMemoryEvent[]): Promise<MemorySnapshot> {
+  const existing = await readMemorySnapshot(projectRoot);
+  const eventMap = new Map(existing.events.map((event) => [event.eventId, event]));
+  for (const event of events) eventMap.set(event.eventId, event);
+  const derived = deriveMemoryConclusions(events);
+  const conclusions = dedupeConclusions([...existing.conclusions, ...derived]);
+  const snapshot: MemorySnapshot = {
+    events: [...eventMap.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    conclusions,
+    projectCard: createMemoryCard("project", conclusions),
+    agentCard: createMemoryCard("agent", conclusions)
+  };
+  await writeMemorySnapshot(projectRoot, snapshot);
+  return snapshot;
+}
+
+async function writeMemorySnapshot(projectRoot: string, snapshot: MemorySnapshot): Promise<void> {
+  const paths = memoryPaths();
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.events,
+    contents: `${snapshot.events.map((event) => JSON.stringify(event)).join("\n")}${snapshot.events.length ? "\n" : ""}`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.conclusions,
+    contents: `${snapshot.conclusions.map((conclusion) => JSON.stringify(conclusion)).join("\n")}${snapshot.conclusions.length ? "\n" : ""}`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.projectCard,
+    contents: `${JSON.stringify(snapshot.projectCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.agentCard,
+    contents: `${JSON.stringify(snapshot.agentCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+}
+
+async function writeLatestMemoryContext(projectRoot: string, context: MemoryContextCommandResult): Promise<void> {
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: memoryPaths().latestContext,
+    contents: `${JSON.stringify(context, null, 2)}\n`,
+    allowOverwrite: true
+  });
+}
+
+async function memoryStorageBytes(projectRoot: string): Promise<number> {
+  const paths = memoryPaths();
+  const files = [paths.events, paths.conclusions, paths.projectCard, paths.agentCard, paths.latestContext];
+  let bytes = 0;
+  for (const file of files) {
+    try {
+      bytes += (await fs.stat(resolveInsideProject(projectRoot, file))).size;
+    } catch {
+      continue;
+    }
+  }
+  return bytes;
+}
+
+function createMemoryEvent(input: {
+  type: MemoryEventType;
+  source: OpenRenderMemoryEvent["source"];
+  summary: string;
+  runId?: string;
+  loopId?: string;
+  target?: TargetEngine | "unknown";
+  assetId?: string;
+  severity?: OpenRenderMemoryEvent["severity"];
+  data?: Record<string, unknown>;
+}): OpenRenderMemoryEvent {
+  const createdAt = new Date().toISOString();
+  const identity = [input.type, input.summary, input.runId ?? "", input.loopId ?? "", createdAt].join("|");
+  return {
+    schemaVersion: CLI_VERSION,
+    eventId: `mem_evt_${createHash("sha1").update(identity).digest("hex").slice(0, 12)}`,
+    createdAt,
+    type: input.type,
+    source: input.source,
+    summary: input.summary,
+    ...(input.runId ? { runId: input.runId } : {}),
+    ...(input.loopId ? { loopId: input.loopId } : {}),
+    ...(input.target ? { target: input.target } : {}),
+    ...(input.assetId ? { assetId: input.assetId } : {}),
+    ...(input.severity ? { severity: input.severity } : {}),
+    ...(input.data ? { data: input.data } : {})
+  };
+}
+
+function createMemoryEventsFromRecord(record: OpenRenderCompileRecord): OpenRenderMemoryEvent[] {
+  const events: OpenRenderMemoryEvent[] = [];
+  const verification = record.run.verification?.status ?? null;
+  events.push(createMemoryEvent({
+    type: verification === "failed" ? "verification.failed" : verification ? "run.verified" : "run.compiled",
+    source: "run",
+    summary: createAgentSummary(record),
+    runId: record.run.runId,
+    target: record.contract.target.engine,
+    assetId: record.contract.id,
+    severity: verification === "failed" ? "failure" : verification === "warning" ? "warning" : "info",
+    data: {
+      mediaType: record.contract.mediaType,
+      verification,
+      assetPath: record.outputPlan.assetPath,
+      helperPath: record.outputPlan.codegenPath ?? null,
+      manifestPath: record.outputPlan.manifestPath ?? null
+    }
+  }));
+  if (record.installResult) {
+    events.push(createMemoryEvent({
+      type: "rollback.available",
+      source: "run",
+      summary: `Rollback is available for ${record.contract.id} via run ${record.run.runId}.`,
+      runId: record.run.runId,
+      target: record.contract.target.engine,
+      assetId: record.contract.id,
+      severity: "info",
+      data: {
+        rollbackCommand: `openrender rollback --run ${record.run.runId} --json`,
+        snapshotRoot: record.installResult.snapshotRoot
+      }
+    }));
+  }
+  return events;
+}
+
+function createMemoryEventFromLoop(loop: OpenRenderLoopRecord): OpenRenderMemoryEvent {
+  return createMemoryEvent({
+    type: loop.status === "completed" ? "loop.completed" : loop.iterations.length === 0 ? "loop.started" : "loop.updated",
+    source: "loop",
+    summary: loop.completionNotes ?? loop.goal,
+    loopId: loop.loopId,
+    runId: loop.latestRunId,
+    target: loop.target,
+    assetId: loop.assetId,
+    severity: loop.status === "failed" ? "failure" : "info",
+    data: {
+      status: loop.status,
+      iterations: loop.iterations.length,
+      mediaKind: loop.mediaKind ?? null
+    }
+  });
+}
+
+function deriveMemoryConclusions(events: OpenRenderMemoryEvent[]): OpenRenderMemoryConclusion[] {
+  const conclusions: OpenRenderMemoryConclusion[] = [
+    createMemoryConclusion("deductive", "constraint", "Do not call model provider APIs or regenerate assets through openRender loops.", "standing", events.map((event) => event.eventId), 1),
+    createMemoryConclusion("deductive", "constraint", "Keep game-code patching outside openRender; provide helper paths, wire maps, reports, and rollback context instead.", "standing", events.map((event) => event.eventId), 0.95)
+  ];
+
+  for (const event of events) {
+    if (event.target) {
+      conclusions.push(createMemoryConclusion("explicit", "engine", `Current project work targets ${event.target}.`, "project", [event.eventId], 0.9));
+    }
+    if (event.type === "user.feedback") {
+      conclusions.push(createMemoryConclusion("explicit", "preference", event.summary, "project", [event.eventId], 0.95));
+      if (/clean|tidy|지저분|깔끔|스크린샷|screenshot|folder|artifact/i.test(event.summary)) {
+        conclusions.push(createMemoryConclusion("deductive", "workflow", "Generated diagnostics should stay compact, pruneable, and latest-first unless the user explicitly keeps history.", "standing", [event.eventId], 0.95));
+      }
+      if (/visual|화면|ui|juice|juicy|깔끔|비주얼|style/i.test(event.summary)) {
+        conclusions.push(createMemoryConclusion("inductive", "visual", "Preserve visual direction as project state and turn feedback into the next compact agent task.", "project", [event.eventId], 0.78));
+      }
+    }
+    if (event.type === "verification.failed") {
+      conclusions.push(createMemoryConclusion("deductive", "failure", `Latest failed verification should be summarized before asking the agent to continue: ${event.summary}`, "session", [event.eventId], 0.9));
+    }
+    if (event.type === "rollback.available") {
+      conclusions.push(createMemoryConclusion("explicit", "recovery", event.summary, "session", [event.eventId], 0.95));
+    }
+    if (event.type === "loop.completed") {
+      conclusions.push(createMemoryConclusion("deductive", "workflow", `Completed loop should inform future agent handoffs: ${event.summary}`, "project", [event.eventId], 0.84));
+    }
+  }
+  return conclusions;
+}
+
+function createMemoryConclusion(
+  level: MemoryConclusionLevel,
+  category: MemoryConclusionCategory,
+  text: string,
+  stability: OpenRenderMemoryConclusion["stability"],
+  sourceEventIds: string[],
+  confidence: number
+): OpenRenderMemoryConclusion {
+  const createdAt = new Date().toISOString();
+  const identity = [level, category, normalizeConclusionText(text)].join("|");
+  return {
+    schemaVersion: CLI_VERSION,
+    conclusionId: `mem_con_${createHash("sha1").update(identity).digest("hex").slice(0, 12)}`,
+    createdAt,
+    level,
+    category,
+    text,
+    confidence,
+    stability,
+    sourceEventIds,
+    status: "active"
+  };
+}
+
+function dedupeConclusions(conclusions: OpenRenderMemoryConclusion[]): OpenRenderMemoryConclusion[] {
+  const byKey = new Map<string, OpenRenderMemoryConclusion>();
+  for (const conclusion of conclusions) {
+    const key = [conclusion.level, conclusion.category, normalizeConclusionText(conclusion.text)].join("|");
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, conclusion);
+      continue;
+    }
+    byKey.set(key, {
+      ...existing,
+      createdAt: existing.createdAt < conclusion.createdAt ? conclusion.createdAt : existing.createdAt,
+      confidence: Math.max(existing.confidence, conclusion.confidence),
+      sourceEventIds: [...new Set([...existing.sourceEventIds, ...conclusion.sourceEventIds])]
+    });
+  }
+  return [...byKey.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function normalizeConclusionText(text: string): string {
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function createMemoryCard(kind: MemoryCardKind, conclusions: OpenRenderMemoryConclusion[]): OpenRenderMemoryCard {
+  const active = conclusions.filter((conclusion) => conclusion.status === "active");
+  const relevant = kind === "agent"
+    ? active.filter((conclusion) => conclusion.category === "constraint" || conclusion.category === "workflow" || conclusion.category === "recovery")
+    : active.filter((conclusion) => conclusion.category !== "recovery" || conclusion.stability !== "session");
+  const facts = relevant
+    .sort((a, b) => scoreConclusionForCard(b) - scoreConclusionForCard(a))
+    .slice(0, 40)
+    .map((conclusion) => ({
+      id: conclusion.conclusionId,
+      type: conclusion.category,
+      text: conclusion.text,
+      stability: conclusion.stability,
+      sourceConclusionIds: [conclusion.conclusionId]
+    }));
+
+  if (kind === "agent" && !facts.some((fact) => fact.text.includes("Do not call model provider APIs"))) {
+    const fallback = createMemoryConclusion("deductive", "constraint", "Do not call model provider APIs or regenerate assets through openRender loops.", "standing", [], 1);
+    facts.unshift({
+      id: fallback.conclusionId,
+      type: fallback.category,
+      text: fallback.text,
+      stability: fallback.stability,
+      sourceConclusionIds: []
+    });
+  }
+
+  return {
+    schemaVersion: CLI_VERSION,
+    kind,
+    updatedAt: new Date().toISOString(),
+    facts
+  };
+}
+
+function scoreConclusionForCard(conclusion: OpenRenderMemoryConclusion): number {
+  const stabilityScore = conclusion.stability === "standing" ? 3 : conclusion.stability === "project" ? 2 : 1;
+  const levelScore = conclusion.level === "explicit" ? 3 : conclusion.level === "deductive" ? 2 : 1;
+  return stabilityScore * 10 + levelScore + conclusion.confidence;
+}
+
+function createMemoryContextFromSnapshot(snapshot: MemorySnapshot, compact: boolean): MemoryContextCommandResult {
+  const conclusions = snapshot.conclusions
+    .filter((conclusion) => conclusion.status === "active")
+    .sort((a, b) => scoreConclusionForCard(b) - scoreConclusionForCard(a))
+    .slice(0, compact ? 8 : 24);
+  const recentEvents = snapshot.events.slice(compact ? -3 : -10);
+  const summary = conclusions.length
+    ? conclusions.slice(0, 5).map((conclusion) => conclusion.text).join(" ")
+    : "No project memory has been derived yet. Ingest a run, loop, or user feedback first.";
+
+  return {
+    ok: true,
+    operation: "memory.context",
+    version: CLI_VERSION,
+    projectCard: compactMemoryCard(snapshot.projectCard, compact ? 8 : 40),
+    agentCard: compactMemoryCard(snapshot.agentCard, compact ? 8 : 40),
+    conclusions,
+    recentEvents,
+    summary,
+    nextActions: conclusions.length
+      ? ["Use this memory context as background for the next agent task; it is not a new user request."]
+      : ["Run openrender memory ingest --feedback <text> --json or openrender memory ingest --run latest --json."],
+    localOnly: true
+  };
+}
+
+function compactMemoryCard(card: OpenRenderMemoryCard, maxFacts: number): OpenRenderMemoryCard {
+  return {
+    ...card,
+    facts: card.facts.slice(0, maxFacts)
+  };
+}
+
+async function readCompactMemoryForTask(projectRoot: string): Promise<MemoryContextCommandResult | null> {
+  const snapshot = await readMemorySnapshot(projectRoot);
+  if (snapshot.events.length === 0 && snapshot.conclusions.length === 0 && snapshot.projectCard.facts.length === 0) return null;
+  return createMemoryContextFromSnapshot(snapshot, true);
+}
+
+function compactMemoryResult(result: MemoryCommandResult): unknown {
+  if (result.operation === "memory.context") {
+    return {
+      ok: true,
+      operation: result.operation,
+      summary: result.summary,
+      projectFacts: result.projectCard.facts.map((fact) => fact.text),
+      agentFacts: result.agentCard.facts.map((fact) => fact.text),
+      conclusions: result.conclusions.map((conclusion) => ({
+        level: conclusion.level,
+        category: conclusion.category,
+        text: conclusion.text
+      })),
+      nextActions: result.nextActions,
+      localOnly: true
+    };
+  }
+  if (result.operation === "memory.status") {
+    return {
+      ok: true,
+      operation: result.operation,
+      counts: result.counts,
+      latestEvent: result.latestEvent
+        ? {
+            type: result.latestEvent.type,
+            summary: result.latestEvent.summary,
+            createdAt: result.latestEvent.createdAt
+          }
+        : null,
+      localOnly: true
+    };
+  }
+  return result;
+}
+
 async function createAgentContext(options: { includeWireMap?: boolean } = {}): Promise<AgentContextCommandResult> {
   const projectRoot = process.cwd();
   const scan = await scanProject(projectRoot);
   const latestRun = await readLatestRunSummary(projectRoot);
   const latestLoop = await readLatestLoopSummary(projectRoot);
+  const memory = await readCompactMemoryForTask(projectRoot);
   const latestRecord = options.includeWireMap ? await readLatestCompileRecordIfAvailable(projectRoot) : null;
   const references = await readReferenceSummaries(projectRoot);
   const overwriteRisks: AgentContextCommandResult["overwriteRisks"] = [];
@@ -3601,6 +4334,7 @@ async function createAgentContext(options: { includeWireMap?: boolean } = {}): P
     },
     latestRun,
     latestLoop,
+    memory,
     references,
     overwriteRisks,
     recommendedNextActions: [...recommendedNextActions],
@@ -4181,7 +4915,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 1.0.0: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 1.0.1: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -7245,6 +7979,35 @@ function printIngestReferenceResult(result: IngestReferenceCommandResult): void 
   console.log(result.summary);
 }
 
+function printMemoryResult(result: MemoryCommandResult): void {
+  console.log("openRender memory");
+  console.log("");
+  if (result.operation === "memory.status") {
+    console.log(`Events: ${result.counts.events}`);
+    console.log(`Conclusions: ${result.counts.conclusions}`);
+    console.log(`Project facts: ${result.counts.projectFacts}`);
+    console.log(`Agent facts: ${result.counts.agentFacts}`);
+    if (result.latestEvent) console.log(`Latest: ${result.latestEvent.type} - ${result.latestEvent.summary}`);
+    return;
+  }
+  if (result.operation === "memory.ingest") {
+    console.log(`Events written: ${result.eventsWritten}`);
+    console.log(`Conclusions written: ${result.conclusionsWritten}`);
+    console.log(`Context: ${result.contextPath}`);
+    for (const action of result.nextActions) console.log(`Next: ${action}`);
+    return;
+  }
+  if (result.operation === "memory.context") {
+    console.log(result.summary);
+    for (const fact of result.projectCard.facts.slice(0, 8)) console.log(`Project: ${fact.text}`);
+    for (const fact of result.agentCard.facts.slice(0, 8)) console.log(`Agent: ${fact.text}`);
+    return;
+  }
+  console.log(`Events: ${result.before.events} -> ${result.after.events}`);
+  console.log(`Conclusions: ${result.before.conclusions} -> ${result.after.conclusions}`);
+  console.log(`Context: ${result.contextPath}`);
+}
+
 function printPackListResult(result: PackListCommandResult): void {
   console.log("openRender pack list");
   console.log("");
@@ -7360,6 +8123,9 @@ Usage:
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
   openrender context [--json] [--compact] [--wire-map]
+  openrender memory status|context|consolidate [--json] [--compact]
+  openrender memory ingest [--run latest|runId] [--loop latest|loopId] [--feedback <text>] [--json]
+  openrender clean --memory [--keep-latest] [--max-events n] [--max-conclusions n] [--dry-run] [--json]
   openrender ingest reference --url <url>|--from <path> --role mechanic|style|layout|logic|motion|mood|character|environment --intent <text> [--notes <text>] [--json]
   openrender loop start --goal <text> [--target engine] [--id asset.id] [--media sprite|animation|audio|atlas|ui|asset] [--from <path>] [--json]
   openrender loop run sprite|animation|audio|atlas|ui --goal <text> --from|--input <path> --id <asset.id> [--target engine] [--install] [--force] [--json] [--compact]
@@ -7534,6 +8300,7 @@ interface AgentContextCommandResult {
     installRecorded: boolean;
   } | null;
   latestLoop: CompactLoopRecord | null;
+  memory: MemoryContextCommandResult | null;
   references: ReferenceSummary[];
   overwriteRisks: Array<{
     code: "manifest_exists";
@@ -7560,6 +8327,7 @@ interface CompactAgentContextResult {
   paths: Pick<AgentContextCommandResult["paths"], "assetRoot" | "sourceRoot" | "manifest">;
   latestRun: AgentContextCommandResult["latestRun"];
   latestLoop: AgentContextCommandResult["latestLoop"];
+  memory: AgentContextCommandResult["memory"];
   references: ReferenceSummary[];
   tables: {
     overwriteRisks: CompactTable;

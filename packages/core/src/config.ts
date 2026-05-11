@@ -12,6 +12,7 @@ export const OPENRENDER_STATE_DIR = ".openrender";
 export const OPENRENDER_STATE_SUBDIRS = [
   "artifacts",
   "cache",
+  "memory",
   "previews",
   "reports",
   "runs",

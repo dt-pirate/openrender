@@ -1,9 +1,9 @@
 <div align="center">
   <h1>openRender</h1>
-  <h3>AI ゲーム開発のためのローカル資産ハンドオフ基盤</h3>
+  <h3>AI エージェントネイティブなゲーム開発のための状態基盤</h3>
   <p>
-    openRender は既存の生成済みゲーム画像をエンジン対応のプロジェクトファイルに変換し、
-    インストール計画、補助コード、レポート、検証、ロールバック記録を残します。
+    openRender は既存の生成済みゲームメディアをエンジン対応のプロジェクトファイルに変換し、
+    インストール計画、補助コード、コンパクトメモリ、レポート、検証、ロールバック記録を残します。
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -33,11 +33,13 @@
 
 ## openRender とは？
 
-openRender は、AI コーディングエージェントが生成済みゲームアセットを実際のゲームプロジェクトへ安全に配置するためのローカルファースト Developer Kit です。
+openRender は、AI コーディングエージェントがプロジェクト意図、エンジン制約、視覚方向、復旧コンテキストを失わずにゲーム開発を継続するための状態基盤です。
 
 画像生成器はピクセルを作ります。しかしゲームプロジェクトには、安定したパス、フレームメタデータ、manifest、補助コード、プレビュー、レポート、そしてインストールを戻せる境界が必要です。openRender はこのハンドオフ層を提供し、エージェントの推測を減らし、プロジェクト状態をレビュー可能に保ちます。
 
-現在の `1.0.0` コアは、Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity プロジェクトで、スプライト画像ハンドオフ、視覚リファレンス記録、モーション解析、アニメーションのコンパイル/インストール、音声、アトラス/タイルセット、UI アセットパイプライン、ループ実行履歴、エンジン別タスクパケット、ループ完了記録をサポートしています。
+openRender memory はメモ取り用の層ではありません。run、loop、ユーザーフィードバックから派生したイベント、結論、プロジェクトカード、エージェントカードを保存し、次のエージェントタスクが生ログを読み直したりモデル API でアセットを再生成したりせずに文脈を引き継げるようにします。
+
+現在の `1.0.1` コアは、Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity プロジェクトで、スプライト画像ハンドオフ、視覚リファレンス記録、モーション解析、アニメーションのコンパイル/インストール、音声、アトラス/タイルセット、UI アセットパイプライン、ループ実行履歴、エンジン別タスクパケット、ループ完了記録、メモリ基盤をサポートしています。
 
 ## クイックスタート
 
@@ -73,6 +75,8 @@ cd /path/to/game-project
 
 node /path/to/openrender/packages/cli/dist/index.js context --json
 node /path/to/openrender/packages/cli/dist/index.js context --json --compact
+node /path/to/openrender/packages/cli/dist/index.js memory status --json
+node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
 node /path/to/openrender/packages/cli/dist/index.js scan --json
 node /path/to/openrender/packages/cli/dist/index.js doctor --json
 ```

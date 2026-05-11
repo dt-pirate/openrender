@@ -1,6 +1,6 @@
 # Agent Usage
 
-Use openRender as a local-first handoff layer for generated media.
+Use openRender as state infrastructure for generated media, engine handoff, verification, recovery, and follow-up agent context.
 
 When a human is working through an AI coding agent, the user-facing request can stay simple:
 
@@ -38,6 +38,8 @@ Recommended sequence:
 ```bash
 openrender context --json
 openrender context --json --compact
+openrender memory status --json
+openrender memory context --json --compact
 openrender context --json --wire-map
 openrender scan --json
 openrender doctor --json
@@ -50,6 +52,7 @@ openrender compile atlas --from tmp/tiles.png --target phaser --id tiles.floor -
 openrender compile ui --from tmp/button.png --target phaser --id ui.start --states default,hover,pressed --manifest-strategy merge --install --json
 openrender verify --run latest --json --compact
 openrender report --run latest --json --compact
+openrender memory ingest --run latest --json
 openrender explain --run latest --json --compact
 openrender diff --run latest --json --compact
 ```
@@ -59,6 +62,12 @@ Rules:
 - Prefer JSON output for agent workflows.
 - Start with `context --json` to collect the minimal handoff before reading broadly.
 - Use `context --json --compact` for the shortest project handoff.
+- Treat openRender memory as derived project state, not a note-taking layer or raw chat archive.
+- Use `memory ingest --feedback <text> --json` when the user gives durable direction about project intent, visual style, engine constraints, or recovery preferences.
+- Use `memory ingest --run latest --json` or `memory ingest --loop latest --json` after meaningful openRender work so the next agent task keeps the right context.
+- Use `memory context --json --compact` before continuing an agent task that depends on previous decisions.
+- Use `memory consolidate --json` after several ingests to refresh project and agent cards.
+- Use `clean --memory --keep-latest --dry-run --json` before pruning old derived memory.
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
 - Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing local agent instructions.
 - Run a dry run before install and inspect `installPlan.files`.
@@ -71,3 +80,4 @@ Rules:
 - Avoid `--force` unless the user accepts overwriting generated destinations.
 - Use `rollback --run latest --json` only for openRender install outputs.
 - Do not enable upload, telemetry, sync, login, billing, or cloud report assumptions.
+- Do not call model provider APIs, regenerate assets, download remote references, or preserve raw conversation logs as openRender memory.

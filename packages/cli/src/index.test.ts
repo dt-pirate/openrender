@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "1.0.0");
+  assert.equal(stdout.trim(), "1.0.1");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,9 +31,11 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 1\.0\.0/m);
+  assert.match(stdout, /^openRender 1\.0\.1/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
+  assert.match(stdout, /openrender memory status\|context\|consolidate/);
+  assert.match(stdout, /openrender clean --memory/);
   assert.match(stdout, /openrender ingest reference --url <url>\|--from <path>/);
   assert.match(stdout, /openrender loop run sprite\|animation\|audio\|atlas\|ui/);
   assert.match(stdout, /openrender loop complete/);
@@ -64,7 +66,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "1.0.0");
+  assert.equal(schema.properties.schemaVersion.const, "1.0.1");
 
   const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -73,7 +75,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(mediaSchema.title, "openRender 1.0.0 Media Contracts");
+  assert.equal(mediaSchema.title, "openRender 1.0.1 Media Contracts");
   assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -274,6 +276,17 @@ test("loop start attach status and task preserve an agent handoff boundary", asy
   assert.match(attachResult.loop.latestRunId, /^run_/);
   assert.match(attachResult.iteration.rollbackCommand, /openrender rollback --run run_/);
 
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "ingest",
+    "--feedback",
+    "Keep this Canvas handoff clean and rollback-safe.",
+    "--json"
+  ], {
+    cwd: root
+  });
+
   const task = await execFileAsync(process.execPath, [cliPath, "loop", "task", "--json"], {
     cwd: root
   });
@@ -281,6 +294,8 @@ test("loop start attach status and task preserve an agent handoff boundary", asy
   assert.match(taskResult.content, /Do not call model provider APIs/);
   assert.match(taskResult.content, /Do not regenerate/);
   assert.match(taskResult.content, /Read-only wire map/);
+  assert.match(taskResult.content, /Project memory/);
+  assert.match(taskResult.content, /rollback-safe/);
 
   const context = await execFileAsync(process.execPath, [cliPath, "context", "--json", "--compact"], {
     cwd: root
@@ -1147,7 +1162,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "1.0.0");
+  assert.equal(result.version, "1.0.1");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -1188,6 +1203,84 @@ test("context compact output keeps agent essentials and drops broad state", asyn
   assert.deepEqual(result.tables.overwriteRisks.columns, ["code", "path", "note"]);
   assert.equal(Array.isArray(result.tables.overwriteRisks.rows), true);
   assert.equal(result.nextActions.some((action) => action.includes("--dry-run")), true);
+});
+
+test("memory commands derive project state and feed compact agent context", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "openrender-cli-memory-"));
+  await fs.writeFile(path.join(root, "package.json"), JSON.stringify({
+    name: "memory-game",
+    dependencies: {
+      vite: "^7.0.0",
+      phaser: "^3.90.0"
+    }
+  }, null, 2));
+
+  const ingestFeedback = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "ingest",
+    "--feedback",
+    "Keep project folders clean and do not accumulate screenshots.",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const ingestResult = JSON.parse(ingestFeedback.stdout) as {
+    eventsWritten: number;
+    conclusionsWritten: number;
+    contextPath: string;
+  };
+  assert.equal(ingestResult.eventsWritten, 1);
+  assert.equal(ingestResult.conclusionsWritten > 0, true);
+  assert.equal(await fileExists(path.join(root, ingestResult.contextPath)), true);
+
+  const context = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "context",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const memoryContext = JSON.parse(context.stdout) as {
+    projectFacts: string[];
+    agentFacts: string[];
+    conclusions: Array<{ category: string; text: string }>;
+  };
+  assert.equal(memoryContext.projectFacts.some((fact) => fact.includes("Keep project folders clean")), true);
+  assert.equal(memoryContext.agentFacts.some((fact) => fact.includes("Do not call model provider APIs")), true);
+  assert.equal(memoryContext.conclusions.some((conclusion) => conclusion.category === "workflow"), true);
+
+  const projectContext = await execFileAsync(process.execPath, [
+    cliPath,
+    "context",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const projectContextResult = JSON.parse(projectContext.stdout) as { memory: { summary: string } | null };
+  assert.match(projectContextResult.memory?.summary ?? "", /model provider APIs|project folders clean/);
+
+  const clean = await execFileAsync(process.execPath, [
+    cliPath,
+    "clean",
+    "--memory",
+    "--keep-latest",
+    "--dry-run",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const cleanResult = JSON.parse(clean.stdout) as {
+    operation: string;
+    dryRun: boolean;
+    actions: string[];
+  };
+  assert.equal(cleanResult.operation, "clean.memory");
+  assert.equal(cleanResult.dryRun, true);
+  assert.equal(cleanResult.actions.some((action) => action.includes("memory events")), true);
 });
 
 test("context wire-map finds read-only wiring candidates for supported targets", async () => {

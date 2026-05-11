@@ -1,6 +1,6 @@
 {
   "name": "@openrender/adapter-three",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Three.js and Vite adapter helpers for openRender",
   "license": "Apache-2.0",
   "type": "module",
