@@ -1,6 +1,6 @@
 # Recipes
 
-Recipes are data, not hidden behavior. They describe target, media type, and expected handoff intent so agents can choose a repeatable local workflow.
+Recipes are data, not hidden behavior. They describe target, media type, and expected handoff intent so agents can choose a repeatable workflow and keep future task packets aligned with project state.
 
 Recipe files live in `recipes/` and can be validated locally:
 
@@ -11,4 +11,4 @@ openrender recipe inspect core.sprite-frame-set --json
 openrender recipe validate --json
 ```
 
-The 0.7.2 repo includes target recipes for Phaser, Godot, LOVE2D, PixiJS, and Canvas sprite frame sets.
+The 1.0.1 baseline includes recipes and pack metadata for the current agent-native state infrastructure surface: Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity targets; sprite, animation, audio, atlas/tileset, and UI handoff patterns; compact context; read-only wire-map usage; verification; reports; memory ingest; and rollback boundaries.

@@ -39,18 +39,27 @@ Image generators create pixels. Game projects need stable paths, frame metadata,
 
 openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, and agent cards so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
 
-The current `1.0.1` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, and local memory infrastructure for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.0.1` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, and project memory infrastructure for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
-Packages are prepared for local development. Until they are published, run the CLI from this repository.
+Install the CLI package from npm, then use the `openrender` command from a target game project:
+
+```bash
+npm install -g @openrender/cli
+openrender --version
+```
+
+The npm package name is `@openrender/cli`; the installed command is `openrender`. The unscoped npm name `openrender` is already owned by another maintainer, so `npm install -g openrender` is not the release path unless that package name is transferred later.
+
+For repository-based development, build the CLI from source:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-For agent-led use, install openRender for the project and then tell your coding agent to use it. The agent can choose the exact openRender commands from the local instructions and references.
+For agent-led use, install openRender for the project and then tell your coding agent to use it. The agent can choose the exact openRender commands from the project instructions and references.
 
 ```text
 Install openRender for this project, then use it to add the generated game asset to the game.
@@ -61,38 +70,38 @@ You can also phrase setup as a skill request:
 
 ```text
 Install the openRender skill for this repository.
-Preview the instruction files first, install the right local agent instructions, and explain what changed.
+Preview the instruction files first, install the right agent instructions, and explain what changed.
 ```
 
-The skill is local agent guidance. It maps that natural-language request to `install-agent`, compact context, read-only wire maps, dry-runs, verification, reports, and rollback rules.
+The skill is project agent guidance. It maps that natural-language request to `install-agent`, compact context, read-only wire maps, dry-runs, verification, reports, and rollback rules.
 
-The CLI sequence below is for local setup, agent verification, and manual reference.
+The CLI sequence below is for setup, agent verification, and manual reference.
 
 From a target game project:
 
 ```bash
 cd /path/to/game-project
 
-node /path/to/openrender/packages/cli/dist/index.js context --json
-node /path/to/openrender/packages/cli/dist/index.js context --json --compact
-node /path/to/openrender/packages/cli/dist/index.js memory status --json
-node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
-node /path/to/openrender/packages/cli/dist/index.js loop status --json --compact
-node /path/to/openrender/packages/cli/dist/index.js scan --json
-node /path/to/openrender/packages/cli/dist/index.js doctor --json
+openrender context --json
+openrender context --json --compact
+openrender memory status --json
+openrender memory context --json --compact
+openrender loop status --json --compact
+openrender scan --json
+openrender doctor --json
 ```
 
-For AI coding agents, install local instructions with a dry run first:
+For AI coding agents, preview instruction writes with a dry run first:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js install-agent --platform all --dry-run --json
-node /path/to/openrender/packages/cli/dist/index.js install-agent --platform codex --json
+openrender install-agent --platform all --dry-run --json
+openrender install-agent --platform codex --json
 ```
 
 Plan and dry-run before writing files:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js plan sprite \
+openrender plan sprite \
   --from tmp/slime_idle_strip.png \
   --target phaser \
   --id enemy.slime.idle \
@@ -100,7 +109,7 @@ node /path/to/openrender/packages/cli/dist/index.js plan sprite \
   --frame-size 64x64 \
   --json
 
-node /path/to/openrender/packages/cli/dist/index.js compile sprite \
+openrender compile sprite \
   --from tmp/slime_idle_strip.png \
   --target phaser \
   --id enemy.slime.idle \
@@ -113,15 +122,15 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
 Record visual references or inspect motion before installing animation assets:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js ingest reference \
+openrender ingest reference \
   --url https://example.com/reference.gif \
   --role motion \
   --intent "Match this timing and movement style." \
   --json
 
-node /path/to/openrender/packages/cli/dist/index.js detect-motion tmp/slime_idle_frames --json --compact
+openrender detect-motion tmp/slime_idle_frames --json --compact
 
-node /path/to/openrender/packages/cli/dist/index.js compile animation \
+openrender compile animation \
   --from tmp/slime_idle_frames \
   --target phaser \
   --id enemy.slime.idle \
@@ -134,18 +143,18 @@ node /path/to/openrender/packages/cli/dist/index.js compile animation \
 Preserve project intent and visual direction for the next agent task:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js memory ingest \
+openrender memory ingest \
   --feedback "Keep the UI readable and preserve the neon arcade direction." \
   --json
 
-node /path/to/openrender/packages/cli/dist/index.js memory context --json --compact
-node /path/to/openrender/packages/cli/dist/index.js clean --memory --keep-latest --dry-run --json
+openrender memory context --json --compact
+openrender clean --memory --keep-latest --dry-run --json
 ```
 
 Install only after the plan is correct:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js compile sprite \
+openrender compile sprite \
   --from tmp/slime_idle_strip.png \
   --target phaser \
   --id enemy.slime.idle \
@@ -155,13 +164,13 @@ node /path/to/openrender/packages/cli/dist/index.js compile sprite \
   --install \
   --json
 
-node /path/to/openrender/packages/cli/dist/index.js verify --run latest --json --compact
-node /path/to/openrender/packages/cli/dist/index.js report --run latest --json --compact
-node /path/to/openrender/packages/cli/dist/index.js loop attach --run latest --json --compact
-node /path/to/openrender/packages/cli/dist/index.js loop run animation --from tmp/slime_idle_frames --target phaser --id enemy.slime.idle --fps 8 --install --json --compact
-node /path/to/openrender/packages/cli/dist/index.js loop complete --notes "Helper wired and checked in game scene." --json --compact
-node /path/to/openrender/packages/cli/dist/index.js explain --run latest --json --compact
-node /path/to/openrender/packages/cli/dist/index.js diff --run latest --json --compact
+openrender verify --run latest --json --compact
+openrender report --run latest --json --compact
+openrender loop attach --run latest --json --compact
+openrender loop run animation --from tmp/slime_idle_frames --target phaser --id enemy.slime.idle --fps 8 --install --json --compact
+openrender loop complete --notes "Helper wired and checked in game scene." --json --compact
+openrender explain --run latest --json --compact
+openrender diff --run latest --json --compact
 ```
 
 Use `context --json --wire-map` when an agent needs read-only hints for where generated helpers should be connected in game code.
@@ -169,7 +178,7 @@ Use `context --json --wire-map` when an agent needs read-only hints for where ge
 Rollback the latest openRender install:
 
 ```bash
-node /path/to/openrender/packages/cli/dist/index.js rollback --run latest --json
+openrender rollback --run latest --json
 ```
 
 Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--target canvas`, `--target three`, or `--target unity`.
@@ -177,7 +186,7 @@ Use `--target phaser`, `--target godot`, `--target love2d`, `--target pixi`, `--
 ## How It Works
 
 ```text
-local image
+source media
 -> project scan
 -> media contract
 -> deterministic artifact
@@ -195,10 +204,10 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 
 - Project scanning and doctor checks.
 - Sprite compile plans, dry-runs, installs, verification, reports, diffs, explanations, and rollback.
-- Visual reference records for sketches, UI mockups, concept art, local files, or URLs; URLs are recorded as provenance and are not downloaded.
+- Visual reference records for sketches, UI mockups, concept art, project files, or URLs; URLs are recorded as provenance and are not downloaded.
 - `detect-motion` for video/GIF/PNG sequence analysis before install, with clear ffmpeg guidance when video tooling is missing.
 - `compile animation` for engine-ready animation sheets, runtime helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
-- Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same local run-state pipeline.
+- Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
 - Memory infrastructure that derives project events, conclusions, project cards, agent cards, and compact context from runs, loops, and user feedback.
 - `memory status`, `memory ingest`, `memory context`, `memory consolidate`, and `clean --memory` for keeping agent continuity useful without accumulating raw chat logs.
 - Compact agent output for context, verification, reports, explanations, and diffs.
@@ -206,10 +215,10 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - Alpha diagnostics, safe default background cutout, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
 - Quality gates with `--quality prototype|default|strict` and `verify --strict-visual` for likely visual problems.
 - Manifest strategies with default `merge`, explicit `replace`, and `isolated` mode for no shared manifest write.
-- Runtime smoke checks for Godot and LOVE2D when the local runtime is available.
+- Runtime smoke checks for Godot and LOVE2D when the target runtime is available.
 - Engine adapters for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
-- Local JSON-only MCP metadata helpers for supported targets.
+- JSON-only MCP metadata helpers for supported targets.
 
 ## Engine Outputs
 
@@ -237,7 +246,7 @@ Additional media assets use sibling media manifests and helpers, such as `src/as
 - Use `context --json --wire-map` before editing game code that should connect generated helpers.
 - Run `doctor --json` before writing into an unfamiliar project.
 - Use `plan sprite --json` or `compile sprite --dry-run --json` before `--install`.
-- Use `ingest reference --json` when the user gives a sketch, mockup, concept image, video URL, or local reference file that the next agent should remember.
+- Use `ingest reference --json` when the user gives a sketch, mockup, concept image, video URL, or project reference file that the next agent should remember.
 - Use `detect-motion --json --compact` before choosing animation fps, frame count, layout, and loop settings.
 - Use `compile animation --dry-run --json` before installing animation assets.
 - Inspect `installPlan.files` before installing.
@@ -259,10 +268,10 @@ packages/harness-visual    image metadata, normalization, crop, and frame checks
 packages/adapters/*        engine-specific project output helpers
 packages/reporter          report and preview generation
 packages/doctor            environment diagnostics
-packages/mcp-server        local JSON-only MCP metadata helpers
+packages/mcp-server        JSON-only MCP metadata helpers
 schemas                    JSON schemas for contracts, outputs, reports, install plans
 fixtures                   golden fixture corpus for adapter regression checks
-recipes                    local recipe metadata for supported targets
+recipes                    recipe metadata for supported targets
 ```
 
 ## Development
@@ -277,6 +286,7 @@ Run checks:
 ```bash
 pnpm typecheck
 pnpm test
+pnpm smoke:npm-install
 ```
 
 Run the CLI from source:

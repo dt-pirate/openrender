@@ -1,8 +1,8 @@
 # Version History
 
-Last updated: 2026-05-11
+Last updated: 2026-05-12
 
-This page tracks the implemented openRender Developer Kit surface, tagged GitHub releases, and documented version milestones.
+This page tracks the implemented openRender agent-native state infrastructure surface, tagged GitHub releases, and documented version milestones.
 
 ## Current Version
 
@@ -10,6 +10,7 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 |---|---|
 | Current implementation baseline | `1.0.1 Memory Infrastructure Foundation` |
 | Package/CLI version | `1.0.1` |
+| npm install package | `@openrender/cli` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
@@ -23,6 +24,13 @@ This page tracks the implemented openRender Developer Kit surface, tagged GitHub
 `1.0.1` adds openRender memory as project state infrastructure for agent continuity. It is not a note-taking layer: it derives compact project state from runs, loops, and user feedback so agents can continue game development without losing project intent, engine constraints, visual direction, or recovery context.
 
 Released: 2026-05-11 22:00 KST (2026-05-11 13:00 UTC).
+
+### npm Package Path
+
+- The npm package name is `@openrender/cli`.
+- The installed command is `openrender`.
+- The unscoped `openrender` package name is not the release path unless that npm name is transferred later.
+- `pnpm smoke:npm-install` packs all workspace packages, installs the packed CLI into an isolated npm global prefix, and verifies `openrender --version`, `scan --json`, and `context --json --compact`.
 
 ### Added
 
@@ -48,6 +56,8 @@ Run:
 ```bash
 pnpm typecheck
 pnpm test
+pnpm smoke:npm-install
+pnpm -r publish --dry-run --access public --no-git-checks
 node packages/cli/dist/index.js --version
 node --check docs/openrender-i18n.js
 ```
@@ -360,7 +370,7 @@ Expected CLI version:
 
 ## 0.6.1 Developer Kit
 
-`0.6.1` is the local-first Developer Kit base.
+`0.6.1` is the first Developer Kit base for the later agent-facing layers.
 
 ### Added
 
@@ -369,7 +379,7 @@ Expected CLI version:
 - LLM-optimized reference documentation for dry-run, install plan, manifest, MCP, verification, and rollback behavior.
 - Additional media metadata contracts for audio, atlas/tileset, and UI asset metadata.
 - Runtime smoke availability checks that report whether supported runtimes are present without requiring runtime execution by default.
-- Expanded QA coverage across CLI, adapters, schemas, reports, fixtures, and local metadata helpers.
+- Expanded QA coverage across CLI, adapters, schemas, reports, fixtures, and metadata helpers.
 
 ### Core Surface
 
@@ -402,7 +412,7 @@ Expected CLI version for that milestone:
 
 - Adapter scaffolding for bounded custom adapter creation.
 - Fixture capture for reproducible adapter and CLI regression cases.
-- Report export and local report gallery metadata.
+- Report export and report gallery metadata.
 - Stronger failure guidance for agent-facing repair loops.
 
 ## 0.4.0 Developer Kit Milestone
@@ -416,7 +426,7 @@ Expected CLI version for that milestone:
 - Canvas adapter.
 - Local JSON-only MCP metadata package.
 - `agent init` support.
-- Built-in recipe substrate for local core workflows.
+- Built-in recipe substrate for core workflows.
 
 ## Release Checklist
 
@@ -426,8 +436,11 @@ Before publishing a tagged release:
 - `openrender --version` returns the intended version.
 - `pnpm typecheck` passes.
 - `pnpm test` passes.
+- `pnpm smoke:npm-install` packs the workspace packages, installs them with npm into an isolated global prefix, and verifies the `openrender` binary.
+- Packed package manifests replace `workspace:*` dependencies with concrete versions.
+- `pnpm -r publish --dry-run --access public --no-git-checks` passes before the real npm publish.
 - README language links resolve.
-- Agent-facing JSON workflows remain local-first and do not require account, billing, telemetry, cloud sync, or hosted execution.
+- Agent-facing JSON workflows remain project-contained and do not require account, billing, telemetry, cloud sync, or hosted execution.
 - Release notes describe implemented behavior only.
 
 ## Related Documents

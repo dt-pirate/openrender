@@ -32,6 +32,7 @@
     "clean": "find packages -type d -name dist -prune -exec rm -rf {} + && find packages -type f \\( -name '*.tsbuildinfo' -o -name 'tsconfig.tsbuildinfo' \\) -delete",
     "dev:cli": "pnpm --filter @openrender/cli build && node packages/cli/dist/index.js",
     "lint": "pnpm typecheck",
+    "smoke:npm-install": "node scripts/npm-install-smoke.mjs",
     "test": "pnpm build && node --test \"packages/*/dist/**/*.test.js\" \"packages/adapters/*/dist/**/*.test.js\"",
     "typecheck": "tsc -b --pretty false"
   },

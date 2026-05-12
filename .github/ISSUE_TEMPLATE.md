@@ -13,6 +13,7 @@ What did you expect openRender to do?
 ## Reproduction
 
 ```bash
+npm install -g @openrender/cli
 openrender --version
 openrender context --json
 openrender scan --json
@@ -36,7 +37,7 @@ openrender diff --run latest --json
 
 - OS:
 - Node.js:
-- pnpm:
+- Install method: npm global / repo build / other
 - openRender command:
 
 ## Agent context
@@ -52,4 +53,4 @@ openrender diff --run latest --json
 
 ## Scope check
 
-openRender Developer Kit 0.8.2 is local-first and focused on deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity workflows. Do not attach private game source files, credentials, generated assets, or local reports unless they are safe to share publicly.
+openRender 1.0.1 is local-first state infrastructure for agent-native game development. It is packaged as `@openrender/cli` with the installed `openrender` command, supports deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity workflows, and keeps memory as derived project state. Do not attach private game source files, credentials, generated assets, memory records, or local reports unless they are safe to share publicly.

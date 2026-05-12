@@ -11,7 +11,7 @@ Find the right generated asset and engine target, run the openRender workflow, a
 
 ## Skill Setup
 
-Use an openRender skill when a coding agent needs repeatable local instructions for the CLI workflow. The skill is not a hosted marketplace feature. It is a local instruction layer that teaches the agent to use compact JSON, read-only wire maps, dry-runs, verification, reports, and rollback before editing game code.
+Use an openRender skill when a coding agent needs repeatable project instructions for the CLI workflow. The skill is not a hosted marketplace feature. It is an instruction layer that teaches the agent to use compact JSON, read-only wire maps, dry-runs, verification, reports, and rollback before editing game code.
 
 Ask the agent in natural language:
 
@@ -69,7 +69,7 @@ Rules:
 - Use `memory consolidate --json` after several ingests to refresh project and agent cards.
 - Use `clean --memory --keep-latest --dry-run --json` before pruning old derived memory.
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.
-- Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing local agent instructions.
+- Use `install-agent --platform codex|cursor|claude|all --dry-run --json` before writing agent instructions.
 - Run a dry run before install and inspect `installPlan.files`.
 - Use `compile audio`, `compile atlas`, or `compile ui` when the source asset is audio, atlas/tileset, or UI media rather than a sprite image; these commands produce installable, verifiable, reportable, rollback-safe runs.
 - Generated sprite handoff uses safe `--background-policy auto` cutout by default.
