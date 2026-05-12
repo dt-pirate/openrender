@@ -679,6 +679,9 @@ interface MemoryStatusCommandResult {
     projectFacts: number;
     agentFacts: number;
   };
+  storage: {
+    bytes: number;
+  };
   latestEvent: OpenRenderMemoryEvent | null;
   localOnly: true;
 }
@@ -3749,6 +3752,9 @@ async function memoryStatus(): Promise<MemoryStatusCommandResult> {
       projectFacts: snapshot.projectCard.facts.length,
       agentFacts: snapshot.agentCard.facts.length
     },
+    storage: {
+      bytes: await memoryStorageBytes(projectRoot)
+    },
     latestEvent: events.at(-1) ?? null,
     localOnly: true
   };
@@ -4264,6 +4270,7 @@ function compactMemoryResult(result: MemoryCommandResult): unknown {
       ok: true,
       operation: result.operation,
       counts: result.counts,
+      storage: result.storage,
       latestEvent: result.latestEvent
         ? {
             type: result.latestEvent.type,

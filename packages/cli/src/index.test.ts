@@ -1252,6 +1252,18 @@ test("memory commands derive project state and feed compact agent context", asyn
   assert.equal(memoryContext.agentFacts.some((fact) => fact.includes("Do not call model provider APIs")), true);
   assert.equal(memoryContext.conclusions.some((conclusion) => conclusion.category === "workflow"), true);
 
+  const status = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "status",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const statusResult = JSON.parse(status.stdout) as { storage: { bytes: number } };
+  assert.equal(statusResult.storage.bytes > 0, true);
+
   const projectContext = await execFileAsync(process.execPath, [
     cliPath,
     "context",
