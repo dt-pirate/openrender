@@ -16,6 +16,7 @@ This page tracks the implemented openRender agent-native state infrastructure su
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
 | Release channel | GitHub release [`v1.0.1`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.1) |
+| npm package | [`@openrender/cli@1.0.1`](https://www.npmjs.com/package/@openrender/cli) |
 | Release timestamp | 2026-05-11 22:00 KST (2026-05-11 13:00 UTC) |
 | GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.1` |
 
@@ -29,6 +30,7 @@ Released: 2026-05-11 22:00 KST (2026-05-11 13:00 UTC).
 
 - The npm package name is `@openrender/cli`.
 - The installed command is `openrender`.
+- `@openrender/cli@1.0.1` is published on npm.
 - The unscoped `openrender` package name is not the release path unless that npm name is transferred later.
 - `pnpm smoke:npm-install` packs all workspace packages, installs the packed CLI into an isolated npm global prefix, and verifies `openrender --version`, `scan --json`, and `context --json --compact`.
 
@@ -58,6 +60,7 @@ pnpm typecheck
 pnpm test
 pnpm smoke:npm-install
 pnpm -r publish --dry-run --access public --no-git-checks
+npm view @openrender/cli version --json
 node packages/cli/dist/index.js --version
 node --check docs/openrender-i18n.js
 ```

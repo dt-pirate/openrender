@@ -9,6 +9,6 @@ Create these GitHub milestones when repository administration is available:
 - `0.8.0`: Unity target support, C# manifests/helpers, Unity wire maps, readiness checks, and fixture coverage.
 - `0.8.2`: Three.js target support, TypeScript texture/sprite/plane helpers, Three.js wire maps, readiness checks, and fixture coverage.
 - `1.0.0`: Agent-native game development loop with loop completion records, compact task packets, and rollback boundaries.
-- `1.0.1`: Memory infrastructure foundation, `@openrender/cli` npm install package readiness, and installed `openrender` command smoke verification.
+- `1.0.1`: Memory infrastructure foundation, published `@openrender/cli` npm package, and installed `openrender` command smoke verification.
 
-The local implementation has reached the `1.0.1` Memory Infrastructure Foundation surface. Future milestones should be created for npm registry publication, external example repositories, runtime execution depth, and optional hosted/pack distribution surfaces.
+The local implementation has reached the `1.0.1` Memory Infrastructure Foundation surface and the npm registry path is live through `@openrender/cli`. Future milestones should be created for external example repositories, runtime execution depth, and optional hosted/pack distribution surfaces.
