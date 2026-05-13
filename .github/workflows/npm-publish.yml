@@ -49,17 +49,21 @@ jobs:
       - name: Packed npm install smoke
         run: pnpm smoke:npm-install
 
+      - name: Configure npm token auth
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+            npm whoami
+          else
+            echo "No NPM_TOKEN secret configured; publish will rely on npm Trusted Publishing/OIDC."
+          fi
+
       - name: Publish dry run
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == 'true' }}
         run: pnpm -r publish --dry-run --access public --no-git-checks
-
-      - name: npm publish auth preflight
-        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
-        run: |
-          npm whoami || {
-            echo "::error::npm publish auth is not available. Configure npm Trusted Publishing for every @openrender/* package or provide a repository NPM_TOKEN secret."
-            exit 1
-          }
 
       - name: Publish to npm
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}

@@ -17,14 +17,14 @@ This page tracks the implemented openRender agent-native state infrastructure su
 | License | Apache-2.0 |
 | Release channel | GitHub release [`v1.0.2`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.2) |
 | npm package | [`@openrender/cli`](https://www.npmjs.com/package/@openrender/cli) |
-| Release timestamp | 2026-05-13 KST |
+| Release timestamp | 2026-05-13 21:24 KST / 2026-05-13 12:24 UTC |
 | GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.2` |
 
 ## 1.0.2 Registry Smoke and Service Snapshot
 
 `1.0.2` completes the npm-installed Developer Kit surface after `1.0.1`: the package has its own npm README, the release pipeline has a publish workflow and registry install smoke, web targets can run an opt-in build smoke, memory now separates user direction and engine state cards, and local service snapshots provide a clean boundary for future dashboards or supervisors.
 
-Released: 2026-05-13 KST.
+Released: 2026-05-13 21:24 KST / 2026-05-13 12:24 UTC.
 
 ### npm Package Path
 
