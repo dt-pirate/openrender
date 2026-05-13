@@ -53,4 +53,4 @@ openrender diff --run latest --json
 
 ## Scope check
 
-openRender 1.0.1 is local-first state infrastructure for agent-native game development. It is packaged as `@openrender/cli` with the installed `openrender` command, supports deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity workflows, and keeps memory as derived project state. Do not attach private game source files, credentials, generated assets, memory records, or local reports unless they are safe to share publicly.
+openRender 1.0.2 is local-first state infrastructure for agent-native game development. It is packaged as `@openrender/cli` with the installed `openrender` command, supports deterministic media handoff for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity workflows, and keeps memory as derived project state. Do not attach private game source files, credentials, generated assets, memory records, or local reports unless they are safe to share publicly.

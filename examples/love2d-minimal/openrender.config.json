@@ -1,0 +1,28 @@
+{
+  "version": "1.0.2",
+  "project": {
+    "id": "love2d-minimal",
+    "name": "LOVE2D Minimal"
+  },
+  "target": {
+    "engine": "love2d",
+    "framework": "love2d",
+    "assetRoot": "assets/openrender",
+    "sourceRoot": "openrender"
+  },
+  "install": {
+    "writeManifest": true,
+    "writeCodegen": true,
+    "snapshotBeforeInstall": true,
+    "allowOverwrite": false
+  },
+  "report": {
+    "format": ["html", "json"],
+    "openAfterRun": false
+  },
+  "privacy": {
+    "cloudSync": false,
+    "telemetry": false,
+    "uploadArtifacts": false
+  }
+}

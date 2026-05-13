@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.2"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.2-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ Image generators create pixels. Game projects need stable paths, frame metadata,
 
 openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, and agent cards so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
 
-The current `1.0.1` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, and project memory infrastructure for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.0.2` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, project memory infrastructure, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -86,6 +86,7 @@ openrender context --json
 openrender context --json --compact
 openrender memory status --json
 openrender memory context --json --compact
+openrender service snapshot --json
 openrender loop status --json --compact
 openrender scan --json
 openrender doctor --json
@@ -208,14 +209,15 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - `detect-motion` for video/GIF/PNG sequence analysis before install, with clear ffmpeg guidance when video tooling is missing.
 - `compile animation` for engine-ready animation sheets, runtime helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
-- Memory infrastructure that derives project events, conclusions, project cards, agent cards, and compact context from runs, loops, and user feedback.
+- Memory infrastructure that derives project events, conclusions, project cards, agent cards, user-direction cards, engine cards, and compact context from runs, loops, and user feedback.
 - `memory status`, `memory ingest`, `memory context`, `memory consolidate`, and `clean --memory` for keeping agent continuity useful without accumulating raw chat logs.
+- `service snapshot --json` for a local-only boundary that exports compact context and memory state for future dashboards or agent supervisors.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
 - Alpha diagnostics, safe default background cutout, edge-flood background removal, frame detection, normalization presets, sprite invariants, and frame preview sheets.
 - Quality gates with `--quality prototype|default|strict` and `verify --strict-visual` for likely visual problems.
 - Manifest strategies with default `merge`, explicit `replace`, and `isolated` mode for no shared manifest write.
-- Runtime smoke checks for Godot and LOVE2D when the target runtime is available.
+- Runtime smoke checks for Godot and LOVE2D when the target runtime is available, plus opt-in web build smoke with `smoke --build`.
 - Engine adapters for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - JSON schemas, compact agent summaries, recipes, fixture capture, and golden fixtures.
 - JSON-only MCP metadata helpers for supported targets.
@@ -242,6 +244,7 @@ Additional media assets use sibling media manifests and helpers, such as `src/as
 - Use `context --json --compact` for the shortest project handoff.
 - Use `memory context --json --compact` before a follow-up agent task that depends on prior project intent, visual direction, or recovery context.
 - Use `memory ingest --feedback <text> --json`, `memory ingest --run latest --json`, or `memory ingest --loop latest --json` to preserve durable project state after meaningful work.
+- Use `service snapshot --json` when a dashboard, supervisor, or external orchestrator needs a local-only state handoff.
 - Use `clean --memory --keep-latest --dry-run --json` before pruning memory state.
 - Use `context --json --wire-map` before editing game code that should connect generated helpers.
 - Run `doctor --json` before writing into an unfamiliar project.

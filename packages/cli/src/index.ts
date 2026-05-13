@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "1.0.1";
+const CLI_VERSION = "1.0.2";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 1.0.1 Media Contracts",
+    title: "openRender 1.0.2 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -660,6 +660,8 @@ interface MemorySnapshot {
   conclusions: OpenRenderMemoryConclusion[];
   projectCard: OpenRenderMemoryCard;
   agentCard: OpenRenderMemoryCard;
+  userDirectionCard: OpenRenderMemoryCard;
+  engineCard: OpenRenderMemoryCard;
 }
 
 interface MemoryStatusCommandResult {
@@ -671,6 +673,8 @@ interface MemoryStatusCommandResult {
     conclusions: string;
     projectCard: string;
     agentCard: string;
+    userDirectionCard: string;
+    engineCard: string;
     latestContext: string;
   };
   counts: {
@@ -678,6 +682,8 @@ interface MemoryStatusCommandResult {
     conclusions: number;
     projectFacts: number;
     agentFacts: number;
+    userDirectionFacts: number;
+    engineFacts: number;
   };
   storage: {
     bytes: number;
@@ -703,6 +709,8 @@ interface MemoryContextCommandResult {
   version: string;
   projectCard: OpenRenderMemoryCard;
   agentCard: OpenRenderMemoryCard;
+  userDirectionCard: OpenRenderMemoryCard;
+  engineCard: OpenRenderMemoryCard;
   conclusions: OpenRenderMemoryConclusion[];
   recentEvents: OpenRenderMemoryEvent[];
   summary: string;
@@ -1117,6 +1125,16 @@ async function main(argv: string[]): Promise<number> {
     const result = await runtimeSmoke(parsed);
     console.log(JSON.stringify(result, null, 2));
     return result.status === "failed" ? 2 : 0;
+  }
+
+  if (command === "service" && subcommand === "snapshot") {
+    const result = await createServiceSnapshot(parsed);
+    if (parsed.flags.get("json") === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printServiceSnapshot(result);
+    }
+    return 0;
   }
 
   if (command === "compile" && (subcommand === "audio" || subcommand === "atlas" || subcommand === "ui")) {
@@ -2377,16 +2395,50 @@ async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandRes
   const target = parsed.flags.get("target") === undefined && record
     ? record.contract.target.engine
     : readTargetFlag(parsed, record?.contract.target.engine ?? "canvas");
+  const buildRequested = parsed.flags.get("build") === true || parsed.flags.get("build-command") !== undefined;
+
+  if (isWebRuntimeTarget(target)) {
+    if (!buildRequested) {
+      return {
+        ok: true,
+        target,
+        status: "skipped",
+        mode: "static",
+        command: null,
+        runId: record?.run.runId ?? null,
+        screenshotPath: null,
+        message: `${target} smoke stays static by default. Add --build to run the project build script.`,
+        checks: [
+          {
+            name: "web-build-opt-in",
+            status: "skipped",
+            message: "No local build was run because --build was not provided."
+          }
+        ]
+      };
+    }
+
+    return runtimeBuildSmoke(projectRoot, target, parsed, record?.run.runId ?? null);
+  }
+
   const runtime = runtimeBinaryForTarget(target);
   if (!runtime) {
     return {
       ok: true,
       target,
       status: "skipped",
+      mode: "static",
       command: null,
       runId: record?.run.runId ?? null,
       screenshotPath: null,
-      message: `${target} runtime smoke has no required local binary. Static verification remains the default boundary.`
+      message: `${target} runtime smoke has no required local binary. Static verification remains the default boundary.`,
+      checks: [
+        {
+          name: "runtime-binary",
+          status: "skipped",
+          message: "No runtime binary is required for this target."
+        }
+      ]
     };
   }
 
@@ -2396,10 +2448,18 @@ async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandRes
       ok: true,
       target,
       status: "skipped",
+      mode: "runtime",
       command: runtime,
       runId: record?.run.runId ?? null,
       screenshotPath: null,
-      message: `${runtime} was not found on PATH. Static verification remains the default boundary.`
+      message: `${runtime} was not found on PATH. Static verification remains the default boundary.`,
+      checks: [
+        {
+          name: "runtime-binary",
+          status: "skipped",
+          message: `${runtime} was not found on PATH.`
+        }
+      ]
     };
   }
 
@@ -2422,12 +2482,131 @@ async function runtimeSmoke(parsed: ParsedFlags): Promise<RuntimeSmokeCommandRes
     ok: smoke.status === "passed",
     target,
     status: smoke.status,
+    mode: "runtime",
     command: commandText,
     runId: record?.run.runId ?? null,
     screenshotPath,
     message: smoke.status === "passed"
       ? `${target} runtime launched for ${Math.round(timeoutMs / 1000)}s.`
-      : `${target} runtime exited before timeout: ${smoke.message}`
+      : `${target} runtime exited before timeout: ${smoke.message}`,
+    checks: [
+      {
+        name: "runtime-binary",
+        status: "passed",
+        message: `${runtime} was found on PATH.`
+      },
+      {
+        name: "runtime-launch",
+        status: smoke.status,
+        message: smoke.message
+      }
+    ]
+  };
+}
+
+async function runtimeBuildSmoke(
+  projectRoot: string,
+  target: TargetEngine,
+  parsed: ParsedFlags,
+  runId: string | null
+): Promise<RuntimeSmokeCommandResult> {
+  const customCommand = readOptionalStringFlag(parsed, "build-command");
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  if (!customCommand && !await pathExists(packageJsonPath)) {
+    return {
+      ok: true,
+      target,
+      status: "skipped",
+      mode: "build",
+      command: null,
+      runId,
+      screenshotPath: null,
+      message: "No package.json was found. Add --build-command for a custom smoke command.",
+      checks: [
+        {
+          name: "package-json",
+          status: "skipped",
+          message: "package.json is missing."
+        }
+      ]
+    };
+  }
+
+  const commandSpec = customCommand
+    ? createShellCommandSpec(customCommand)
+    : await createPackageBuildCommandSpec(projectRoot);
+  if (!commandSpec) {
+    return {
+      ok: true,
+      target,
+      status: "skipped",
+      mode: "build",
+      command: null,
+      runId,
+      screenshotPath: null,
+      message: "No package build script was found. Add a build script or pass --build-command.",
+      checks: [
+        {
+          name: "build-script",
+          status: "skipped",
+          message: "package.json has no scripts.build entry."
+        }
+      ]
+    };
+  }
+
+  const available = await commandAvailable(commandSpec.command);
+  if (!available) {
+    return {
+      ok: true,
+      target,
+      status: "skipped",
+      mode: "build",
+      command: commandSpec.display,
+      runId,
+      screenshotPath: null,
+      message: `${commandSpec.command} was not found on PATH.`,
+      checks: [
+        {
+          name: "build-command",
+          status: "skipped",
+          message: `${commandSpec.command} was not found on PATH.`
+        }
+      ]
+    };
+  }
+
+  const timeoutMs = readIntegerFlag(parsed, "timeout", 30) * 1000;
+  const build = await runBuildProcess({
+    cwd: projectRoot,
+    command: commandSpec.command,
+    args: commandSpec.args,
+    timeoutMs
+  });
+
+  return {
+    ok: build.status === "passed",
+    target,
+    status: build.status,
+    mode: "build",
+    command: commandSpec.display,
+    runId,
+    screenshotPath: null,
+    message: build.status === "passed"
+      ? `${target} build smoke completed.`
+      : `${target} build smoke failed: ${build.message}`,
+    checks: [
+      {
+        name: "build-command",
+        status: "passed",
+        message: `${commandSpec.command} was found on PATH.`
+      },
+      {
+        name: "build-run",
+        status: build.status,
+        message: build.message
+      }
+    ]
   };
 }
 
@@ -2446,10 +2625,41 @@ function runtimeBinaryForTarget(target: TargetEngine): string | null {
   return null;
 }
 
+function isWebRuntimeTarget(target: TargetEngine): boolean {
+  return target === "phaser" || target === "pixi" || target === "canvas" || target === "three";
+}
+
 function runtimeArgsForTarget(target: TargetEngine): string[] {
   if (target === "love2d") return ["."];
   if (target === "godot") return ["--headless", "--path", ".", "--quit-after", "1"];
   return [];
+}
+
+function createShellCommandSpec(command: string): { command: string; args: string[]; display: string } {
+  if (process.platform === "win32") {
+    return { command: "cmd", args: ["/d", "/s", "/c", command], display: command };
+  }
+  return { command: "sh", args: ["-lc", command], display: command };
+}
+
+async function createPackageBuildCommandSpec(projectRoot: string): Promise<{ command: string; args: string[]; display: string } | null> {
+  const packageJson = JSON.parse(await fs.readFile(path.join(projectRoot, "package.json"), "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  if (typeof packageJson.scripts?.build !== "string" || packageJson.scripts.build.trim().length === 0) return null;
+  const packageManager = await detectPackageManagerCommand(projectRoot);
+  return {
+    command: packageManager,
+    args: ["run", "build"],
+    display: `${packageManager} run build`
+  };
+}
+
+async function detectPackageManagerCommand(projectRoot: string): Promise<"pnpm" | "npm" | "yarn" | "bun"> {
+  if (await pathExists(path.join(projectRoot, "pnpm-lock.yaml"))) return "pnpm";
+  if (await pathExists(path.join(projectRoot, "yarn.lock"))) return "yarn";
+  if (await pathExists(path.join(projectRoot, "bun.lockb")) || await pathExists(path.join(projectRoot, "bun.lock"))) return "bun";
+  return "npm";
 }
 
 async function runRuntimeProcess(input: {
@@ -2489,6 +2699,51 @@ async function runRuntimeProcess(input: {
       const details = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n").slice(0, 800);
       if (code === 0) {
         settle("passed", signal ? `exited with signal ${signal}` : "process exited successfully");
+      } else {
+        const exitLabel = signal ? `signal ${signal}` : `exit ${code ?? "unknown"}`;
+        settle("failed", `${exitLabel}${details ? `\n${details}` : ""}`);
+      }
+    });
+  });
+}
+
+async function runBuildProcess(input: {
+  cwd: string;
+  command: string;
+  args: string[];
+  timeoutMs: number;
+}): Promise<{ status: "passed" | "failed"; message: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(input.command, input.args, {
+      cwd: input.cwd,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const settle = (status: "passed" | "failed", message: string): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ status, message });
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      settle("failed", `timed out after ${Math.round(input.timeoutMs / 1000)}s`);
+    }, input.timeoutMs);
+
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8").slice(0, 4096);
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8").slice(0, 4096);
+    });
+    child.on("error", (error) => settle("failed", error.message));
+    child.on("exit", (code, signal) => {
+      if (settled) return;
+      const details = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n").slice(0, 800);
+      if (code === 0) {
+        settle("passed", "build command exited successfully");
       } else {
         const exitLabel = signal ? `signal ${signal}` : `exit ${code ?? "unknown"}`;
         settle("failed", `${exitLabel}${details ? `\n${details}` : ""}`);
@@ -2547,6 +2802,7 @@ async function pruneSmokeScreenshots(projectRoot: string, keepRelativePath: stri
 }
 
 async function commandAvailable(command: string): Promise<boolean> {
+  if (command === "sh" || command === "cmd") return true;
   return new Promise((resolve) => {
     const child = spawn(command, ["--version"], { stdio: "ignore" });
     child.on("error", () => resolve(false));
@@ -3280,6 +3536,72 @@ function compactAgentContext(result: AgentContextCommandResult): CompactAgentCon
   };
 }
 
+async function createServiceSnapshot(parsed: ParsedFlags): Promise<ServiceSnapshotCommandResult> {
+  const projectRoot = process.cwd();
+  const context = await createAgentContext({
+    includeWireMap: parsed.flags.get("wire-map") === true
+  });
+  const compactContext = compactAgentContext(context);
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const outputFlag = readOptionalStringFlag(parsed, "out");
+  const outputPath = outputFlag ? normalizeProjectRelativePathLocal(outputFlag) : null;
+  const result: ServiceSnapshotCommandResult = {
+    ok: true,
+    operation: "service.snapshot",
+    version: CLI_VERSION,
+    generatedAt: new Date().toISOString(),
+    project: {
+      root: context.projectRoot,
+      packageManager: context.packageManager,
+      target: context.target,
+      paths: context.paths
+    },
+    context: compactContext,
+    memory: {
+      summary: context.memory?.summary ?? null,
+      counts: {
+        events: snapshot.events.length,
+        conclusions: snapshot.conclusions.length,
+        projectFacts: snapshot.projectCard.facts.length,
+        agentFacts: snapshot.agentCard.facts.length,
+        userDirectionFacts: snapshot.userDirectionCard.facts.length,
+        engineFacts: snapshot.engineCard.facts.length
+      },
+      cards: {
+        project: context.memory?.projectCard ?? null,
+        agent: context.memory?.agentCard ?? null,
+        userDirection: context.memory?.userDirectionCard ?? null,
+        engine: context.memory?.engineCard ?? null
+      }
+    },
+    capabilities: {
+      account: false,
+      billing: false,
+      hostedApi: false,
+      remoteSync: false,
+      telemetry: false
+    },
+    outputPath,
+    localOnly: true,
+    nextActions: [
+      "Use this snapshot as a local service boundary for dashboards or agent supervisors.",
+      "Run openrender memory consolidate --json before exporting when the memory files have grown large.",
+      "Do not upload private game source, generated assets, or memory records without an explicit product boundary."
+    ]
+  };
+
+  if (outputPath) {
+    await safeWriteProjectFile({
+      projectRoot,
+      relativePath: outputPath,
+      contents: `${JSON.stringify(result, null, 2)}\n`,
+      allowOverwrite: parsed.flags.get("force") === true
+    });
+  }
+
+  return result;
+}
+
 function compactVerifyResult(result: VerifyCommandResult): CompactVerifyCommandResult {
   const failedChecks = result.checks.filter((check) => check.status === "failed");
   const warningChecks = result.checks.filter((check) => check.status === "warning");
@@ -3733,6 +4055,8 @@ function memoryPaths(): MemoryStatusCommandResult["paths"] {
     conclusions: ".openrender/memory/conclusions.jsonl",
     projectCard: ".openrender/memory/project-card.json",
     agentCard: ".openrender/memory/agent-card.json",
+    userDirectionCard: ".openrender/memory/user-direction-card.json",
+    engineCard: ".openrender/memory/engine-card.json",
     latestContext: ".openrender/memory/latest-context.json"
   };
 }
@@ -3750,7 +4074,9 @@ async function memoryStatus(): Promise<MemoryStatusCommandResult> {
       events: events.length,
       conclusions: conclusions.length,
       projectFacts: snapshot.projectCard.facts.length,
-      agentFacts: snapshot.agentCard.facts.length
+      agentFacts: snapshot.agentCard.facts.length,
+      userDirectionFacts: snapshot.userDirectionCard.facts.length,
+      engineFacts: snapshot.engineCard.facts.length
     },
     storage: {
       bytes: await memoryStorageBytes(projectRoot)
@@ -3798,7 +4124,7 @@ async function ingestMemory(parsed: ParsedFlags): Promise<MemoryIngestCommandRes
     operation: "memory.ingest",
     eventsWritten: events.length,
     conclusionsWritten: snapshot.conclusions.filter((conclusion) => events.some((event) => conclusion.sourceEventIds.includes(event.eventId))).length,
-    cardsUpdated: ["project-card", "agent-card"],
+    cardsUpdated: ["project-card", "agent-card", "user-direction-card", "engine-card"],
     contextPath: memoryPaths().latestContext,
     nextActions: [
       "Run openrender memory context --json --compact before the next agent task.",
@@ -3831,7 +4157,9 @@ async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidate
     events: trimmedEvents,
     conclusions: dedupedConclusions,
     projectCard: createMemoryCard("project", dedupedConclusions),
-    agentCard: createMemoryCard("agent", dedupedConclusions)
+    agentCard: createMemoryCard("agent", dedupedConclusions),
+    userDirectionCard: createMemoryCard("user-direction", dedupedConclusions),
+    engineCard: createMemoryCard("engine", dedupedConclusions)
   };
   await writeMemorySnapshot(projectRoot, consolidated);
   const context = createMemoryContextFromSnapshot(consolidated, false);
@@ -3844,7 +4172,7 @@ async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidate
       events: consolidated.events.length,
       conclusions: consolidated.conclusions.length
     },
-    cardsUpdated: ["project-card", "agent-card"],
+    cardsUpdated: ["project-card", "agent-card", "user-direction-card", "engine-card"],
     contextPath: memoryPaths().latestContext,
     localOnly: true
   };
@@ -3863,15 +4191,19 @@ async function cleanMemory(parsed: ParsedFlags): Promise<MemoryCleanCommandResul
     events: snapshot.events.slice(-maxEvents),
     conclusions: dedupeConclusions(snapshot.conclusions).slice(-maxConclusions),
     projectCard: createMemoryCard("project", snapshot.conclusions),
-    agentCard: createMemoryCard("agent", snapshot.conclusions)
+    agentCard: createMemoryCard("agent", snapshot.conclusions),
+    userDirectionCard: createMemoryCard("user-direction", snapshot.conclusions),
+    engineCard: createMemoryCard("engine", snapshot.conclusions)
   };
   trimmed.projectCard = createMemoryCard("project", trimmed.conclusions);
   trimmed.agentCard = createMemoryCard("agent", trimmed.conclusions);
+  trimmed.userDirectionCard = createMemoryCard("user-direction", trimmed.conclusions);
+  trimmed.engineCard = createMemoryCard("engine", trimmed.conclusions);
 
   const actions = [
     `keep latest ${trimmed.events.length}/${snapshot.events.length} memory events`,
     `keep latest ${trimmed.conclusions.length}/${snapshot.conclusions.length} active conclusions`,
-    "rewrite project-card, agent-card, and latest-context"
+    "rewrite project-card, agent-card, user-direction-card, engine-card, and latest-context"
   ];
 
   if (!dryRun) {
@@ -3908,7 +4240,9 @@ async function readMemorySnapshot(projectRoot: string): Promise<MemorySnapshot> 
     events,
     conclusions,
     projectCard: await readMemoryCard(projectRoot, "project", conclusions),
-    agentCard: await readMemoryCard(projectRoot, "agent", conclusions)
+    agentCard: await readMemoryCard(projectRoot, "agent", conclusions),
+    userDirectionCard: await readMemoryCard(projectRoot, "user-direction", conclusions),
+    engineCard: await readMemoryCard(projectRoot, "engine", conclusions)
   };
 }
 
@@ -3948,7 +4282,9 @@ async function writeMemoryEventsAndConclusions(projectRoot: string, events: Open
     events: [...eventMap.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     conclusions,
     projectCard: createMemoryCard("project", conclusions),
-    agentCard: createMemoryCard("agent", conclusions)
+    agentCard: createMemoryCard("agent", conclusions),
+    userDirectionCard: createMemoryCard("user-direction", conclusions),
+    engineCard: createMemoryCard("engine", conclusions)
   };
   await writeMemorySnapshot(projectRoot, snapshot);
   return snapshot;
@@ -3980,6 +4316,18 @@ async function writeMemorySnapshot(projectRoot: string, snapshot: MemorySnapshot
     contents: `${JSON.stringify(snapshot.agentCard, null, 2)}\n`,
     allowOverwrite: true
   });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.userDirectionCard,
+    contents: `${JSON.stringify(snapshot.userDirectionCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.engineCard,
+    contents: `${JSON.stringify(snapshot.engineCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
 }
 
 async function writeLatestMemoryContext(projectRoot: string, context: MemoryContextCommandResult): Promise<void> {
@@ -3993,7 +4341,15 @@ async function writeLatestMemoryContext(projectRoot: string, context: MemoryCont
 
 async function memoryStorageBytes(projectRoot: string): Promise<number> {
   const paths = memoryPaths();
-  const files = [paths.events, paths.conclusions, paths.projectCard, paths.agentCard, paths.latestContext];
+  const files = [
+    paths.events,
+    paths.conclusions,
+    paths.projectCard,
+    paths.agentCard,
+    paths.userDirectionCard,
+    paths.engineCard,
+    paths.latestContext
+  ];
   let bytes = 0;
   for (const file of files) {
     try {
@@ -4172,6 +4528,10 @@ function createMemoryCard(kind: MemoryCardKind, conclusions: OpenRenderMemoryCon
   const active = conclusions.filter((conclusion) => conclusion.status === "active");
   const relevant = kind === "agent"
     ? active.filter((conclusion) => conclusion.category === "constraint" || conclusion.category === "workflow" || conclusion.category === "recovery")
+    : kind === "user-direction"
+      ? active.filter((conclusion) => conclusion.category === "preference" || conclusion.category === "visual" || conclusion.category === "workflow")
+    : kind === "engine"
+      ? active.filter((conclusion) => conclusion.category === "engine" || conclusion.category === "failure" || conclusion.category === "recovery")
     : active.filter((conclusion) => conclusion.category !== "recovery" || conclusion.stability !== "session");
   const facts = relevant
     .sort((a, b) => scoreConclusionForCard(b) - scoreConclusionForCard(a))
@@ -4225,6 +4585,8 @@ function createMemoryContextFromSnapshot(snapshot: MemorySnapshot, compact: bool
     version: CLI_VERSION,
     projectCard: compactMemoryCard(snapshot.projectCard, compact ? 8 : 40),
     agentCard: compactMemoryCard(snapshot.agentCard, compact ? 8 : 40),
+    userDirectionCard: compactMemoryCard(snapshot.userDirectionCard, compact ? 8 : 40),
+    engineCard: compactMemoryCard(snapshot.engineCard, compact ? 8 : 40),
     conclusions,
     recentEvents,
     summary,
@@ -4244,7 +4606,13 @@ function compactMemoryCard(card: OpenRenderMemoryCard, maxFacts: number): OpenRe
 
 async function readCompactMemoryForTask(projectRoot: string): Promise<MemoryContextCommandResult | null> {
   const snapshot = await readMemorySnapshot(projectRoot);
-  if (snapshot.events.length === 0 && snapshot.conclusions.length === 0 && snapshot.projectCard.facts.length === 0) return null;
+  if (
+    snapshot.events.length === 0 &&
+    snapshot.conclusions.length === 0 &&
+    snapshot.projectCard.facts.length === 0 &&
+    snapshot.userDirectionCard.facts.length === 0 &&
+    snapshot.engineCard.facts.length === 0
+  ) return null;
   return createMemoryContextFromSnapshot(snapshot, true);
 }
 
@@ -4256,6 +4624,8 @@ function compactMemoryResult(result: MemoryCommandResult): unknown {
       summary: result.summary,
       projectFacts: result.projectCard.facts.map((fact) => fact.text),
       agentFacts: result.agentCard.facts.map((fact) => fact.text),
+      userDirectionFacts: result.userDirectionCard.facts.map((fact) => fact.text),
+      engineFacts: result.engineCard.facts.map((fact) => fact.text),
       conclusions: result.conclusions.map((conclusion) => ({
         level: conclusion.level,
         category: conclusion.category,
@@ -4922,7 +5292,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 1.0.1: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 1.0.2: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -7828,6 +8198,17 @@ function printAgentContext(result: AgentContextCommandResult): void {
   for (const action of result.recommendedNextActions) console.log(`Next: ${action}`);
 }
 
+function printServiceSnapshot(result: ServiceSnapshotCommandResult): void {
+  console.log("openRender service snapshot");
+  console.log("");
+  console.log(`Version: ${result.version}`);
+  console.log(`Target: ${result.project.target.engine}/${result.project.target.framework}`);
+  console.log(`Memory events: ${result.memory.counts.events}`);
+  console.log(`Memory conclusions: ${result.memory.counts.conclusions}`);
+  console.log(`Output: ${result.outputPath ?? "stdout only"}`);
+  for (const action of result.nextActions) console.log(`Next: ${action}`);
+}
+
 function printLoopResult(result: LoopCommandResult): void {
   if (result.operation === "loop.task") {
     console.log(result.content);
@@ -7994,6 +8375,8 @@ function printMemoryResult(result: MemoryCommandResult): void {
     console.log(`Conclusions: ${result.counts.conclusions}`);
     console.log(`Project facts: ${result.counts.projectFacts}`);
     console.log(`Agent facts: ${result.counts.agentFacts}`);
+    console.log(`User direction facts: ${result.counts.userDirectionFacts}`);
+    console.log(`Engine facts: ${result.counts.engineFacts}`);
     if (result.latestEvent) console.log(`Latest: ${result.latestEvent.type} - ${result.latestEvent.summary}`);
     return;
   }
@@ -8008,6 +8391,8 @@ function printMemoryResult(result: MemoryCommandResult): void {
     console.log(result.summary);
     for (const fact of result.projectCard.facts.slice(0, 8)) console.log(`Project: ${fact.text}`);
     for (const fact of result.agentCard.facts.slice(0, 8)) console.log(`Agent: ${fact.text}`);
+    for (const fact of result.userDirectionCard.facts.slice(0, 4)) console.log(`User direction: ${fact.text}`);
+    for (const fact of result.engineCard.facts.slice(0, 4)) console.log(`Engine: ${fact.text}`);
     return;
   }
   console.log(`Events: ${result.before.events} -> ${result.after.events}`);
@@ -8150,7 +8535,8 @@ Usage:
   openrender normalize <path> [--preset transparent-sprite|ui-icon|sprite-strip|sprite-grid] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--out <path>] [--json]
   openrender normalize motion <path> [--fps n] [--frames n] [--layout horizontal_strip|grid|sequence] [--json]
   openrender metadata audio|atlas|ui <path> [--target engine] [--id asset.id] [--json]
-  openrender smoke [--target phaser|godot|love2d|pixi|canvas|three|unity] [--run latest] [--timeout seconds] [--screenshot] [--json]
+  openrender smoke [--target phaser|godot|love2d|pixi|canvas|three|unity] [--run latest] [--build] [--build-command <cmd>] [--timeout seconds] [--screenshot] [--json]
+  openrender service snapshot [--wire-map] [--out <path>] [--force] [--json]
   openrender compile sprite --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--frames n --frame-size WxH] [--output-size WxH] [--background-policy auto|preserve|remove] [--remove-background] [--background-mode edge-flood|top-left] [--background-tolerance n] [--feather n] [--manifest-strategy merge|replace|isolated] [--quality prototype|default|strict] [--install] [--force] [--dry-run] [--json]
   openrender compile animation --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--fps n] [--frames n] [--loop] [--start seconds] [--end seconds] [--layout horizontal_strip|grid|sequence] [--background-policy auto|preserve|remove] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json] [--compact]
   openrender compile audio --from|--input <path> --id <asset.id> [--target phaser|godot|love2d|pixi|canvas|three|unity] [--media-type audio.sound_effect|audio.music_loop] [--loop] [--manifest-strategy merge|replace|isolated] [--install] [--force] [--dry-run] [--json]
@@ -8345,6 +8731,47 @@ interface CompactAgentContextResult {
   capabilities: AgentContextCommandResult["capabilities"];
 }
 
+interface ServiceSnapshotCommandResult {
+  ok: true;
+  operation: "service.snapshot";
+  version: string;
+  generatedAt: string;
+  project: {
+    root: string;
+    packageManager: ProjectScan["packageManager"];
+    target: AgentContextCommandResult["target"];
+    paths: AgentContextCommandResult["paths"];
+  };
+  context: CompactAgentContextResult;
+  memory: {
+    summary: string | null;
+    counts: {
+      events: number;
+      conclusions: number;
+      projectFacts: number;
+      agentFacts: number;
+      userDirectionFacts: number;
+      engineFacts: number;
+    };
+    cards: {
+      project: OpenRenderMemoryCard | null;
+      agent: OpenRenderMemoryCard | null;
+      userDirection: OpenRenderMemoryCard | null;
+      engine: OpenRenderMemoryCard | null;
+    };
+  };
+  capabilities: {
+    account: false;
+    billing: false;
+    hostedApi: false;
+    remoteSync: false;
+    telemetry: false;
+  };
+  outputPath: string | null;
+  localOnly: true;
+  nextActions: string[];
+}
+
 interface ReferenceSummary {
   referenceId: string;
   createdAt: string;
@@ -8514,10 +8941,16 @@ interface RuntimeSmokeCommandResult {
   ok: boolean;
   target: TargetEngine;
   status: "passed" | "failed" | "skipped";
+  mode: "static" | "runtime" | "build";
   command: string | null;
   runId?: string | null;
   screenshotPath?: string | null;
   message: string;
+  checks: Array<{
+    name: string;
+    status: "passed" | "failed" | "skipped";
+    message: string;
+  }>;
 }
 
 interface NotImplementedCommandResult {

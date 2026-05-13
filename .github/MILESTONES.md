@@ -10,5 +10,6 @@ Create these GitHub milestones when repository administration is available:
 - `0.8.2`: Three.js target support, TypeScript texture/sprite/plane helpers, Three.js wire maps, readiness checks, and fixture coverage.
 - `1.0.0`: Agent-native game development loop with loop completion records, compact task packets, and rollback boundaries.
 - `1.0.1`: Memory infrastructure foundation, published `@openrender/cli` npm package, and installed `openrender` command smoke verification.
+- `1.0.2`: npm package README, publish workflow, registry install smoke, opt-in web build smoke, service snapshots, example smoke projects, and phase-2 memory cards.
 
-The local implementation has reached the `1.0.1` Memory Infrastructure Foundation surface and the npm registry path is live through `@openrender/cli`. Future milestones should be created for external example repositories, runtime execution depth, and optional hosted/pack distribution surfaces.
+The local implementation has reached the `1.0.2` Developer Kit completion surface and the npm registry path is live through `@openrender/cli`. Future milestones should be created for deeper runtime execution and optional hosted/pack distribution surfaces.

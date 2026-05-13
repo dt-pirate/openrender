@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.1-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.2"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.2-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan ruta
 
 La memoria de openRender no es una capa para tomar notas. Guarda eventos derivados, conclusiones, tarjetas de proyecto y tarjetas de agente para que la siguiente tarea del agente reciba el contexto correcto sin releer logs completos ni pedir a una API de modelo que regenere assets.
 
-El core actual `1.0.1` soporta entrega de sprites, registro de referencias visuales, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop e infraestructura de memoria para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
+El core actual `1.0.2` soporta entrega de sprites, registro de referencias visuales, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, infraestructura de memoria, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 
@@ -86,6 +86,7 @@ openrender context --json
 openrender context --json --compact
 openrender memory status --json
 openrender memory context --json --compact
+openrender service snapshot --json
 openrender loop status --json --compact
 openrender scan --json
 openrender doctor --json
@@ -207,9 +208,12 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 - `detect-motion` analiza video/GIF/PNG sequence antes de instalar y devuelve pasos claros cuando falta ffmpeg.
 - `compile animation` genera animation sheets, runtime helpers por engine, wire-map handoff, verificacion, reportes, diffs, explicaciones y rollback.
 - Compile/install/verify/report/rollback para audio, atlas/tileset y UI en el mismo pipeline de run-state.
+- Infraestructura de memoria que deriva project cards, agent cards, user-direction cards y engine cards desde runs, loops y feedback del usuario.
+- `service snapshot --json` exporta un limite local de contexto para futuros dashboards o agent supervisors.
 - Salida compacta para agentes en context, verificacion, reportes, explain y diff.
 - Wiring map de solo lectura para posibles puntos de conexion en el codigo del juego.
 - Diagnostico alpha, cutout de fondo seguro por defecto, eliminacion edge-flood de fondo, deteccion de frames, presets de normalizacion, invariants de sprites y hojas de preview de frames.
+- Runtime smoke para Godot/LOVE2D y web build smoke opcional con `smoke --build`.
 - Adaptadores para Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas y Unity.
 - JSON schemas, resumenes compactos para agentes, recipes, fixture capture y golden fixtures.
 - Helpers JSON-only de metadata MCP para los targets soportados.

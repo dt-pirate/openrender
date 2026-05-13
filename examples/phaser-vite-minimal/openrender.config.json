@@ -1,0 +1,28 @@
+{
+  "version": "1.0.2",
+  "project": {
+    "id": "phaser-vite-minimal",
+    "name": "Phaser Vite Minimal"
+  },
+  "target": {
+    "engine": "phaser",
+    "framework": "vite",
+    "assetRoot": "public/assets",
+    "sourceRoot": "src"
+  },
+  "install": {
+    "writeManifest": true,
+    "writeCodegen": true,
+    "snapshotBeforeInstall": true,
+    "allowOverwrite": false
+  },
+  "report": {
+    "format": ["html", "json"],
+    "openAfterRun": false
+  },
+  "privacy": {
+    "cloudSync": false,
+    "telemetry": false,
+    "uploadArtifacts": false
+  }
+}

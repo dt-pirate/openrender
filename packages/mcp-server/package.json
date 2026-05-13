@@ -1,6 +1,6 @@
 {
   "name": "@openrender/mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local JSON-only MCP bridge metadata for openRender",
   "license": "Apache-2.0",
   "type": "module",

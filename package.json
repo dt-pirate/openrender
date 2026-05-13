@@ -1,6 +1,6 @@
 {
   "name": "openrender-repo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "AI-native infrastructure for agents that install generated game assets into real engine projects.",
   "license": "Apache-2.0",
@@ -33,6 +33,7 @@
     "dev:cli": "pnpm --filter @openrender/cli build && node packages/cli/dist/index.js",
     "lint": "pnpm typecheck",
     "smoke:npm-install": "node scripts/npm-install-smoke.mjs",
+    "smoke:registry-install": "node scripts/registry-install-smoke.mjs",
     "test": "pnpm build && node --test \"packages/*/dist/**/*.test.js\" \"packages/adapters/*/dist/**/*.test.js\"",
     "typecheck": "tsc -b --pretty false"
   },
