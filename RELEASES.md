@@ -38,7 +38,7 @@ Released: 2026-05-13 21:24 KST / 2026-05-13 12:24 UTC.
 ### Added
 
 - `packages/cli/README.md` so the npm package page explains `npm install -g @openrender/cli` and the installed `openrender` command.
-- `.github/workflows/npm-publish.yml` for release-backed npm publishing with provenance plus packed and registry install smoke checks.
+- `.github/workflows/npm-publish.yml` for token-backed npm publishing with packed and registry install smoke checks.
 - `scripts/registry-install-smoke.mjs` for post-publish verification against the live npm registry.
 - `openrender smoke --target phaser|pixi|canvas|three --build --json` for opt-in web build smoke using the local package build script.
 - `.openrender/memory/user-direction-card.json` and `.openrender/memory/engine-card.json` as derived phase-2 memory cards alongside project and agent cards.
@@ -458,7 +458,7 @@ Before publishing a tagged release:
 - `pnpm smoke:npm-install` packs the workspace packages, installs them with npm into an isolated global prefix, and verifies the `openrender` binary.
 - Packed package manifests replace `workspace:*` dependencies with concrete versions.
 - `pnpm -r publish --dry-run --access public --no-git-checks` passes before the real npm publish.
-- npm auth is available through Trusted Publishing for every `@openrender/*` package or through a repository `NPM_TOKEN` secret.
+- npm auth is available through a repository `NPM_TOKEN` secret with read/write access to `@openrender/*` packages and the `openrender` organization.
 - After publish, `pnpm smoke:registry-install` verifies the live npm package from an isolated global prefix.
 - `packages/cli/README.md` is present so the npm package page documents the installed command.
 - README language links resolve.
