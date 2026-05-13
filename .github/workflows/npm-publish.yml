@@ -53,6 +53,14 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == 'true' }}
         run: pnpm -r publish --dry-run --access public --no-git-checks
 
+      - name: npm publish auth preflight
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
+        run: |
+          npm whoami || {
+            echo "::error::npm publish auth is not available. Configure npm Trusted Publishing for every @openrender/* package or provide a repository NPM_TOKEN secret."
+            exit 1
+          }
+
       - name: Publish to npm
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == 'false') }}
         env:

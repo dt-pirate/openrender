@@ -458,6 +458,7 @@ Before publishing a tagged release:
 - `pnpm smoke:npm-install` packs the workspace packages, installs them with npm into an isolated global prefix, and verifies the `openrender` binary.
 - Packed package manifests replace `workspace:*` dependencies with concrete versions.
 - `pnpm -r publish --dry-run --access public --no-git-checks` passes before the real npm publish.
+- npm auth is available through Trusted Publishing for every `@openrender/*` package or through a repository `NPM_TOKEN` secret.
 - After publish, `pnpm smoke:registry-install` verifies the live npm package from an isolated global prefix.
 - `packages/cli/README.md` is present so the npm package page documents the installed command.
 - README language links resolve.
