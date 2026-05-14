@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ Image generators create pixels. Game projects need stable paths, frame metadata,
 
 openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, agent cards, creator-taste cards, game-direction cards, visual-avoidance cards, and a compact visual-evidence index so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
 
-The current `1.1.0` core supports sprite image handoff, visual reference records, visual memory accumulation, creator taste continuity, focused memory briefs, run drift review, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.1.1` core supports sprite image handoff, visual reference records, visual memory accumulation, creator taste continuity, focused memory briefs, run drift review, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 

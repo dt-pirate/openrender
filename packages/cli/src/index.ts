@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "1.1.0";
+const CLI_VERSION = "1.1.1";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 1.1.0 Media Contracts",
+    title: "openRender 1.1.1 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -5757,7 +5757,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 1.1.0: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 1.1.1: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 

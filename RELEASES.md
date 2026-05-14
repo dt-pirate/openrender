@@ -8,23 +8,25 @@ This page tracks the implemented openRender agent-native state infrastructure su
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `1.1.0 Creator Taste Memory` |
-| Package/CLI version | `1.1.0` |
+| Current implementation baseline | `1.1.1 Creator Taste Memory` |
+| Package/CLI version | `1.1.1` |
 | npm install package | `@openrender/cli` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v1.1.0`](https://github.com/dt-pirate/openrender/releases/tag/v1.1.0) |
+| Release channel | GitHub release [`v1.1.1`](https://github.com/dt-pirate/openrender/releases/tag/v1.1.1) |
 | npm package | [`@openrender/cli`](https://www.npmjs.com/package/@openrender/cli) |
-| Release timestamp | 2026-05-14 21:42 KST / 2026-05-14 12:42 UTC |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.1.0` |
+| Release timestamp | 2026-05-14 22:41 KST / 2026-05-14 13:41 UTC |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.1.1` |
 
-## 1.1.0 Creator Taste Memory
+## 1.1.1 Creator Taste Memory
 
-`1.1.0` turns openRender memory into a more useful continuity layer for game development: visual references now become local memory evidence, user feedback can derive creator-taste and game-direction facts, agents can ask for focused memory briefs before work, and completed runs can be reviewed for missing context or obvious drift signals.
+`1.1.1` turns openRender memory into a more useful continuity layer for game development: visual references now become local memory evidence, user feedback can derive creator-taste and game-direction facts, agents can ask for focused memory briefs before work, and completed runs can be reviewed for missing context or obvious drift signals.
 
-Released: 2026-05-14 21:42 KST / 2026-05-14 12:42 UTC.
+Released: 2026-05-14 22:41 KST / 2026-05-14 13:41 UTC.
+
+Packaging note: use `1.1.1` or later. It supersedes the `1.1.0` npm artifacts, which were published with unresolved `workspace:*` dependency metadata and should not be installed directly.
 
 ### Added
 
@@ -60,7 +62,7 @@ node packages/cli/dist/index.js --version
 Expected CLI version:
 
 ```text
-1.1.0
+1.1.1
 ```
 
 ## 1.0.2 Registry Smoke and Service Snapshot

@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "1.1.0");
+  assert.equal(stdout.trim(), "1.1.1");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,7 +31,7 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 1\.1\.0/m);
+  assert.match(stdout, /^openRender 1\.1\.1/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
   assert.match(stdout, /openrender memory status\|context\|consolidate\|query\|review/);
@@ -69,7 +69,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "1.1.0");
+  assert.equal(schema.properties.schemaVersion.const, "1.1.1");
 
   const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -78,7 +78,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(mediaSchema.title, "openRender 1.1.0 Media Contracts");
+  assert.equal(mediaSchema.title, "openRender 1.1.1 Media Contracts");
   assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -1225,7 +1225,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "1.1.0");
+  assert.equal(result.version, "1.1.1");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);

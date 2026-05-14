@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ openRender は、AI コーディングエージェントがプロジェクト意
 
 openRender memory はメモ取り用の層ではありません。run、loop、ユーザーフィードバックから派生したイベント、結論、プロジェクトカード、エージェントカード、作者の好みカード、ゲーム方向カード、避けるべき視覚カード、視覚根拠インデックスを保存し、次のエージェントタスクが生ログを読み直したりモデル API でアセットを再生成したりせずに文脈を引き継げるようにします。
 
-現在の `1.1.0` コアは、Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity プロジェクトで、スプライト画像ハンドオフ、視覚リファレンス記録、視覚メモリの蓄積、作者の好みの継続、フォーカス別メモリ brief、run drift review、モーション解析、アニメーションのコンパイル/インストール、音声、アトラス/タイルセット、UI アセットパイプライン、ループ実行履歴、エンジン別タスクパケット、ループ完了記録、ローカルサービススナップショット、任意実行のランタイム/ビルドスモークチェックをサポートしています。
+現在の `1.1.1` コアは、Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity プロジェクトで、スプライト画像ハンドオフ、視覚リファレンス記録、視覚メモリの蓄積、作者の好みの継続、フォーカス別メモリ brief、run drift review、モーション解析、アニメーションのコンパイル/インストール、音声、アトラス/タイルセット、UI アセットパイプライン、ループ実行履歴、エンジン別タスクパケット、ループ完了記録、ローカルサービススナップショット、任意実行のランタイム/ビルドスモークチェックをサポートしています。
 
 ## クイックスタート
 

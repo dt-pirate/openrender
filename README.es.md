@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.0-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.1"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.1-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -39,7 +39,7 @@ Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan ruta
 
 La memoria de openRender no es una capa para tomar notas. Guarda eventos derivados, conclusiones, tarjetas de proyecto, tarjetas de agente, tarjetas de gusto del creador, tarjetas de direccion del juego, tarjetas de evitacion visual e indice compacto de evidencia visual para que la siguiente tarea del agente reciba el contexto correcto sin releer logs completos ni pedir a una API de modelo que regenere assets.
 
-El core actual `1.1.0` soporta entrega de sprites, registro de referencias visuales, acumulacion de memoria visual, continuidad del gusto del creador, briefs de memoria por foco, revision de drift por run, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
+El core actual `1.1.1` soporta entrega de sprites, registro de referencias visuales, acumulacion de memoria visual, continuidad del gusto del creador, briefs de memoria por foco, revision de drift por run, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 

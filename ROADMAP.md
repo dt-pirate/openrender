@@ -1,8 +1,8 @@
 # openRender Roadmap
 
-## Current Baseline: 1.1.0 Creator Taste Memory
+## Current Baseline: 1.1.1 Creator Taste Memory
 
-- Documentation baseline and package version: openRender `1.1.0 Creator Taste Memory`.
+- Documentation baseline and package version: openRender `1.1.1 Creator Taste Memory`.
 - Sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - Visual reference records for sketches, UI mockups, concept art, video URLs, and local reference files. Remote URLs are provenance only and are not downloaded.
 - `detect-motion` analysis for video, GIF, PNG sequence directories, and sprite sheets before install.
