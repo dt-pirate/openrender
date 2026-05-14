@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.2"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,9 +37,9 @@ openRender es infraestructura de estado para agentes de codigo con IA que necesi
 
 Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
 
-La memoria de openRender no es una capa para tomar notas. Guarda eventos derivados, conclusiones, tarjetas de proyecto y tarjetas de agente para que la siguiente tarea del agente reciba el contexto correcto sin releer logs completos ni pedir a una API de modelo que regenere assets.
+La memoria de openRender no es una capa para tomar notas. Guarda eventos derivados, conclusiones, tarjetas de proyecto, tarjetas de agente, tarjetas de gusto del creador, tarjetas de direccion del juego, tarjetas de evitacion visual e indice compacto de evidencia visual para que la siguiente tarea del agente reciba el contexto correcto sin releer logs completos ni pedir a una API de modelo que regenere assets.
 
-El core actual `1.0.2` soporta entrega de sprites, registro de referencias visuales, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, infraestructura de memoria, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
+El core actual `1.1.0` soporta entrega de sprites, registro de referencias visuales, acumulacion de memoria visual, continuidad del gusto del creador, briefs de memoria por foco, revision de drift por run, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 
@@ -86,6 +86,8 @@ openrender context --json
 openrender context --json --compact
 openrender memory status --json
 openrender memory context --json --compact
+openrender memory query --for style --json --compact
+openrender memory review --run latest --json
 openrender service snapshot --json
 openrender loop status --json --compact
 openrender scan --json
@@ -148,6 +150,8 @@ openrender memory ingest \
   --feedback "Keep the UI readable and preserve the neon arcade direction." \
   --json
 
+openrender memory query --for ui --json --compact
+openrender memory review --run latest --json
 openrender memory context --json --compact
 openrender clean --memory --keep-latest --dry-run --json
 ```
@@ -208,7 +212,8 @@ openRender guarda el estado de cada ejecucion en `.openrender/`, incluyendo arti
 - `detect-motion` analiza video/GIF/PNG sequence antes de instalar y devuelve pasos claros cuando falta ffmpeg.
 - `compile animation` genera animation sheets, runtime helpers por engine, wire-map handoff, verificacion, reportes, diffs, explicaciones y rollback.
 - Compile/install/verify/report/rollback para audio, atlas/tileset y UI en el mismo pipeline de run-state.
-- Infraestructura de memoria que deriva project cards, agent cards, user-direction cards y engine cards desde runs, loops y feedback del usuario.
+- Infraestructura de memoria que deriva project cards, agent cards, user-direction cards, engine cards, creator-taste cards, game-direction cards, visual-avoidance cards y un visual-evidence index desde runs, loops, feedback del usuario y referencias visuales.
+- `memory query` y `memory review` para revisar brevemente gusto del creador, direccion del juego, evitaciones visuales y drift signals antes de la siguiente tarea del agente.
 - `service snapshot --json` exporta un limite local de contexto para futuros dashboards o agent supervisors.
 - Salida compacta para agentes en context, verificacion, reportes, explain y diff.
 - Wiring map de solo lectura para posibles puntos de conexion en el codigo del juego.
@@ -240,6 +245,8 @@ Animation compile reutiliza los mismos target adapters. Phaser, Godot, LOVE2D y 
 - Ejecuta `doctor --json` antes de escribir en un proyecto desconocido.
 - Usa `plan sprite --json` o `compile sprite --dry-run --json` antes de `--install`.
 - Si el usuario entrega un sketch, mockup, concept image, video URL o project reference file, registralo con `ingest reference --json`.
+- Si la siguiente tarea depende del visual style o del feel de control, usa `memory query --for style|ui|movement --json --compact` para revisar primero gusto del creador y evidencia visual.
+- Despues de instalar o ejecutar un loop, usa `memory review --run latest --json` para detectar falta de memoria o senales de drift.
 - Usa `detect-motion --json --compact` antes de elegir fps, frame count, layout y loop de una animation.
 - Usa `compile animation --dry-run --json` antes de instalar animation assets.
 - Inspecciona `installPlan.files` antes de instalar.

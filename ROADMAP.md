@@ -1,16 +1,16 @@
 # openRender Roadmap
 
-## Current Baseline: 1.0.2 Registry Smoke and Service Snapshot
+## Current Baseline: 1.1.0 Creator Taste Memory
 
-- Documentation baseline and package version: openRender `1.0.2 Registry Smoke and Service Snapshot`.
+- Documentation baseline and package version: openRender `1.1.0 Creator Taste Memory`.
 - Sprite compile/install/verify/report/rollback for Phaser, Godot, LOVE2D, PixiJS, Three.js, Canvas, and Unity.
 - Visual reference records for sketches, UI mockups, concept art, video URLs, and local reference files. Remote URLs are provenance only and are not downloaded.
 - `detect-motion` analysis for video, GIF, PNG sequence directories, and sprite sheets before install.
 - `compile animation` for engine-ready animation sheets, target helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Tiered runtime integration helpers across all supported engines: Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas.
 - Agent loop runner, task packets, and completion records that track runId, report, verification status, next actions, rollback command, engine packet guidance, completion notes, and no-regeneration boundaries.
-- Memory infrastructure that turns runs, loops, and user feedback into derived project events, conclusions, project cards, agent cards, user-direction cards, engine cards, and compact context for follow-up agent tasks.
-- `memory status`, `memory ingest`, `memory context`, `memory consolidate`, and `clean --memory` for agent continuity without raw chat-log accumulation.
+- Memory infrastructure that turns runs, loops, user feedback, and visual references into derived project events, conclusions, project cards, agent cards, user-direction cards, engine cards, creator-taste cards, game-direction cards, visual-avoidance cards, a visual-evidence index, and compact context for follow-up agent tasks.
+- `memory status`, `memory ingest`, `memory context`, `memory query`, `memory review`, `memory consolidate`, and `clean --memory` for agent continuity without raw chat-log accumulation.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
 - Compact agent views for context, verify, report, explain, diff, and motion recommendations.
 - Read-only `context --json --wire-map` wiring candidates plus latest asset path, helper path, manifest module, suggested use, and example snippets.
@@ -39,5 +39,5 @@
 
 - Deepen engine-specific helper quality with fixture-backed examples from real production patterns.
 - Expand visual verification for animation loops, contact sheets, and target-specific helper readiness.
-- Expand memory-derived task packets into richer project-state continuity while keeping storage compact and pruneable.
+- Expand memory-derived task packets into richer project-state continuity while keeping storage compact, provenance-backed, and pruneable.
 - Keep documentation focused on what users can run today, while keeping longer product planning outside public-facing docs.

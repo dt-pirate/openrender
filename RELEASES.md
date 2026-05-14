@@ -1,6 +1,6 @@
 # Version History
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 
 This page tracks the implemented openRender agent-native state infrastructure surface, tagged GitHub releases, and documented version milestones.
 
@@ -8,17 +8,60 @@ This page tracks the implemented openRender agent-native state infrastructure su
 
 | Field | Value |
 |---|---|
-| Current implementation baseline | `1.0.2 Registry Smoke and Service Snapshot` |
-| Package/CLI version | `1.0.2` |
+| Current implementation baseline | `1.1.0 Creator Taste Memory` |
+| Package/CLI version | `1.1.0` |
 | npm install package | `@openrender/cli` |
 | CLI | `openrender` |
 | Runtime | Node.js `>=22` |
 | Package manager | pnpm `10.x` |
 | License | Apache-2.0 |
-| Release channel | GitHub release [`v1.0.2`](https://github.com/dt-pirate/openrender/releases/tag/v1.0.2) |
+| Release channel | GitHub release [`v1.1.0`](https://github.com/dt-pirate/openrender/releases/tag/v1.1.0) |
 | npm package | [`@openrender/cli`](https://www.npmjs.com/package/@openrender/cli) |
-| Release timestamp | 2026-05-13 21:24 KST / 2026-05-13 12:24 UTC |
-| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.0.2` |
+| Release timestamp | 2026-05-14 21:42 KST / 2026-05-14 12:42 UTC |
+| GitHub release | `https://github.com/dt-pirate/openrender/releases/tag/v1.1.0` |
+
+## 1.1.0 Creator Taste Memory
+
+`1.1.0` turns openRender memory into a more useful continuity layer for game development: visual references now become local memory evidence, user feedback can derive creator-taste and game-direction facts, agents can ask for focused memory briefs before work, and completed runs can be reviewed for missing context or obvious drift signals.
+
+Released: 2026-05-14 21:42 KST / 2026-05-14 12:42 UTC.
+
+### Added
+
+- `openrender memory query --for general|ui|style|movement|combat|camera|audio|level|vfx --json --compact` for a short, task-focused brief before the next agent turn.
+- `openrender memory review --run latest --json` for checking whether a run has enough project memory and whether visual-avoidance or verification signals put it at risk.
+- `.openrender/memory/creator-taste-card.json` for durable creator preference and feel facts.
+- `.openrender/memory/game-direction-card.json` for project-specific style, visual direction, and reference-derived guidance.
+- `.openrender/memory/visual-avoidance-card.json` for explicit avoidances and repeated visual failure patterns.
+- `.openrender/memory/visual-evidence-index.json` for compact interpreted evidence from visual references.
+- Automatic memory events when `ingest reference` records a local or URL reference, without downloading remote media.
+- `service snapshot --json` now includes creator-taste, game-direction, visual-avoidance, and visual-evidence counts/cards for local supervisors.
+
+### Boundaries
+
+- Visual memory is derived local state, not raw image storage, external memory sync, or model-provider analysis.
+- `memory query` and `memory review` do not edit game code, regenerate assets, download remote references, or call external APIs.
+- Creator taste is project evidence with confidence and provenance; it is not treated as a global user profile unless the project records it.
+
+### Verification
+
+Run:
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm smoke:npm-install
+pnpm -r publish --dry-run --access public --no-git-checks
+npm view @openrender/cli version --json
+pnpm smoke:registry-install
+node packages/cli/dist/index.js --version
+```
+
+Expected CLI version:
+
+```text
+1.1.0
+```
 
 ## 1.0.2 Registry Smoke and Service Snapshot
 

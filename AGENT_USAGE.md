@@ -40,6 +40,7 @@ openrender context --json
 openrender context --json --compact
 openrender memory status --json
 openrender memory context --json --compact
+openrender memory query --for style --json --compact
 openrender context --json --wire-map
 openrender scan --json
 openrender doctor --json
@@ -53,6 +54,7 @@ openrender compile ui --from tmp/button.png --target phaser --id ui.start --stat
 openrender verify --run latest --json --compact
 openrender report --run latest --json --compact
 openrender memory ingest --run latest --json
+openrender memory review --run latest --json
 openrender explain --run latest --json --compact
 openrender diff --run latest --json --compact
 ```
@@ -66,6 +68,8 @@ Rules:
 - Use `memory ingest --feedback <text> --json` when the user gives durable direction about project intent, visual style, engine constraints, or recovery preferences.
 - Use `memory ingest --run latest --json` or `memory ingest --loop latest --json` after meaningful openRender work so the next agent task keeps the right context.
 - Use `memory context --json --compact` before continuing an agent task that depends on previous decisions.
+- Use `memory query --for style|ui|movement|combat|camera|audio|level|vfx --json --compact` before work that depends on creator taste, game direction, or visual feel.
+- Use `memory review --run latest --json` after install or loop work to check for missing continuity context or obvious drift signals.
 - Use `memory consolidate --json` after several ingests to refresh project and agent cards.
 - Use `clean --memory --keep-latest --dry-run --json` before pruning old derived memory.
 - Use `context --json --wire-map` to find read-only asset wiring candidates before editing game code.

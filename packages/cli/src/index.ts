@@ -105,7 +105,7 @@ import {
 } from "@openrender/harness-visual";
 import { createPreviewHtml, createReportHtml } from "@openrender/reporter";
 
-const CLI_VERSION = "1.0.2";
+const CLI_VERSION = "1.1.0";
 
 type EngineAssetDescriptor =
   | ReturnType<typeof createPhaserAssetDescriptor>
@@ -552,7 +552,7 @@ const OPENRENDER_SCHEMAS: Record<string, Record<string, unknown>> = {
   media: {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://openrender.dev/schemas/media.schema.json",
-    title: "openRender 1.0.2 Media Contracts",
+    title: "openRender 1.1.0 Media Contracts",
     type: "object",
     required: ["schemaVersion", "mediaType", "sourcePath", "target", "id", "install"],
     properties: {
@@ -596,9 +596,12 @@ type MemoryCommandResult =
   | MemoryStatusCommandResult
   | MemoryIngestCommandResult
   | MemoryContextCommandResult
-  | MemoryConsolidateCommandResult;
+  | MemoryConsolidateCommandResult
+  | MemoryQueryCommandResult
+  | MemoryReviewCommandResult;
 type MemoryEventType =
   | "user.feedback"
+  | "reference.ingested"
   | "run.compiled"
   | "run.verified"
   | "verification.failed"
@@ -607,8 +610,28 @@ type MemoryEventType =
   | "loop.updated"
   | "loop.completed";
 type MemoryConclusionLevel = "explicit" | "deductive" | "inductive" | "abductive";
-type MemoryConclusionCategory = "constraint" | "preference" | "engine" | "visual" | "recovery" | "failure" | "workflow";
-type MemoryCardKind = "project" | "agent" | "user-direction" | "engine";
+type MemoryConclusionCategory =
+  | "constraint"
+  | "preference"
+  | "engine"
+  | "visual"
+  | "recovery"
+  | "failure"
+  | "workflow"
+  | "taste"
+  | "direction"
+  | "avoidance"
+  | "feel"
+  | "reference";
+type MemoryCardKind =
+  | "project"
+  | "agent"
+  | "user-direction"
+  | "engine"
+  | "creator-taste"
+  | "game-direction"
+  | "visual-avoidance";
+type MemoryQueryFocus = "general" | "ui" | "style" | "movement" | "combat" | "camera" | "audio" | "level" | "vfx";
 type LoopStatus = "created" | "needs_action" | "ready_for_wiring" | "failed" | "completed";
 type LoopIterationStatus = "recorded" | "needs_action" | "ready_for_wiring" | "failed";
 
@@ -617,7 +640,7 @@ interface OpenRenderMemoryEvent {
   eventId: string;
   createdAt: string;
   type: MemoryEventType;
-  source: "cli" | "loop" | "run" | "user";
+  source: "cli" | "loop" | "run" | "user" | "reference";
   summary: string;
   runId?: string;
   loopId?: string;
@@ -655,6 +678,20 @@ interface OpenRenderMemoryCard {
   facts: OpenRenderMemoryCardFact[];
 }
 
+interface OpenRenderVisualEvidence {
+  evidenceId: string;
+  createdAt: string;
+  sourceEventId: string;
+  referenceId?: string;
+  role?: VisualReferenceRole;
+  source?: string;
+  summary: string;
+  interpretedAttributes: string[];
+  appliesTo: MemoryQueryFocus[];
+  avoid: string[];
+  confidence: number;
+}
+
 interface MemorySnapshot {
   events: OpenRenderMemoryEvent[];
   conclusions: OpenRenderMemoryConclusion[];
@@ -662,6 +699,10 @@ interface MemorySnapshot {
   agentCard: OpenRenderMemoryCard;
   userDirectionCard: OpenRenderMemoryCard;
   engineCard: OpenRenderMemoryCard;
+  creatorTasteCard: OpenRenderMemoryCard;
+  gameDirectionCard: OpenRenderMemoryCard;
+  visualAvoidanceCard: OpenRenderMemoryCard;
+  visualEvidence: OpenRenderVisualEvidence[];
 }
 
 interface MemoryStatusCommandResult {
@@ -675,6 +716,10 @@ interface MemoryStatusCommandResult {
     agentCard: string;
     userDirectionCard: string;
     engineCard: string;
+    creatorTasteCard: string;
+    gameDirectionCard: string;
+    visualAvoidanceCard: string;
+    visualEvidenceIndex: string;
     latestContext: string;
   };
   counts: {
@@ -684,6 +729,10 @@ interface MemoryStatusCommandResult {
     agentFacts: number;
     userDirectionFacts: number;
     engineFacts: number;
+    creatorTasteFacts: number;
+    gameDirectionFacts: number;
+    visualAvoidanceFacts: number;
+    visualEvidenceItems: number;
   };
   storage: {
     bytes: number;
@@ -711,6 +760,10 @@ interface MemoryContextCommandResult {
   agentCard: OpenRenderMemoryCard;
   userDirectionCard: OpenRenderMemoryCard;
   engineCard: OpenRenderMemoryCard;
+  creatorTasteCard: OpenRenderMemoryCard;
+  gameDirectionCard: OpenRenderMemoryCard;
+  visualAvoidanceCard: OpenRenderMemoryCard;
+  visualEvidence: OpenRenderVisualEvidence[];
   conclusions: OpenRenderMemoryConclusion[];
   recentEvents: OpenRenderMemoryEvent[];
   summary: string;
@@ -731,6 +784,37 @@ interface MemoryConsolidateCommandResult {
   };
   cardsUpdated: string[];
   contextPath: string;
+  localOnly: true;
+}
+
+interface MemoryQueryCommandResult {
+  ok: true;
+  operation: "memory.query";
+  version: string;
+  focus: MemoryQueryFocus;
+  brief: string;
+  tasteFacts: OpenRenderMemoryCardFact[];
+  directionFacts: OpenRenderMemoryCardFact[];
+  avoidanceFacts: OpenRenderMemoryCardFact[];
+  engineFacts: OpenRenderMemoryCardFact[];
+  evidence: OpenRenderVisualEvidence[];
+  nextActions: string[];
+  localOnly: true;
+}
+
+interface MemoryReviewCommandResult {
+  ok: true;
+  operation: "memory.review";
+  version: string;
+  runId: string;
+  status: "aligned" | "needs_context" | "at_risk";
+  target: TargetEngine | "unknown";
+  mediaType: string;
+  assetId: string;
+  driftSignals: string[];
+  matchingFacts: string[];
+  missingContext: string[];
+  recommendations: string[];
   localOnly: true;
 }
 
@@ -3353,6 +3437,9 @@ async function createLoopTaskMarkdown(
           `- summary: ${memory.summary}`,
           ...memory.projectCard.facts.slice(0, 6).map((fact) => `- project ${fact.type}: ${fact.text}`),
           ...memory.agentCard.facts.slice(0, 4).map((fact) => `- agent ${fact.type}: ${fact.text}`),
+          ...memory.creatorTasteCard.facts.slice(0, 5).map((fact) => `- creator taste ${fact.type}: ${fact.text}`),
+          ...memory.gameDirectionCard.facts.slice(0, 5).map((fact) => `- game direction ${fact.type}: ${fact.text}`),
+          ...memory.visualAvoidanceCard.facts.slice(0, 4).map((fact) => `- avoid ${fact.type}: ${fact.text}`),
           ""
         ]
       : []),
@@ -3565,14 +3652,22 @@ async function createServiceSnapshot(parsed: ParsedFlags): Promise<ServiceSnapsh
         projectFacts: snapshot.projectCard.facts.length,
         agentFacts: snapshot.agentCard.facts.length,
         userDirectionFacts: snapshot.userDirectionCard.facts.length,
-        engineFacts: snapshot.engineCard.facts.length
+        engineFacts: snapshot.engineCard.facts.length,
+        creatorTasteFacts: snapshot.creatorTasteCard.facts.length,
+        gameDirectionFacts: snapshot.gameDirectionCard.facts.length,
+        visualAvoidanceFacts: snapshot.visualAvoidanceCard.facts.length,
+        visualEvidenceItems: snapshot.visualEvidence.length
       },
       cards: {
         project: context.memory?.projectCard ?? null,
         agent: context.memory?.agentCard ?? null,
         userDirection: context.memory?.userDirectionCard ?? null,
-        engine: context.memory?.engineCard ?? null
-      }
+        engine: context.memory?.engineCard ?? null,
+        creatorTaste: context.memory?.creatorTasteCard ?? null,
+        gameDirection: context.memory?.gameDirectionCard ?? null,
+        visualAvoidance: context.memory?.visualAvoidanceCard ?? null
+      },
+      visualEvidence: context.memory?.visualEvidence ?? []
     },
     capabilities: {
       account: false,
@@ -3974,6 +4069,23 @@ async function ingestReference(parsed: ParsedFlags): Promise<IngestReferenceComm
     contents: `${JSON.stringify(record, null, 2)}\n`,
     allowOverwrite: false
   });
+  const referenceSource = record.source.kind === "url" ? record.source.url : record.source.path;
+  const memorySnapshot = await writeMemoryEventsAndConclusions(projectRoot, [
+    createMemoryEvent({
+      type: "reference.ingested",
+      source: "reference",
+      summary: `${role} reference: ${intent}${notes ? ` Notes: ${notes}` : ""}`,
+      severity: "info",
+      data: {
+        referenceId,
+        role,
+        source: referenceSource,
+        sourceKind: record.source.kind,
+        downloaded: record.source.kind === "url" ? record.source.downloaded : false
+      }
+    })
+  ]);
+  await writeLatestMemoryContext(projectRoot, createMemoryContextFromSnapshot(memorySnapshot, false));
 
   return {
     ok: true,
@@ -3984,6 +4096,7 @@ async function ingestReference(parsed: ParsedFlags): Promise<IngestReferenceComm
     summary: `${role} reference recorded for agent context; remote URLs were not downloaded.`,
     nextActions: [
       "Run openrender context --json --compact to show the latest reference summary.",
+      "Run openrender memory query --for style --json --compact before the next visual task.",
       "Use the reference intent when choosing compile or animation settings."
     ],
     localOnly: true
@@ -4039,13 +4152,33 @@ function readReferenceRole(parsed: ParsedFlags): VisualReferenceRole {
   throw new Error(`Unsupported reference role: ${value}`);
 }
 
+function readMemoryQueryFocus(parsed: ParsedFlags): MemoryQueryFocus {
+  const value = readStringFlag(parsed, "for", readStringFlag(parsed, "focus", "general"));
+  if (
+    value === "general" ||
+    value === "ui" ||
+    value === "style" ||
+    value === "movement" ||
+    value === "combat" ||
+    value === "camera" ||
+    value === "audio" ||
+    value === "level" ||
+    value === "vfx"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported memory query focus: ${value}`);
+}
+
 async function handleMemoryCommand(parsed: ParsedFlags): Promise<MemoryCommandResult> {
   const subcommand = parsed.positionals[1] ?? "status";
   if (subcommand === "status") return memoryStatus();
   if (subcommand === "ingest") return ingestMemory(parsed);
   if (subcommand === "context") return memoryContext(parsed);
   if (subcommand === "consolidate") return consolidateMemory(parsed);
-  throw new Error("Unsupported memory command. Use status, ingest, context, or consolidate.");
+  if (subcommand === "query") return queryMemory(parsed);
+  if (subcommand === "review") return reviewMemory(parsed);
+  throw new Error("Unsupported memory command. Use status, ingest, context, consolidate, query, or review.");
 }
 
 function memoryPaths(): MemoryStatusCommandResult["paths"] {
@@ -4057,6 +4190,10 @@ function memoryPaths(): MemoryStatusCommandResult["paths"] {
     agentCard: ".openrender/memory/agent-card.json",
     userDirectionCard: ".openrender/memory/user-direction-card.json",
     engineCard: ".openrender/memory/engine-card.json",
+    creatorTasteCard: ".openrender/memory/creator-taste-card.json",
+    gameDirectionCard: ".openrender/memory/game-direction-card.json",
+    visualAvoidanceCard: ".openrender/memory/visual-avoidance-card.json",
+    visualEvidenceIndex: ".openrender/memory/visual-evidence-index.json",
     latestContext: ".openrender/memory/latest-context.json"
   };
 }
@@ -4076,7 +4213,11 @@ async function memoryStatus(): Promise<MemoryStatusCommandResult> {
       projectFacts: snapshot.projectCard.facts.length,
       agentFacts: snapshot.agentCard.facts.length,
       userDirectionFacts: snapshot.userDirectionCard.facts.length,
-      engineFacts: snapshot.engineCard.facts.length
+      engineFacts: snapshot.engineCard.facts.length,
+      creatorTasteFacts: snapshot.creatorTasteCard.facts.length,
+      gameDirectionFacts: snapshot.gameDirectionCard.facts.length,
+      visualAvoidanceFacts: snapshot.visualAvoidanceCard.facts.length,
+      visualEvidenceItems: snapshot.visualEvidence.length
     },
     storage: {
       bytes: await memoryStorageBytes(projectRoot)
@@ -4124,7 +4265,16 @@ async function ingestMemory(parsed: ParsedFlags): Promise<MemoryIngestCommandRes
     operation: "memory.ingest",
     eventsWritten: events.length,
     conclusionsWritten: snapshot.conclusions.filter((conclusion) => events.some((event) => conclusion.sourceEventIds.includes(event.eventId))).length,
-    cardsUpdated: ["project-card", "agent-card", "user-direction-card", "engine-card"],
+    cardsUpdated: [
+      "project-card",
+      "agent-card",
+      "user-direction-card",
+      "engine-card",
+      "creator-taste-card",
+      "game-direction-card",
+      "visual-avoidance-card",
+      "visual-evidence-index"
+    ],
     contextPath: memoryPaths().latestContext,
     nextActions: [
       "Run openrender memory context --json --compact before the next agent task.",
@@ -4140,6 +4290,101 @@ async function memoryContext(parsed: ParsedFlags): Promise<MemoryContextCommandR
   const context = createMemoryContextFromSnapshot(snapshot, parsed.flags.get("compact") === true);
   await writeLatestMemoryContext(projectRoot, context);
   return context;
+}
+
+async function queryMemory(parsed: ParsedFlags): Promise<MemoryQueryCommandResult> {
+  const projectRoot = process.cwd();
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const focus = readMemoryQueryFocus(parsed);
+  const includeFact = (fact: OpenRenderMemoryCardFact): boolean => {
+    if (focus === "general") return true;
+    return inferMemoryFocus(fact.text).includes(focus);
+  };
+  const tasteFacts = snapshot.creatorTasteCard.facts.filter(includeFact).slice(0, 10);
+  const directionFacts = snapshot.gameDirectionCard.facts.filter(includeFact).slice(0, 10);
+  const avoidanceFacts = snapshot.visualAvoidanceCard.facts.filter(includeFact).slice(0, 10);
+  const engineFacts = snapshot.engineCard.facts.filter(includeFact).slice(0, 6);
+  const evidence = snapshot.visualEvidence
+    .filter((item) => focus === "general" || item.appliesTo.includes(focus))
+    .slice(-8);
+  const briefParts = [
+    ...directionFacts.slice(0, 3).map((fact) => `Direction: ${fact.text}`),
+    ...tasteFacts.slice(0, 4).map((fact) => `Taste: ${fact.text}`),
+    ...avoidanceFacts.slice(0, 3).map((fact) => `Avoid: ${fact.text}`),
+    ...engineFacts.slice(0, 2).map((fact) => `Engine: ${fact.text}`)
+  ];
+  return {
+    ok: true,
+    operation: "memory.query",
+    version: CLI_VERSION,
+    focus,
+    brief: briefParts.length
+      ? briefParts.join(" ")
+      : `No ${focus} memory has been derived yet. Ingest user feedback, references, runs, or loops first.`,
+    tasteFacts,
+    directionFacts,
+    avoidanceFacts,
+    engineFacts,
+    evidence,
+    nextActions: [
+      "Use this focused brief as constraints for the next game-development task.",
+      "Add new evidence with openrender ingest reference or openrender memory ingest --feedback when the creator accepts or rejects a direction."
+    ],
+    localOnly: true
+  };
+}
+
+async function reviewMemory(parsed: ParsedFlags): Promise<MemoryReviewCommandResult> {
+  const projectRoot = process.cwd();
+  const runId = readStringFlag(parsed, "run", "latest");
+  const record = await readCompileRecord(projectRoot, runId);
+  const snapshot = await readMemorySnapshot(projectRoot);
+  const text = `${record.contract.mediaType} ${record.contract.id} ${record.contract.target.engine} ${record.outputPlan.assetPath} ${record.outputPlan.codegenPath ?? ""}`;
+  const focuses = inferMemoryFocus(text);
+  const matchingFacts = [
+    ...snapshot.creatorTasteCard.facts,
+    ...snapshot.gameDirectionCard.facts,
+    ...snapshot.visualAvoidanceCard.facts,
+    ...snapshot.engineCard.facts
+  ]
+    .filter((fact) => inferMemoryFocus(fact.text).some((focus) => focuses.includes(focus)) || fact.text.includes(record.contract.target.engine))
+    .slice(0, 12)
+    .map((fact) => fact.text);
+  const missingContext: string[] = [];
+  if (snapshot.creatorTasteCard.facts.length === 0) missingContext.push("No creator taste card facts have been derived.");
+  if (snapshot.gameDirectionCard.facts.length === 0) missingContext.push("No game direction card facts have been derived.");
+  if (record.contract.mediaType.startsWith("visual.") && snapshot.visualEvidence.length === 0) missingContext.push("No visual evidence index exists for this project.");
+  const driftSignals = snapshot.visualAvoidanceCard.facts
+    .filter((fact) => inferMemoryFocus(fact.text).some((focus) => focuses.includes(focus)))
+    .map((fact) => fact.text);
+  const verificationStatus = record.run.verification?.status ?? null;
+  if (verificationStatus === "failed" || verificationStatus === "warning") {
+    driftSignals.push(`Latest verification is ${verificationStatus}; preserve the failure context before continuing.`);
+  }
+  const status: MemoryReviewCommandResult["status"] = driftSignals.length > 0
+    ? "at_risk"
+    : missingContext.length > 0
+      ? "needs_context"
+      : "aligned";
+  return {
+    ok: true,
+    operation: "memory.review",
+    version: CLI_VERSION,
+    runId: record.run.runId,
+    status,
+    target: record.contract.target.engine,
+    mediaType: record.contract.mediaType,
+    assetId: record.contract.id,
+    driftSignals,
+    matchingFacts,
+    missingContext,
+    recommendations: [
+      "Run openrender memory query --for <focus> --json --compact before asking an agent to wire or polish this result.",
+      "If the creator approves or rejects the result, immediately run openrender memory ingest --feedback <text> --json.",
+      "If this result is off-direction, keep the run record and convert the rejection into visual avoidance memory instead of overwriting it silently."
+    ],
+    localOnly: true
+  };
 }
 
 async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidateCommandResult> {
@@ -4159,7 +4404,11 @@ async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidate
     projectCard: createMemoryCard("project", dedupedConclusions),
     agentCard: createMemoryCard("agent", dedupedConclusions),
     userDirectionCard: createMemoryCard("user-direction", dedupedConclusions),
-    engineCard: createMemoryCard("engine", dedupedConclusions)
+    engineCard: createMemoryCard("engine", dedupedConclusions),
+    creatorTasteCard: createMemoryCard("creator-taste", dedupedConclusions),
+    gameDirectionCard: createMemoryCard("game-direction", dedupedConclusions),
+    visualAvoidanceCard: createMemoryCard("visual-avoidance", dedupedConclusions),
+    visualEvidence: createVisualEvidenceIndex(trimmedEvents, dedupedConclusions)
   };
   await writeMemorySnapshot(projectRoot, consolidated);
   const context = createMemoryContextFromSnapshot(consolidated, false);
@@ -4172,7 +4421,16 @@ async function consolidateMemory(parsed: ParsedFlags): Promise<MemoryConsolidate
       events: consolidated.events.length,
       conclusions: consolidated.conclusions.length
     },
-    cardsUpdated: ["project-card", "agent-card", "user-direction-card", "engine-card"],
+    cardsUpdated: [
+      "project-card",
+      "agent-card",
+      "user-direction-card",
+      "engine-card",
+      "creator-taste-card",
+      "game-direction-card",
+      "visual-avoidance-card",
+      "visual-evidence-index"
+    ],
     contextPath: memoryPaths().latestContext,
     localOnly: true
   };
@@ -4193,17 +4451,25 @@ async function cleanMemory(parsed: ParsedFlags): Promise<MemoryCleanCommandResul
     projectCard: createMemoryCard("project", snapshot.conclusions),
     agentCard: createMemoryCard("agent", snapshot.conclusions),
     userDirectionCard: createMemoryCard("user-direction", snapshot.conclusions),
-    engineCard: createMemoryCard("engine", snapshot.conclusions)
+    engineCard: createMemoryCard("engine", snapshot.conclusions),
+    creatorTasteCard: createMemoryCard("creator-taste", snapshot.conclusions),
+    gameDirectionCard: createMemoryCard("game-direction", snapshot.conclusions),
+    visualAvoidanceCard: createMemoryCard("visual-avoidance", snapshot.conclusions),
+    visualEvidence: snapshot.visualEvidence
   };
   trimmed.projectCard = createMemoryCard("project", trimmed.conclusions);
   trimmed.agentCard = createMemoryCard("agent", trimmed.conclusions);
   trimmed.userDirectionCard = createMemoryCard("user-direction", trimmed.conclusions);
   trimmed.engineCard = createMemoryCard("engine", trimmed.conclusions);
+  trimmed.creatorTasteCard = createMemoryCard("creator-taste", trimmed.conclusions);
+  trimmed.gameDirectionCard = createMemoryCard("game-direction", trimmed.conclusions);
+  trimmed.visualAvoidanceCard = createMemoryCard("visual-avoidance", trimmed.conclusions);
+  trimmed.visualEvidence = createVisualEvidenceIndex(trimmed.events, trimmed.conclusions);
 
   const actions = [
     `keep latest ${trimmed.events.length}/${snapshot.events.length} memory events`,
     `keep latest ${trimmed.conclusions.length}/${snapshot.conclusions.length} active conclusions`,
-    "rewrite project-card, agent-card, user-direction-card, engine-card, and latest-context"
+    "rewrite project-card, agent-card, user-direction-card, engine-card, creator-taste-card, game-direction-card, visual-avoidance-card, visual-evidence-index, and latest-context"
   ];
 
   if (!dryRun) {
@@ -4236,13 +4502,18 @@ async function readMemorySnapshot(projectRoot: string): Promise<MemorySnapshot> 
     readMemoryJsonl<OpenRenderMemoryEvent>(projectRoot, memoryPaths().events),
     readMemoryJsonl<OpenRenderMemoryConclusion>(projectRoot, memoryPaths().conclusions)
   ]);
+  const visualEvidence = await readVisualEvidenceIndex(projectRoot, events, conclusions);
   return {
     events,
     conclusions,
     projectCard: await readMemoryCard(projectRoot, "project", conclusions),
     agentCard: await readMemoryCard(projectRoot, "agent", conclusions),
     userDirectionCard: await readMemoryCard(projectRoot, "user-direction", conclusions),
-    engineCard: await readMemoryCard(projectRoot, "engine", conclusions)
+    engineCard: await readMemoryCard(projectRoot, "engine", conclusions),
+    creatorTasteCard: await readMemoryCard(projectRoot, "creator-taste", conclusions),
+    gameDirectionCard: await readMemoryCard(projectRoot, "game-direction", conclusions),
+    visualAvoidanceCard: await readMemoryCard(projectRoot, "visual-avoidance", conclusions),
+    visualEvidence
   };
 }
 
@@ -4257,12 +4528,27 @@ async function readMemoryJsonl<T>(projectRoot: string, relativePath: string): Pr
     .map((line) => JSON.parse(line) as T);
 }
 
+async function readVisualEvidenceIndex(
+  projectRoot: string,
+  events: OpenRenderMemoryEvent[],
+  conclusions: OpenRenderMemoryConclusion[]
+): Promise<OpenRenderVisualEvidence[]> {
+  const absolutePath = resolveInsideProject(projectRoot, memoryPaths().visualEvidenceIndex);
+  try {
+    const existing = JSON.parse(await fs.readFile(absolutePath, "utf8")) as OpenRenderVisualEvidence[];
+    if (Array.isArray(existing)) return existing;
+  } catch {
+    // Fall through to a derived index.
+  }
+  return createVisualEvidenceIndex(events, conclusions);
+}
+
 async function readMemoryCard(
   projectRoot: string,
   kind: MemoryCardKind,
   conclusions: OpenRenderMemoryConclusion[]
 ): Promise<OpenRenderMemoryCard> {
-  const relativePath = kind === "agent" ? memoryPaths().agentCard : memoryPaths().projectCard;
+  const relativePath = memoryCardPath(kind);
   try {
     const card = JSON.parse(await fs.readFile(resolveInsideProject(projectRoot, relativePath), "utf8")) as OpenRenderMemoryCard;
     if (card.kind === kind && Array.isArray(card.facts)) return card;
@@ -4270,6 +4556,65 @@ async function readMemoryCard(
     // Fall through to a derived card.
   }
   return createMemoryCard(kind, conclusions);
+}
+
+function createVisualEvidenceIndex(
+  events: OpenRenderMemoryEvent[],
+  conclusions: OpenRenderMemoryConclusion[]
+): OpenRenderVisualEvidence[] {
+  const relevantEvents = events.filter((event) => {
+    const text = `${event.summary} ${JSON.stringify(event.data ?? {})}`;
+    return event.type === "reference.ingested" || isCreatorTasteSignal(text) || isAvoidanceSignal(text);
+  });
+  return relevantEvents.slice(-80).map((event) => {
+    const sourceConclusions = conclusions.filter((conclusion) => conclusion.sourceEventIds.includes(event.eventId));
+    const text = [event.summary, ...sourceConclusions.map((conclusion) => conclusion.text)].join(" ");
+    const avoid = sourceConclusions
+      .filter((conclusion) => conclusion.category === "avoidance")
+      .map((conclusion) => conclusion.text);
+    const role = typeof event.data?.role === "string" ? event.data.role as VisualReferenceRole : undefined;
+    const referenceId = typeof event.data?.referenceId === "string" ? event.data.referenceId : undefined;
+    const source = typeof event.data?.source === "string" ? event.data.source : undefined;
+    return {
+      evidenceId: `vis_${event.eventId.replace(/^mem_evt_/, "")}`,
+      createdAt: event.createdAt,
+      sourceEventId: event.eventId,
+      ...(referenceId ? { referenceId } : {}),
+      ...(role ? { role } : {}),
+      ...(source ? { source } : {}),
+      summary: event.summary,
+      interpretedAttributes: summarizeVisualAttributes(text),
+      appliesTo: inferMemoryFocus(text),
+      avoid,
+      confidence: sourceConclusions.reduce((max, conclusion) => Math.max(max, conclusion.confidence), event.type === "reference.ingested" ? 0.78 : 0.7)
+    };
+  });
+}
+
+function summarizeVisualAttributes(text: string): string[] {
+  const attributes = new Set<string>();
+  if (/compact|dense|tight|작게|촘촘|밀도/i.test(text)) attributes.add("compact density");
+  if (/readable|legible|contrast|가독|대비/i.test(text)) attributes.add("readability and contrast");
+  if (/dark|night|shadow|어두|밤|그림자/i.test(text)) attributes.add("dark mood");
+  if (/bright|clear|clean|밝|깨끗|깔끔/i.test(text)) attributes.add("clean clarity");
+  if (/neon|arcade|cyber|네온|아케이드/i.test(text)) attributes.add("neon arcade accent");
+  if (/low-noise|simple|minimal|quiet|단순|미니멀|차분/i.test(text)) attributes.add("low visual noise");
+  if (/impact|juice|particle|spark|타격|이펙트|파티클/i.test(text)) attributes.add("impact feedback");
+  if (/camera|shake|zoom|framing|카메라|줌|흔들/i.test(text)) attributes.add("camera framing");
+  if (/timing|pacing|snappy|responsive|묵직|빠르|반응/i.test(text)) attributes.add("timing and responsiveness");
+  if (attributes.size === 0) attributes.add("project-specific visual evidence");
+  return [...attributes];
+}
+
+function memoryCardPath(kind: MemoryCardKind): string {
+  const paths = memoryPaths();
+  if (kind === "project") return paths.projectCard;
+  if (kind === "agent") return paths.agentCard;
+  if (kind === "user-direction") return paths.userDirectionCard;
+  if (kind === "engine") return paths.engineCard;
+  if (kind === "creator-taste") return paths.creatorTasteCard;
+  if (kind === "game-direction") return paths.gameDirectionCard;
+  return paths.visualAvoidanceCard;
 }
 
 async function writeMemoryEventsAndConclusions(projectRoot: string, events: OpenRenderMemoryEvent[]): Promise<MemorySnapshot> {
@@ -4284,7 +4629,11 @@ async function writeMemoryEventsAndConclusions(projectRoot: string, events: Open
     projectCard: createMemoryCard("project", conclusions),
     agentCard: createMemoryCard("agent", conclusions),
     userDirectionCard: createMemoryCard("user-direction", conclusions),
-    engineCard: createMemoryCard("engine", conclusions)
+    engineCard: createMemoryCard("engine", conclusions),
+    creatorTasteCard: createMemoryCard("creator-taste", conclusions),
+    gameDirectionCard: createMemoryCard("game-direction", conclusions),
+    visualAvoidanceCard: createMemoryCard("visual-avoidance", conclusions),
+    visualEvidence: createVisualEvidenceIndex([...eventMap.values()], conclusions)
   };
   await writeMemorySnapshot(projectRoot, snapshot);
   return snapshot;
@@ -4328,6 +4677,30 @@ async function writeMemorySnapshot(projectRoot: string, snapshot: MemorySnapshot
     contents: `${JSON.stringify(snapshot.engineCard, null, 2)}\n`,
     allowOverwrite: true
   });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.creatorTasteCard,
+    contents: `${JSON.stringify(snapshot.creatorTasteCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.gameDirectionCard,
+    contents: `${JSON.stringify(snapshot.gameDirectionCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.visualAvoidanceCard,
+    contents: `${JSON.stringify(snapshot.visualAvoidanceCard, null, 2)}\n`,
+    allowOverwrite: true
+  });
+  await safeWriteProjectFile({
+    projectRoot,
+    relativePath: paths.visualEvidenceIndex,
+    contents: `${JSON.stringify(snapshot.visualEvidence, null, 2)}\n`,
+    allowOverwrite: true
+  });
 }
 
 async function writeLatestMemoryContext(projectRoot: string, context: MemoryContextCommandResult): Promise<void> {
@@ -4348,6 +4721,10 @@ async function memoryStorageBytes(projectRoot: string): Promise<number> {
     paths.agentCard,
     paths.userDirectionCard,
     paths.engineCard,
+    paths.creatorTasteCard,
+    paths.gameDirectionCard,
+    paths.visualAvoidanceCard,
+    paths.visualEvidenceIndex,
     paths.latestContext
   ];
   let bytes = 0;
@@ -4455,6 +4832,12 @@ function deriveMemoryConclusions(events: OpenRenderMemoryEvent[]): OpenRenderMem
     if (event.target) {
       conclusions.push(createMemoryConclusion("explicit", "engine", `Current project work targets ${event.target}.`, "project", [event.eventId], 0.9));
     }
+    if (event.type === "reference.ingested") {
+      const role = typeof event.data?.role === "string" ? event.data.role : "style";
+      conclusions.push(createMemoryConclusion("explicit", "reference", `Use ${role} reference as visual evidence: ${event.summary}`, "project", [event.eventId], 0.88));
+      conclusions.push(createMemoryConclusion("inductive", "visual", `Reference evidence should constrain future ${role} decisions: ${event.summary}`, "project", [event.eventId], 0.78));
+      conclusions.push(createMemoryConclusion("inductive", "taste", `Creator approved or supplied ${role} reference context: ${event.summary}`, "project", [event.eventId], 0.72));
+    }
     if (event.type === "user.feedback") {
       conclusions.push(createMemoryConclusion("explicit", "preference", event.summary, "project", [event.eventId], 0.95));
       if (/clean|tidy|지저분|깔끔|스크린샷|screenshot|folder|artifact/i.test(event.summary)) {
@@ -4462,6 +4845,18 @@ function deriveMemoryConclusions(events: OpenRenderMemoryEvent[]): OpenRenderMem
       }
       if (/visual|화면|ui|juice|juicy|깔끔|비주얼|style/i.test(event.summary)) {
         conclusions.push(createMemoryConclusion("inductive", "visual", "Preserve visual direction as project state and turn feedback into the next compact agent task.", "project", [event.eventId], 0.78));
+      }
+      if (isCreatorTasteSignal(event.summary)) {
+        conclusions.push(createMemoryConclusion("explicit", "taste", `Creator taste signal: ${event.summary}`, "project", [event.eventId], 0.92));
+      }
+      if (isGameDirectionSignal(event.summary)) {
+        conclusions.push(createMemoryConclusion("explicit", "direction", `Project direction signal: ${event.summary}`, "project", [event.eventId], 0.9));
+      }
+      if (isAvoidanceSignal(event.summary)) {
+        conclusions.push(createMemoryConclusion("explicit", "avoidance", `Avoid in future work: ${event.summary}`, "project", [event.eventId], 0.93));
+      }
+      if (isGameplayFeelSignal(event.summary)) {
+        conclusions.push(createMemoryConclusion("inductive", "feel", `Gameplay feel preference: ${event.summary}`, "project", [event.eventId], 0.84));
       }
     }
     if (event.type === "verification.failed") {
@@ -4524,14 +4919,49 @@ function normalizeConclusionText(text: string): string {
   return text.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+function isCreatorTasteSignal(text: string): boolean {
+  return /taste|prefer|preference|like|love|좋|선호|취향|느낌|감성|style|visual|ui|palette|color|lighting|mood|readable|compact|density|silhouette|camera|animation|timing/i.test(text);
+}
+
+function isGameDirectionSignal(text: string): boolean {
+  return /direction|keep|preserve|maintain|project|game|world|tone|mood|genre|방향|유지|게임|프로젝트|분위기|장르|세계관|컨셉|identity/i.test(text);
+}
+
+function isAvoidanceSignal(text: string): boolean {
+  return /avoid|reject|don't|do not|no |not |less|remove|싫|피하|금지|아니|별로|과하|촌스럽|줄여|빼|제거/i.test(text);
+}
+
+function isGameplayFeelSignal(text: string): boolean {
+  return /feel|movement|jump|dash|combat|camera|hit|impact|timing|pacing|difficulty|control|조작|점프|대시|전투|카메라|타격|속도|난이도|리듬|반응/i.test(text);
+}
+
+function inferMemoryFocus(text: string): MemoryQueryFocus[] {
+  const focuses = new Set<MemoryQueryFocus>(["general"]);
+  if (/ui|hud|menu|panel|inventory|button|text|readable|density|layout|composition|screen|인터페이스|메뉴|버튼|가독|텍스트|배치|화면/i.test(text)) focuses.add("ui");
+  if (/style|visual|palette|color|lighting|mood|silhouette|concept|art|비주얼|스타일|색|조명|분위기|실루엣/i.test(text)) focuses.add("style");
+  if (/movement|jump|dash|controller|platform|move|점프|대시|이동|조작/i.test(text)) focuses.add("movement");
+  if (/combat|attack|enemy|hit|damage|stamina|전투|공격|적|타격|대미지/i.test(text)) focuses.add("combat");
+  if (/camera|shake|zoom|framing|카메라|줌|프레이밍|흔들/i.test(text)) focuses.add("camera");
+  if (/audio|sound|music|sfx|오디오|사운드|음악|효과음/i.test(text)) focuses.add("audio");
+  if (/level|map|environment|stage|layout|world|레벨|맵|환경|스테이지|배치|월드/i.test(text)) focuses.add("level");
+  if (/vfx|effect|particle|juice|impact|spark|이펙트|파티클|연출/i.test(text)) focuses.add("vfx");
+  return [...focuses];
+}
+
 function createMemoryCard(kind: MemoryCardKind, conclusions: OpenRenderMemoryConclusion[]): OpenRenderMemoryCard {
   const active = conclusions.filter((conclusion) => conclusion.status === "active");
   const relevant = kind === "agent"
     ? active.filter((conclusion) => conclusion.category === "constraint" || conclusion.category === "workflow" || conclusion.category === "recovery")
     : kind === "user-direction"
-      ? active.filter((conclusion) => conclusion.category === "preference" || conclusion.category === "visual" || conclusion.category === "workflow")
+      ? active.filter((conclusion) => conclusion.category === "preference" || conclusion.category === "visual" || conclusion.category === "workflow" || conclusion.category === "taste" || conclusion.category === "direction")
     : kind === "engine"
       ? active.filter((conclusion) => conclusion.category === "engine" || conclusion.category === "failure" || conclusion.category === "recovery")
+    : kind === "creator-taste"
+      ? active.filter((conclusion) => conclusion.category === "taste" || conclusion.category === "preference" || conclusion.category === "visual" || conclusion.category === "feel")
+    : kind === "game-direction"
+      ? active.filter((conclusion) => conclusion.category === "direction" || conclusion.category === "visual" || conclusion.category === "workflow" || conclusion.category === "reference")
+    : kind === "visual-avoidance"
+      ? active.filter((conclusion) => conclusion.category === "avoidance" || (conclusion.category === "failure" && conclusion.text.match(/visual|ui|style|asset|sprite/i)))
     : active.filter((conclusion) => conclusion.category !== "recovery" || conclusion.stability !== "session");
   const facts = relevant
     .sort((a, b) => scoreConclusionForCard(b) - scoreConclusionForCard(a))
@@ -4587,6 +5017,10 @@ function createMemoryContextFromSnapshot(snapshot: MemorySnapshot, compact: bool
     agentCard: compactMemoryCard(snapshot.agentCard, compact ? 8 : 40),
     userDirectionCard: compactMemoryCard(snapshot.userDirectionCard, compact ? 8 : 40),
     engineCard: compactMemoryCard(snapshot.engineCard, compact ? 8 : 40),
+    creatorTasteCard: compactMemoryCard(snapshot.creatorTasteCard, compact ? 8 : 40),
+    gameDirectionCard: compactMemoryCard(snapshot.gameDirectionCard, compact ? 8 : 40),
+    visualAvoidanceCard: compactMemoryCard(snapshot.visualAvoidanceCard, compact ? 8 : 40),
+    visualEvidence: snapshot.visualEvidence.slice(compact ? -5 : -20),
     conclusions,
     recentEvents,
     summary,
@@ -4611,7 +5045,11 @@ async function readCompactMemoryForTask(projectRoot: string): Promise<MemoryCont
     snapshot.conclusions.length === 0 &&
     snapshot.projectCard.facts.length === 0 &&
     snapshot.userDirectionCard.facts.length === 0 &&
-    snapshot.engineCard.facts.length === 0
+    snapshot.engineCard.facts.length === 0 &&
+    snapshot.creatorTasteCard.facts.length === 0 &&
+    snapshot.gameDirectionCard.facts.length === 0 &&
+    snapshot.visualAvoidanceCard.facts.length === 0 &&
+    snapshot.visualEvidence.length === 0
   ) return null;
   return createMemoryContextFromSnapshot(snapshot, true);
 }
@@ -4626,10 +5064,37 @@ function compactMemoryResult(result: MemoryCommandResult): unknown {
       agentFacts: result.agentCard.facts.map((fact) => fact.text),
       userDirectionFacts: result.userDirectionCard.facts.map((fact) => fact.text),
       engineFacts: result.engineCard.facts.map((fact) => fact.text),
+      creatorTasteFacts: result.creatorTasteCard.facts.map((fact) => fact.text),
+      gameDirectionFacts: result.gameDirectionCard.facts.map((fact) => fact.text),
+      visualAvoidanceFacts: result.visualAvoidanceCard.facts.map((fact) => fact.text),
+      visualEvidence: result.visualEvidence.map((evidence) => ({
+        summary: evidence.summary,
+        appliesTo: evidence.appliesTo,
+        attributes: evidence.interpretedAttributes
+      })),
       conclusions: result.conclusions.map((conclusion) => ({
         level: conclusion.level,
         category: conclusion.category,
         text: conclusion.text
+      })),
+      nextActions: result.nextActions,
+      localOnly: true
+    };
+  }
+  if (result.operation === "memory.query") {
+    return {
+      ok: true,
+      operation: result.operation,
+      focus: result.focus,
+      brief: result.brief,
+      tasteFacts: result.tasteFacts.map((fact) => fact.text),
+      directionFacts: result.directionFacts.map((fact) => fact.text),
+      avoidanceFacts: result.avoidanceFacts.map((fact) => fact.text),
+      engineFacts: result.engineFacts.map((fact) => fact.text),
+      evidence: result.evidence.map((evidence) => ({
+        summary: evidence.summary,
+        attributes: evidence.interpretedAttributes,
+        avoid: evidence.avoid
       })),
       nextActions: result.nextActions,
       localOnly: true
@@ -5292,7 +5757,7 @@ Use openRender as a local-only handoff layer for generated media. Treat this fil
 - Use report, explain, and diff with --compact when you only need status, next actions, rollback information, and compact tables.
 - Rollback only affects files in the selected install plan and does not undo game-code edits made separately.
 - Never enable upload, telemetry, account, billing, or remote sync flows.
-- Supported targets in 1.0.2: phaser, godot, love2d, pixi, canvas, three, unity.
+- Supported targets in 1.1.0: phaser, godot, love2d, pixi, canvas, three, unity.
 - Media commands support audio, atlas/tileset, and UI assets through the same local install, verify, report, and rollback pipeline.
 `;
 
@@ -8205,6 +8670,9 @@ function printServiceSnapshot(result: ServiceSnapshotCommandResult): void {
   console.log(`Target: ${result.project.target.engine}/${result.project.target.framework}`);
   console.log(`Memory events: ${result.memory.counts.events}`);
   console.log(`Memory conclusions: ${result.memory.counts.conclusions}`);
+  console.log(`Creator taste facts: ${result.memory.counts.creatorTasteFacts}`);
+  console.log(`Game direction facts: ${result.memory.counts.gameDirectionFacts}`);
+  console.log(`Visual evidence items: ${result.memory.counts.visualEvidenceItems}`);
   console.log(`Output: ${result.outputPath ?? "stdout only"}`);
   for (const action of result.nextActions) console.log(`Next: ${action}`);
 }
@@ -8377,6 +8845,10 @@ function printMemoryResult(result: MemoryCommandResult): void {
     console.log(`Agent facts: ${result.counts.agentFacts}`);
     console.log(`User direction facts: ${result.counts.userDirectionFacts}`);
     console.log(`Engine facts: ${result.counts.engineFacts}`);
+    console.log(`Creator taste facts: ${result.counts.creatorTasteFacts}`);
+    console.log(`Game direction facts: ${result.counts.gameDirectionFacts}`);
+    console.log(`Visual avoidance facts: ${result.counts.visualAvoidanceFacts}`);
+    console.log(`Visual evidence items: ${result.counts.visualEvidenceItems}`);
     if (result.latestEvent) console.log(`Latest: ${result.latestEvent.type} - ${result.latestEvent.summary}`);
     return;
   }
@@ -8393,6 +8865,23 @@ function printMemoryResult(result: MemoryCommandResult): void {
     for (const fact of result.agentCard.facts.slice(0, 8)) console.log(`Agent: ${fact.text}`);
     for (const fact of result.userDirectionCard.facts.slice(0, 4)) console.log(`User direction: ${fact.text}`);
     for (const fact of result.engineCard.facts.slice(0, 4)) console.log(`Engine: ${fact.text}`);
+    for (const fact of result.creatorTasteCard.facts.slice(0, 4)) console.log(`Creator taste: ${fact.text}`);
+    for (const fact of result.gameDirectionCard.facts.slice(0, 4)) console.log(`Game direction: ${fact.text}`);
+    for (const fact of result.visualAvoidanceCard.facts.slice(0, 4)) console.log(`Avoid: ${fact.text}`);
+    return;
+  }
+  if (result.operation === "memory.query") {
+    console.log(`Focus: ${result.focus}`);
+    console.log(result.brief);
+    for (const action of result.nextActions) console.log(`Next: ${action}`);
+    return;
+  }
+  if (result.operation === "memory.review") {
+    console.log(`Run: ${result.runId}`);
+    console.log(`Status: ${result.status}`);
+    for (const signal of result.driftSignals) console.log(`Drift: ${signal}`);
+    for (const item of result.missingContext) console.log(`Missing: ${item}`);
+    for (const action of result.recommendations) console.log(`Next: ${action}`);
     return;
   }
   console.log(`Events: ${result.before.events} -> ${result.after.events}`);
@@ -8515,8 +9004,10 @@ Usage:
   openrender fixture capture --name <id> --from <path> [--target engine] [--id asset.id] [--force] [--json]
   openrender scan [--json]
   openrender context [--json] [--compact] [--wire-map]
-  openrender memory status|context|consolidate [--json] [--compact]
+  openrender memory status|context|consolidate|query|review [--json] [--compact]
   openrender memory ingest [--run latest|runId] [--loop latest|loopId] [--feedback <text>] [--json]
+  openrender memory query [--for general|ui|style|movement|combat|camera|audio|level|vfx] [--json] [--compact]
+  openrender memory review [--run latest|runId] [--json]
   openrender clean --memory [--keep-latest] [--max-events n] [--max-conclusions n] [--dry-run] [--json]
   openrender ingest reference --url <url>|--from <path> --role mechanic|style|layout|logic|motion|mood|character|environment --intent <text> [--notes <text>] [--json]
   openrender loop start --goal <text> [--target engine] [--id asset.id] [--media sprite|animation|audio|atlas|ui|asset] [--from <path>] [--json]
@@ -8752,13 +9243,21 @@ interface ServiceSnapshotCommandResult {
       agentFacts: number;
       userDirectionFacts: number;
       engineFacts: number;
+      creatorTasteFacts: number;
+      gameDirectionFacts: number;
+      visualAvoidanceFacts: number;
+      visualEvidenceItems: number;
     };
     cards: {
       project: OpenRenderMemoryCard | null;
       agent: OpenRenderMemoryCard | null;
       userDirection: OpenRenderMemoryCard | null;
       engine: OpenRenderMemoryCard | null;
+      creatorTaste: OpenRenderMemoryCard | null;
+      gameDirection: OpenRenderMemoryCard | null;
+      visualAvoidance: OpenRenderMemoryCard | null;
     };
+    visualEvidence: OpenRenderVisualEvidence[];
   };
   capabilities: {
     account: false;

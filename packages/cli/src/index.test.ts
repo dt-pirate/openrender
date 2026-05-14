@@ -22,7 +22,7 @@ test("version prints the npm package version", async () => {
     "--version"
   ]);
 
-  assert.equal(stdout.trim(), "1.0.2");
+  assert.equal(stdout.trim(), "1.1.0");
 });
 
 test("help prints the npm package version and supported options", async () => {
@@ -31,10 +31,11 @@ test("help prints the npm package version and supported options", async () => {
     "--help"
   ]);
 
-  assert.match(stdout, /^openRender 1\.0\.2/m);
+  assert.match(stdout, /^openRender 1\.1\.0/m);
   assert.match(stdout, /openrender --version/);
   assert.match(stdout, /openrender context \[--json\] \[--compact\] \[--wire-map\]/);
-  assert.match(stdout, /openrender memory status\|context\|consolidate/);
+  assert.match(stdout, /openrender memory status\|context\|consolidate\|query\|review/);
+  assert.match(stdout, /openrender memory query \[--for general\|ui\|style\|movement\|combat\|camera\|audio\|level\|vfx\]/);
   assert.match(stdout, /openrender clean --memory/);
   assert.match(stdout, /openrender ingest reference --url <url>\|--from <path>/);
   assert.match(stdout, /openrender loop run sprite\|animation\|audio\|atlas\|ui/);
@@ -68,7 +69,7 @@ test("schema command emits official schemas", async () => {
   const schema = JSON.parse(stdout) as { title: string; properties: { schemaVersion: { const: string } } };
 
   assert.equal(schema.title, "openRender Media Contract");
-  assert.equal(schema.properties.schemaVersion.const, "1.0.2");
+  assert.equal(schema.properties.schemaVersion.const, "1.1.0");
 
   const { stdout: mediaStdout } = await execFileAsync(process.execPath, [
     cliPath,
@@ -77,7 +78,7 @@ test("schema command emits official schemas", async () => {
   ]);
   const mediaSchema = JSON.parse(mediaStdout) as { title: string; properties: { mediaType: { enum: string[] } } };
 
-  assert.equal(mediaSchema.title, "openRender 1.0.2 Media Contracts");
+  assert.equal(mediaSchema.title, "openRender 1.1.0 Media Contracts");
   assert.equal(mediaSchema.properties.mediaType.enum.includes("audio.sound_effect"), true);
 });
 
@@ -204,6 +205,21 @@ test("ingest reference records URL provenance without downloading media", async 
   const contextResult = JSON.parse(context.stdout) as { references: Array<{ role: string; intent: string }> };
   assert.equal(contextResult.references[0]?.role, "layout");
   assert.equal(contextResult.references[0]?.intent, "Match the screen composition.");
+
+  const memory = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "query",
+    "--for",
+    "ui",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const memoryResult = JSON.parse(memory.stdout) as { evidence: Array<{ summary: string; attributes: string[] }>; directionFacts: string[] };
+  assert.equal(memoryResult.evidence.some((item) => item.summary.includes("Match the screen composition.")), true);
+  assert.equal(memoryResult.directionFacts.some((fact) => fact.includes("layout reference")), true);
 });
 
 test("loop start attach status and task preserve an agent handoff boundary", async () => {
@@ -305,6 +321,28 @@ test("loop start attach status and task preserve an agent handoff boundary", asy
   const contextResult = JSON.parse(context.stdout) as { latestLoop: { loopId: string; status: string } };
   assert.equal(contextResult.latestLoop.loopId, startResult.loop.loopId);
   assert.equal(contextResult.latestLoop.status, "needs_action");
+
+  const review = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "review",
+    "--run",
+    "latest",
+    "--json"
+  ], {
+    cwd: root
+  });
+  const reviewResult = JSON.parse(review.stdout) as {
+    operation: string;
+    status: string;
+    target: string;
+    matchingFacts: string[];
+    recommendations: string[];
+  };
+  assert.equal(reviewResult.operation, "memory.review");
+  assert.equal(reviewResult.target, "canvas");
+  assert.equal(reviewResult.matchingFacts.some((fact) => fact.includes("rollback-safe")), true);
+  assert.equal(reviewResult.recommendations.some((item) => item.includes("memory query")), true);
 });
 
 test("loop run executes compile verify report explain and diff for animation handoff", async () => {
@@ -1187,7 +1225,7 @@ test("context command emits compact project handoff", async () => {
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.version, "1.0.2");
+  assert.equal(result.version, "1.1.0");
   assert.equal(result.target.engine, "phaser");
   assert.equal(result.target.framework, "vite");
   assert.equal(result.capabilities.account, false);
@@ -1273,13 +1311,55 @@ test("memory commands derive project state and feed compact agent context", asyn
     agentFacts: string[];
     userDirectionFacts: string[];
     engineFacts: string[];
+    creatorTasteFacts: string[];
+    gameDirectionFacts: string[];
+    visualAvoidanceFacts: string[];
+    visualEvidence: Array<{ summary: string; attributes: string[] }>;
     conclusions: Array<{ category: string; text: string }>;
   };
   assert.equal(memoryContext.projectFacts.some((fact) => fact.includes("Keep project folders clean")), true);
   assert.equal(memoryContext.agentFacts.some((fact) => fact.includes("Do not call model provider APIs")), true);
   assert.equal(memoryContext.userDirectionFacts.some((fact) => fact.includes("Keep project folders clean")), true);
   assert.equal(Array.isArray(memoryContext.engineFacts), true);
+  assert.equal(Array.isArray(memoryContext.creatorTasteFacts), true);
+  assert.equal(Array.isArray(memoryContext.gameDirectionFacts), true);
+  assert.equal(Array.isArray(memoryContext.visualAvoidanceFacts), true);
   assert.equal(memoryContext.conclusions.some((conclusion) => conclusion.category === "workflow"), true);
+
+  await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "ingest",
+    "--feedback",
+    "Keep the UI compact and readable, avoid oversized decorative cards, and preserve the neon arcade direction.",
+    "--json"
+  ], {
+    cwd: root
+  });
+
+  const query = await execFileAsync(process.execPath, [
+    cliPath,
+    "memory",
+    "query",
+    "--for",
+    "ui",
+    "--json",
+    "--compact"
+  ], {
+    cwd: root
+  });
+  const queryResult = JSON.parse(query.stdout) as {
+    focus: string;
+    brief: string;
+    tasteFacts: string[];
+    directionFacts: string[];
+    avoidanceFacts: string[];
+  };
+  assert.equal(queryResult.focus, "ui");
+  assert.match(queryResult.brief, /compact|readable|decorative|neon/i);
+  assert.equal(queryResult.tasteFacts.some((fact) => /compact|readable|neon/i.test(fact)), true);
+  assert.equal(queryResult.directionFacts.some((fact) => /direction/i.test(fact)), true);
+  assert.equal(queryResult.avoidanceFacts.some((fact) => /decorative/i.test(fact)), true);
 
   const status = await execFileAsync(process.execPath, [
     cliPath,
@@ -1305,14 +1385,23 @@ test("memory commands derive project state and feed compact agent context", asyn
     operation: string;
     localOnly: boolean;
     capabilities: { hostedApi: boolean; telemetry: boolean };
-    memory: { counts: { userDirectionFacts: number }; cards: { userDirection: { facts: unknown[] } } };
+    memory: {
+      counts: { userDirectionFacts: number; creatorTasteFacts: number; gameDirectionFacts: number; visualAvoidanceFacts: number };
+      cards: { userDirection: { facts: unknown[] }; creatorTaste: { facts: unknown[] }; gameDirection: { facts: unknown[] }; visualAvoidance: { facts: unknown[] } };
+    };
   };
   assert.equal(serviceSnapshotResult.operation, "service.snapshot");
   assert.equal(serviceSnapshotResult.localOnly, true);
   assert.equal(serviceSnapshotResult.capabilities.hostedApi, false);
   assert.equal(serviceSnapshotResult.capabilities.telemetry, false);
   assert.equal(serviceSnapshotResult.memory.counts.userDirectionFacts > 0, true);
+  assert.equal(serviceSnapshotResult.memory.counts.creatorTasteFacts > 0, true);
+  assert.equal(serviceSnapshotResult.memory.counts.gameDirectionFacts > 0, true);
+  assert.equal(serviceSnapshotResult.memory.counts.visualAvoidanceFacts > 0, true);
   assert.equal(serviceSnapshotResult.memory.cards.userDirection.facts.length > 0, true);
+  assert.equal(serviceSnapshotResult.memory.cards.creatorTaste.facts.length > 0, true);
+  assert.equal(serviceSnapshotResult.memory.cards.gameDirection.facts.length > 0, true);
+  assert.equal(serviceSnapshotResult.memory.cards.visualAvoidance.facts.length > 0, true);
 
   const projectContext = await execFileAsync(process.execPath, [
     cliPath,

@@ -11,5 +11,6 @@ Create these GitHub milestones when repository administration is available:
 - `1.0.0`: Agent-native game development loop with loop completion records, compact task packets, and rollback boundaries.
 - `1.0.1`: Memory infrastructure foundation, published `@openrender/cli` npm package, and installed `openrender` command smoke verification.
 - `1.0.2`: npm package README, publish workflow, registry install smoke, opt-in web build smoke, service snapshots, example smoke projects, and phase-2 memory cards.
+- `1.1.0`: Creator taste memory, game-direction cards, visual-avoidance cards, visual-evidence index, focused memory query briefs, and run drift review.
 
-The local implementation has reached the `1.0.2` Developer Kit completion surface and the npm registry path is live through `@openrender/cli`. Future milestones should be created for deeper runtime execution and optional hosted/pack distribution surfaces.
+The local implementation has reached the `1.1.0` Developer Kit completion surface and the npm registry path is live through `@openrender/cli`. Future milestones should deepen project-state continuity without turning the repository into a hosted product surface.

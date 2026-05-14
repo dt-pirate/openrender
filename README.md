@@ -21,7 +21,7 @@
     <a href="./RELEASES.md">Releases</a>
   </p>
   <p>
-    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.0.2"><img alt="Release" src="https://img.shields.io/badge/release-v1.0.2-111827.svg"></a>
+    <a href="https://github.com/dt-pirate/openrender/releases/tag/v1.1.0"><img alt="Release" src="https://img.shields.io/badge/release-v1.1.0-111827.svg"></a>
     <a href="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dt-pirate/openrender/actions/workflows/ci.yml/badge.svg"></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
     <a href="./package.json"><img alt="Node" src="https://img.shields.io/badge/node-%3E%3D22-2f8f7a.svg"></a>
@@ -37,9 +37,9 @@ openRender is state infrastructure for AI coding agents that need to continue ga
 
 Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
 
-openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, and agent cards so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
+openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, agent cards, creator-taste cards, game-direction cards, visual-avoidance cards, and a compact visual-evidence index so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
 
-The current `1.0.2` core supports sprite image handoff, visual reference records, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, project memory infrastructure, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.1.0` core supports sprite image handoff, visual reference records, visual memory accumulation, creator taste continuity, focused memory briefs, run drift review, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
@@ -86,6 +86,8 @@ openrender context --json
 openrender context --json --compact
 openrender memory status --json
 openrender memory context --json --compact
+openrender memory query --for style --json --compact
+openrender memory review --run latest --json
 openrender service snapshot --json
 openrender loop status --json --compact
 openrender scan --json
@@ -148,6 +150,8 @@ openrender memory ingest \
   --feedback "Keep the UI readable and preserve the neon arcade direction." \
   --json
 
+openrender memory query --for ui --json --compact
+openrender memory review --run latest --json
 openrender memory context --json --compact
 openrender clean --memory --keep-latest --dry-run --json
 ```
@@ -210,7 +214,8 @@ openRender keeps run state under `.openrender/`, including artifacts, previews, 
 - `compile animation` for engine-ready animation sheets, runtime helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
 - Memory infrastructure that derives project events, conclusions, project cards, agent cards, user-direction cards, engine cards, and compact context from runs, loops, and user feedback.
-- `memory status`, `memory ingest`, `memory context`, `memory consolidate`, and `clean --memory` for keeping agent continuity useful without accumulating raw chat logs.
+- `memory status`, `memory ingest`, `memory context`, `memory query`, `memory review`, `memory consolidate`, and `clean --memory` for keeping agent continuity useful without accumulating raw chat logs.
+- Creator-taste, game-direction, visual-avoidance, and visual-evidence memory records for preserving taste and visual intent across agent turns.
 - `service snapshot --json` for a local-only boundary that exports compact context and memory state for future dashboards or agent supervisors.
 - Compact agent output for context, verification, reports, explanations, and diffs.
 - Read-only wiring maps that include latest asset paths, manifest modules, and example snippets without patching game code.
@@ -242,7 +247,8 @@ Additional media assets use sibling media manifests and helpers, such as `src/as
 
 - Run `context --json` before reading broadly or assuming the project type.
 - Use `context --json --compact` for the shortest project handoff.
-- Use `memory context --json --compact` before a follow-up agent task that depends on prior project intent, visual direction, or recovery context.
+- Use `memory query --for style|ui|movement|combat|camera|audio|level|vfx --json --compact` before a follow-up agent task that depends on prior project intent, visual direction, creator taste, or recovery context.
+- Use `memory review --run latest --json` after a run to check whether the work has enough project memory and obvious drift signals.
 - Use `memory ingest --feedback <text> --json`, `memory ingest --run latest --json`, or `memory ingest --loop latest --json` to preserve durable project state after meaningful work.
 - Use `service snapshot --json` when a dashboard, supervisor, or external orchestrator needs a local-only state handoff.
 - Use `clean --memory --keep-latest --dry-run --json` before pruning memory state.
