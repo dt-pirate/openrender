@@ -2,8 +2,8 @@
   <h1>openRender</h1>
   <h3>面向 AI 原生游戏开发的状态基础设施</h3>
   <p>
-    openRender 将已有的生成式游戏媒体转换为可进入引擎项目的文件，
-    并留下安装计划、辅助代码、紧凑记忆、报告、验证结果和回滚记录。
+    openRender 为 AI 编码代理提供继续游戏开发所需的本地项目状态层：
+    紧凑记忆、视觉证据、引擎交接、验证、报告和回滚。
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -33,17 +33,19 @@
 
 ## 什么是 openRender？
 
-openRender 是面向 AI 编码代理的状态基础设施，帮助代理在继续游戏开发时不丢失项目意图、引擎约束、视觉方向和恢复上下文。
+openRender 是本地状态基础设施，帮助 AI 编码代理在多次 build、test、refine 循环中保持游戏项目的一致性。
 
-图像生成器产生像素，但游戏项目还需要稳定路径、帧元数据、manifest、辅助代码、预览、报告，以及可回滚的安装边界。openRender 提供这层交接能力，让代理减少猜测，并让项目状态保持可审查。
+当项目意图、创作者偏好、视觉方向、引擎约束和恢复状态只存在于聊天里时，代理很容易丢失连续性。openRender 把这些信号保存为派生项目状态，并把它们与确定性的媒体交接连接起来：计划、helper path、wire map、报告、验证和回滚。
+
+图像模型产生像素；openRender 让这些像素能在真实游戏项目中持续使用。它不替代引擎，也不会自动修改 gameplay code，而是为下一个代理提供足够紧凑的上下文，让它从真实项目状态继续工作。
 
 openRender memory 不是记事层。它保存从 run、loop 和用户反馈中派生的事件、结论、项目卡片、代理卡片、创作者偏好卡、游戏方向卡、视觉规避卡和视觉证据索引，让下一次代理任务不需要重读原始日志，也不需要调用模型 API 重新生成资源。
 
-当前 `1.1.1` 核心支持 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的精灵图片交接、视觉参考记录、视觉记忆累积、创作者偏好延续、按焦点生成的记忆 brief、run drift review、动作分析、动画编译/安装，以及音频、图集/瓦片集、UI 资产管线、循环执行记录、引擎任务包、循环完成记录、本地服务快照和可选 runtime/build smoke checks。
+当前 `1.1.1` 核心支持创作者偏好连续性、游戏方向卡、视觉规避记忆、视觉证据 brief、run drift review、loop task packet、service snapshot，以及面向 Vite + Phaser、Godot 4、LOVE2D、PixiJS + Vite、Three.js + Vite、Plain Canvas + Vite、Unity 项目的精灵、动画、音频、图集/瓦片集和 UI 交接。
 
 ## 快速开始
 
-安装 CLI npm 包，然后在目标游戏项目中使用 `openrender` 命令：
+安装 CLI npm 包，然后在代理需要项目上下文、记忆、验证或媒体交接时，从目标游戏项目中使用 `openrender` 命令：
 
 ```bash
 npm install -g @openrender/cli
@@ -62,8 +64,8 @@ pnpm build
 以代理为中心使用时，先为项目安装 openRender，然后告诉编码代理使用 openRender。代理可以根据项目指令和参考资料选择准确的 openRender 命令。
 
 ```text
-Install openRender for this project, then use it to add the generated game asset to the game.
-Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
+为这个项目安装 openRender，读取 compact project context，然后在不丢失视觉方向、引擎约束和恢复状态的前提下继续下一个游戏开发任务。
+使用 openRender 处理记忆、验证、报告和可回滚的媒体交接，并告诉我改了什么，以及下一个代理需要知道什么。
 ```
 
 你也可以把设置说成一个 skill 请求:

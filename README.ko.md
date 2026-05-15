@@ -2,8 +2,8 @@
   <h1>openRender</h1>
   <h3>AI 에이전트 네이티브 게임 개발을 위한 상태 인프라</h3>
   <p>
-    openRender는 이미 생성된 게임 미디어를 엔진이 쓸 수 있는 프로젝트 파일로 바꾸고,
-    설치 계획, 헬퍼 코드, 압축 메모리, 리포트, 검증, 롤백 기록을 함께 남깁니다.
+    openRender는 AI 코딩 에이전트가 게임 개발을 이어갈 수 있도록 로컬 프로젝트 상태 계층을 제공합니다:
+    압축 메모리, 시각 근거, 엔진 핸드오프, 검증, 리포트, 롤백.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -33,17 +33,19 @@
 
 ## openRender란?
 
-openRender는 AI 코딩 에이전트가 프로젝트 의도, 엔진 제약, 시각 방향, 복구 맥락을 잃지 않고 게임 개발을 이어가도록 돕는 상태 인프라입니다.
+openRender는 AI 코딩 에이전트가 여러 번의 build, test, refine 루프를 거치면서도 게임 프로젝트의 일관성을 잃지 않도록 돕는 로컬 상태 인프라입니다.
 
-이미지 생성기는 픽셀을 만듭니다. 하지만 게임 프로젝트에는 안정적인 경로, 프레임 메타데이터, 매니페스트, 헬퍼 코드, 미리보기, 리포트, 그리고 설치를 되돌릴 수 있는 경계가 필요합니다. openRender는 에이전트가 추측을 줄이고 프로젝트 상태를 검토 가능한 형태로 남기도록 이 핸드오프 계층을 제공합니다.
+프로젝트 의도, 제작자 취향, 시각 방향, 엔진 제약, 복구 상태가 채팅에만 남아 있으면 에이전트는 쉽게 맥락을 잃습니다. openRender는 이 신호들을 파생된 프로젝트 상태로 저장하고, 계획, helper path, wire map, 리포트, 검증, 롤백으로 이어지는 결정적 미디어 핸드오프와 함께 묶습니다.
+
+이미지 모델은 픽셀을 만듭니다. openRender는 그 픽셀이 실제 게임 프로젝트 안에서 계속 쓸 수 있는 상태가 되도록 돕습니다. 엔진을 대체하거나 gameplay code를 자동 수정하지 않고, 다음 에이전트가 실제 프로젝트 상태에서 이어갈 수 있는 압축 맥락을 제공합니다.
 
 openRender 메모리는 노트 작성 계층이 아닙니다. run, loop, 사용자 피드백에서 파생된 이벤트, 결론, 프로젝트 카드, 에이전트 카드, 제작자 취향 카드, 게임 방향 카드, 시각 회피 카드, 시각 근거 인덱스를 저장해서 다음 에이전트 작업이 원시 로그를 다시 읽거나 모델 API로 에셋을 재생성하지 않고도 올바른 맥락을 이어받게 합니다.
 
-현재 `1.1.1` 코어는 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트에서 스프라이트 이미지 핸드오프, 시각 레퍼런스 기록, 시각 메모리 누적, 제작자 취향 연속성, 초점별 메모리 브리프, run 드리프트 리뷰, 모션 분석, 애니메이션 컴파일/설치, 오디오, 아틀라스/타일셋, UI 에셋 파이프라인, 루프 실행 이력 기록, 엔진별 작업 패킷, 루프 완료 기록, 로컬 서비스 스냅샷, 선택형 런타임/빌드 스모크 체크를 지원합니다.
+현재 `1.1.1` 코어는 제작자 취향 연속성, 게임 방향 카드, 시각 회피 메모리, 시각 근거 브리프, run 드리프트 리뷰, loop task packet, service snapshot, 그리고 Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Plain Canvas + Vite, Unity 프로젝트를 위한 스프라이트, 애니메이션, 오디오, 아틀라스/타일셋, UI 핸드오프를 지원합니다.
 
 ## 빠른 시작
 
-CLI npm 패키지를 설치한 뒤, 대상 게임 프로젝트에서 `openrender` 명령을 사용합니다:
+CLI npm 패키지를 설치한 뒤, 에이전트가 프로젝트 맥락, 메모리, 검증, 미디어 핸드오프가 필요할 때 대상 게임 프로젝트에서 `openrender` 명령을 사용합니다:
 
 ```bash
 npm install -g @openrender/cli
@@ -62,8 +64,8 @@ pnpm build
 에이전트 중심으로 사용할 때는 프로젝트에 openRender를 설치한 뒤, 코딩 에이전트에게 openRender를 사용하라고 말하면 됩니다. 정확한 openRender 명령 선택은 프로젝트 지침과 레퍼런스를 읽은 에이전트가 처리합니다.
 
 ```text
-Install openRender for this project, then use it to add the generated game asset to the game.
-Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
+이 프로젝트에 openRender를 설치하고 compact project context를 읽은 뒤, 시각 방향, 엔진 제약, 복구 상태를 잃지 않게 다음 게임 개발 작업을 이어가줘.
+openRender를 메모리, 검증, 리포트, 롤백 가능한 미디어 핸드오프에 사용하고, 무엇이 바뀌었는지와 다음 에이전트가 알아야 할 내용을 알려줘.
 ```
 
 설정은 스킬 요청처럼 자연어로 말해도 됩니다:

@@ -2,8 +2,8 @@
   <h1>openRender</h1>
   <h3>Infraestructura de estado para desarrollo de juegos nativo de agentes IA</h3>
   <p>
-    openRender convierte medios de juego ya generados en archivos listos para el proyecto,
-    con planes de instalacion, codigo auxiliar, memoria compacta, reportes, verificacion y registros de rollback.
+    openRender da a los agentes de codigo con IA una capa local de estado de proyecto para continuar el desarrollo del juego:
+    memoria compacta, evidencia visual, handoff al motor, verificacion, reportes y rollback.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -33,17 +33,19 @@
 
 ## Que es openRender?
 
-openRender es infraestructura de estado para agentes de codigo con IA que necesitan continuar el desarrollo del juego sin perder la intencion del proyecto, las restricciones del motor, la direccion visual ni el contexto de recuperacion.
+openRender es infraestructura local de estado para agentes de codigo con IA que necesitan mantener coherente un proyecto de juego a traves de muchos ciclos de build, test y refinamiento.
 
-Los generadores de imagenes crean pixeles. Los proyectos de juego necesitan rutas estables, metadatos de frames, manifests, codigo auxiliar, previsualizaciones, reportes y una forma de deshacer la instalacion. openRender ofrece esa capa de handoff para que los agentes dejen de adivinar y mantengan el estado del proyecto revisable.
+Los agentes pierden continuidad cuando la intencion del proyecto, el gusto del creador, la direccion visual, las restricciones del motor y el estado de recuperacion viven solo en el chat. openRender guarda esas senales como estado derivado del proyecto y las une a un handoff determinista de medios: planes, helper paths, wire maps, reportes, verificacion y rollback.
+
+Los modelos de imagen crean pixeles; openRender mantiene esos pixeles utilizables dentro de un proyecto real. No reemplaza el motor ni edita automaticamente gameplay code. Le da al siguiente agente suficiente contexto compacto para continuar desde el estado real del proyecto.
 
 La memoria de openRender no es una capa para tomar notas. Guarda eventos derivados, conclusiones, tarjetas de proyecto, tarjetas de agente, tarjetas de gusto del creador, tarjetas de direccion del juego, tarjetas de evitacion visual e indice compacto de evidencia visual para que la siguiente tarea del agente reciba el contexto correcto sin releer logs completos ni pedir a una API de modelo que regenere assets.
 
-El core actual `1.1.1` soporta entrega de sprites, registro de referencias visuales, acumulacion de memoria visual, continuidad del gusto del creador, briefs de memoria por foco, revision de drift por run, analisis de movimiento, compilacion/instalacion de animaciones, pipelines de audio, atlas/tileset y UI, registro del ciclo de ejecucion del loop, paquetes de tarea por motor, registros de finalizacion del loop, snapshots locales de servicio y smoke checks opcionales de runtime/build para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
+El core actual `1.1.1` soporta continuidad del gusto del creador, tarjetas de direccion del juego, memoria de evitacion visual, briefs de evidencia visual, revision de drift por run, loop task packets, service snapshots y handoff determinista de sprites, animaciones, audio, atlas/tileset y UI para Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, Canvas plano + Vite y proyectos Unity.
 
 ## Inicio rapido
 
-Instala el paquete CLI de npm y usa el comando `openrender` desde un proyecto de juego objetivo:
+Instala el paquete CLI de npm y usa el comando `openrender` desde un proyecto de juego cuando un agente necesite contexto de proyecto, memoria, verificacion o handoff de medios:
 
 ```bash
 npm install -g @openrender/cli
@@ -62,8 +64,8 @@ pnpm build
 Para un uso guiado por agentes, instala openRender para el proyecto y luego dile al agente de codigo que lo use. El agente puede elegir los comandos exactos de openRender desde las instrucciones y referencias del proyecto.
 
 ```text
-Install openRender for this project, then use it to add the generated game asset to the game.
-Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
+Instala openRender para este proyecto, lee el compact project context y continua la siguiente tarea de desarrollo sin perder direccion visual, restricciones del motor ni estado de recuperacion.
+Usa openRender para memoria, verificacion, reportes y handoff de medios con rollback. Dime que cambio y que debe saber el siguiente agente.
 ```
 
 Tambien puedes formular el setup como una solicitud de skill:

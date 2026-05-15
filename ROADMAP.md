@@ -9,7 +9,7 @@
 - `compile animation` for engine-ready animation sheets, target helper files, wire-map handoff, verification, reports, diffs, explanations, and rollback.
 - Tiered runtime integration helpers across all supported engines: Phaser, Godot, LOVE2D, Unity, PixiJS, Three.js, and Canvas.
 - Agent loop runner, task packets, and completion records that track runId, report, verification status, next actions, rollback command, engine packet guidance, completion notes, and no-regeneration boundaries.
-- Memory infrastructure that turns runs, loops, user feedback, and visual references into derived project events, conclusions, project cards, agent cards, user-direction cards, engine cards, creator-taste cards, game-direction cards, visual-avoidance cards, a visual-evidence index, and compact context for follow-up agent tasks.
+- Memory infrastructure that turns runs, loops, user feedback, and visual references into derived project events, conclusions, project cards, agent cards, user-direction cards, engine cards, creator-taste cards, game-direction cards, visual-avoidance cards, a visual-evidence index, and compact continuity context for follow-up agent tasks.
 - `memory status`, `memory ingest`, `memory context`, `memory query`, `memory review`, `memory consolidate`, and `clean --memory` for agent continuity without raw chat-log accumulation.
 - Audio, atlas/tileset, and UI compile/install/verify/report/rollback through the same run-state pipeline.
 - Compact agent views for context, verify, report, explain, diff, and motion recommendations.
@@ -37,6 +37,7 @@
 
 ## Next Product Direction
 
+- Deepen creator-taste and game-direction continuity across longer build/test/refine loops.
 - Deepen engine-specific helper quality with fixture-backed examples from real production patterns.
 - Expand visual verification for animation loops, contact sheets, and target-specific helper readiness.
 - Expand memory-derived task packets into richer project-state continuity while keeping storage compact, provenance-backed, and pruneable.

@@ -13,4 +13,4 @@ Create these GitHub milestones when repository administration is available:
 - `1.0.2`: npm package README, publish workflow, registry install smoke, opt-in web build smoke, service snapshots, example smoke projects, and phase-2 memory cards.
 - `1.1.1`: Creator taste memory, game-direction cards, visual-avoidance cards, visual-evidence index, focused memory query briefs, and run drift review.
 
-The local implementation has reached the `1.1.1` Developer Kit completion surface and the npm registry path is live through `@openrender/cli`. Future milestones should deepen project-state continuity without turning the repository into a hosted product surface.
+The local implementation has reached the `1.1.1` project-state infrastructure surface and the npm registry path is live through `@openrender/cli`. Future milestones should deepen game-development continuity without turning the repository into a hosted product surface.

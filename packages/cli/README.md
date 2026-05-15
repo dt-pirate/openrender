@@ -7,7 +7,7 @@ npm install -g @openrender/cli
 openrender --version
 ```
 
-openRender is a local Developer Kit for AI-agent-native game development. It turns existing generated game media into engine-ready project files, helper code, reports, verification records, rollback state, compact project memory, creator-taste memory, and visual-evidence briefs.
+openRender is a local project-state CLI for AI-agent-native game development. It keeps game development continuity through compact memory, visual evidence, engine handoff, helper code, reports, verification records, rollback state, creator-taste memory, and visual-evidence briefs.
 
 ## Common Commands
 

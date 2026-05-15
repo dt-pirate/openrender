@@ -2,8 +2,8 @@
   <h1>openRender</h1>
   <h3>State infrastructure for AI-agent-native game development</h3>
   <p>
-    openRender turns existing generated game media into engine-ready project files with plans,
-    helper code, compact memory, reports, verification, and rollback records.
+    openRender gives AI coding agents a local project-state layer for continuing game development:
+    compact memory, visual evidence, engine handoff, verification, reports, and rollback.
   </p>
   <p>
     <a href="./README.md">English</a> |
@@ -33,17 +33,19 @@
 
 ## What Is openRender?
 
-openRender is state infrastructure for AI coding agents that need to continue game development without losing project intent, engine constraints, visual direction, or recovery context.
+openRender is local state infrastructure for AI coding agents that need to keep a game project coherent across many build, test, and refine loops.
 
-Image generators create pixels. Game projects need stable paths, frame metadata, manifests, helper code, previews, reports, and a way to undo the install. openRender provides that handoff layer so agents can stop guessing and keep the project state reviewable.
+Agents lose continuity when project intent, creator taste, visual direction, engine constraints, and recovery state live only in chat. openRender stores those signals as derived project state and pairs them with deterministic media handoff: plans, helper paths, wire maps, reports, verification, and rollback.
+
+Image models create pixels; openRender keeps those pixels usable inside a real game project. It does not replace the engine or edit gameplay automatically. It gives the next agent enough compact context to continue from the actual project state.
 
 openRender memory is not a note-taking layer. It stores derived project events, conclusions, project cards, agent cards, creator-taste cards, game-direction cards, visual-avoidance cards, and a compact visual-evidence index so the next agent task can carry the right context without replaying raw logs or asking a model provider to regenerate assets.
 
-The current `1.1.1` core supports sprite image handoff, visual reference records, visual memory accumulation, creator taste continuity, focused memory briefs, run drift review, motion analysis, animation compile/install flows, audio, atlas/tileset, UI asset pipelines, loop runner lifecycle capture, engine task packets, loop completion records, local service snapshots, and opt-in runtime/build smoke checks for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
+The current `1.1.1` core supports creator-taste continuity, game-direction cards, visual-avoidance memory, visual-evidence briefs, run drift review, loop task packets, service snapshots, and deterministic sprite, animation, audio, atlas/tileset, and UI handoff for Vite + Phaser, Godot 4, LOVE2D, PixiJS + Vite, Three.js + Vite, plain Canvas + Vite, and Unity projects.
 
 ## Quick Start
 
-Install the CLI package from npm, then use the `openrender` command from a target game project:
+Install the CLI package from npm, then use the `openrender` command from a target game project when an agent needs project context, memory, verification, or media handoff:
 
 ```bash
 npm install -g @openrender/cli
@@ -62,8 +64,8 @@ pnpm build
 For agent-led use, install openRender for the project and then tell your coding agent to use it. The agent can choose the exact openRender commands from the project instructions and references.
 
 ```text
-Install openRender for this project, then use it to add the generated game asset to the game.
-Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
+Install openRender for this project, read the compact project context, and continue the next game-development task without losing visual direction, engine constraints, or recovery state.
+Use openRender for memory, verification, reports, and rollback-aware media handoff. Tell me what changed and what the next agent should know.
 ```
 
 You can also phrase setup as a skill request:

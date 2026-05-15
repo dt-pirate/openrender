@@ -1,12 +1,12 @@
 # Agent Usage
 
-Use openRender as state infrastructure for generated media, engine handoff, verification, recovery, and follow-up agent context.
+Use openRender as local project-state infrastructure for game development continuity: compact memory, visual evidence, engine handoff, verification, recovery, and follow-up agent context.
 
 When a human is working through an AI coding agent, the user-facing request can stay simple:
 
 ```text
-Install openRender for this project, then use it to add the generated game asset to the game.
-Find the right generated asset and engine target, run the openRender workflow, and tell me what changed.
+Install openRender for this project, read the compact project context, and continue the next game-development task without losing visual direction, engine constraints, or recovery state.
+Use openRender for memory, verification, reports, and rollback-aware media handoff. Tell me what changed and what the next agent should know.
 ```
 
 ## Skill Setup
